@@ -1,0 +1,6 @@
+@CyberLosowanie_HostAddress = http://localhost:5124
+
+GET {{CyberLosowanie_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
