@@ -64,7 +64,7 @@ namespace CyberLosowanie.Data
                     Name = "Filip",
                     Surname = "Wilczyński",
                     ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/filip.jpg",
-                    BannedCyberki = new List<int> { 6, 8, 12 }
+                    BannedCyberki = new List<int> { 5, 6, 12 }
                 },
                 new Cyberek
                 {
@@ -104,7 +104,7 @@ namespace CyberLosowanie.Data
                     Name = "Paweł",
                     Surname = "Kurowski",
                     ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_969302823211650.jpg",
-                    BannedCyberki = new List<int> { 4, 5, 11 }
+                    BannedCyberki = new List<int> { 4, 8, 11 }
                 },
                 new Cyberek
                 {

@@ -44,6 +44,9 @@ namespace CyberLosowanie.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<int>("GiftedCyberekId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
 
@@ -98,9 +101,6 @@ namespace CyberLosowanie.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ApplicationUserId")
-                        .HasColumnType("int");
-
                     b.Property<string>("BannedCyberki")
                         .HasColumnType("nvarchar(max)");
 
@@ -124,7 +124,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 1,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[1,2,6]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/Snapchat-1097463068.jpg",
@@ -134,7 +133,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 2,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[1,2,10]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/PIC06751.jpg",
@@ -144,7 +142,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 3,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[3,9,11]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/PIC06756.jpg",
@@ -154,7 +151,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 4,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[2,4,11]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/PIC07182.jpg",
@@ -164,7 +160,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 5,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[5,7,8]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_1194698987364878.jpg",
@@ -174,8 +169,7 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 6,
-                            ApplicationUserId = 0,
-                            BannedCyberki = "[6,12]",
+                            BannedCyberki = "[5,6,12]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/filip.jpg",
                             Name = "Filip",
@@ -184,7 +178,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 7,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[3,7,10]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_1601092693274773.jpg",
@@ -194,7 +187,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 8,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[1,5,8]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/PIC06728.jpg",
@@ -204,7 +196,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 9,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[3,4,9]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_1392476584166599.jpg",
@@ -214,7 +205,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 10,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[7,10,12]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/naja.jpg",
@@ -224,8 +214,7 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 11,
-                            ApplicationUserId = 0,
-                            BannedCyberki = "[4,11]",
+                            BannedCyberki = "[4,8,11]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_969302823211650.jpg",
                             Name = "Paweł",
@@ -234,7 +223,6 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 12,
-                            ApplicationUserId = 0,
                             BannedCyberki = "[6,9,12]",
                             GiftedCyberekId = 0,
                             ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_1823180021058625.jpg",

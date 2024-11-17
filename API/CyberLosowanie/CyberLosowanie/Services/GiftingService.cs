@@ -31,28 +31,40 @@ namespace CyberLosowanie.Services
 
         public int GetAvailableToBeGiftedCyberek(List<Cyberek> cyberki, Cyberek cyberek, int toBeGiftedCyberkId)
         {
-            var availableToBeGiftedCyberki = GetAvailableToBeGiftedCyberki(cyberki, new List<int>(toBeGiftedCyberkId));
-            var availableToBeGiftedCyberkiCopy = availableToBeGiftedCyberki;
-            availableToBeGiftedCyberkiCopy.Add(toBeGiftedCyberkId);
-            try
+            var availableToBeGiftedCyberki = GetAvailableToBeGiftedCyberki(cyberki, new List<int> { toBeGiftedCyberkId });
+            var availableToBeGiftedCyberkiCopy = new List<int>();
+            availableToBeGiftedCyberkiCopy.AddRange(availableToBeGiftedCyberki);
+            if (!availableToBeGiftedCyberkiCopy.Contains(toBeGiftedCyberkId))
             {
-                foreach (var cyber in cyberki.Where(c => c.GiftedCyberekId == 0 && c.Id != cyberek.Id))
+                availableToBeGiftedCyberkiCopy.Add(toBeGiftedCyberkId);
+            }
+            foreach (var cyber in cyberki.Where(c => c.GiftedCyberekId == 0 && c.Id != cyberek.Id))
+            {
+                var pickedCyberek = availableToBeGiftedCyberki.Where(c => !cyber.BannedCyberki.Contains(c)).FirstOrDefault();
+                if (pickedCyberek == 0)
                 {
-                    var pickedCyberek = availableToBeGiftedCyberki.Where(c => !cyber.BannedCyberki.Contains(c)).First();
+                    foreach (var cyberUser in cyberki.Where(c => c.GiftedCyberekId == 0 && c.Id != cyberek.Id))
+                    {
+                        var pickedCyberekId = availableToBeGiftedCyberkiCopy.Where(c => !cyberUser.BannedCyberki.Contains(c)).FirstOrDefault();
+                        if (pickedCyberekId == 0)
+                        {
+                            throw new Exception("Fatal Error");
+                        }
+                        availableToBeGiftedCyberkiCopy.Remove(pickedCyberekId);
+                    }
+                    var result = availableToBeGiftedCyberki.Where(c => !cyberek.BannedCyberki.Contains(c)).ElementAt(random.Next(availableToBeGiftedCyberki.Count));
+                    if (result == 0)
+                    {
+                        throw new Exception("Fatal Error");
+                    }
+                    return result;
+                }
+                else
+                {
                     availableToBeGiftedCyberki.Remove(pickedCyberek);
                 }
-                return toBeGiftedCyberkId;
             }
-            catch
-            {
-
-                foreach (var cyber in cyberki.Where(c => c.GiftedCyberekId == 0 && c.Id != cyberek.Id))
-                {
-                    var pickedCyberek = availableToBeGiftedCyberkiCopy.Where(c => !cyber.BannedCyberki.Contains(c)).First();
-                    availableToBeGiftedCyberkiCopy.Remove(pickedCyberek);
-                }
-                return availableToBeGiftedCyberki[random.Next(availableToBeGiftedCyberki.Count)];
-            }
+            return toBeGiftedCyberkId;
         }
     }
 }

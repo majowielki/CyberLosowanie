@@ -60,7 +60,8 @@ namespace CyberLosowanie.Controllers
                 {
                     new Claim("fullName", userFromDb.UserName),
                     new Claim("id", userFromDb.Id.ToString()),
-                    new Claim("cyberekId", userFromDb.CyberekId.ToString())
+                    new Claim("cyberekId", userFromDb.CyberekId.ToString()),
+                    new Claim("giftedCyberekId", userFromDb.GiftedCyberekId.ToString())
                 }),
                 Expires = DateTime.UtcNow.AddDays(7),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

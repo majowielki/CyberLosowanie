@@ -43,41 +43,24 @@
   },
   {
     "ContainingType": "CyberLosowanie.Controllers.CyberLosowanieController",
-    "Method": "GetCyberek",
-    "RelativePath": "api/CyberLosowanie/{id}",
-    "HttpMethod": "GET",
-    "IsController": true,
-    "Order": 0,
-    "Parameters": [
-      {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      }
-    ],
-    "ReturnTypes": [],
-    "EndpointName": "GetCyberek"
-  },
-  {
-    "ContainingType": "CyberLosowanie.Controllers.CyberLosowanieController",
-    "Method": "UpdateCyberek",
-    "RelativePath": "api/CyberLosowanie/{id}",
+    "Method": "UpdateUser",
+    "RelativePath": "api/CyberLosowanie",
     "HttpMethod": "PUT",
     "IsController": true,
     "Order": 0,
     "Parameters": [
       {
-        "Name": "id",
-        "Type": "System.Int32",
-        "IsRequired": true
-      },
-      {
-        "Name": "ApplicationUserId",
-        "Type": "System.Int32",
+        "Name": "userName",
+        "Type": "System.String",
         "IsRequired": false
       },
       {
         "Name": "GiftedCyberekId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "CyberekId",
         "Type": "System.Int32",
         "IsRequired": false
       }
@@ -93,6 +76,23 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "CyberLosowanie.Controllers.CyberLosowanieController",
+    "Method": "GetCyberek",
+    "RelativePath": "api/CyberLosowanie/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [],
+    "EndpointName": "GetCyberek"
   },
   {
     "ContainingType": "CyberLosowanie.Controllers.CyberLosowanieController",

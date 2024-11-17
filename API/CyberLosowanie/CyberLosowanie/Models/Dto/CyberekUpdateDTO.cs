@@ -2,7 +2,7 @@
 {
     public class CyberekUpdateDTO
     {
-        public int ApplicationUserId { get; set; }
         public int GiftedCyberekId { get; set; }
+        public int CyberekId { get; set; }
     }
 }

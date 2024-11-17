@@ -2,6 +2,7 @@
 using CyberLosowanie.Models;
 using CyberLosowanie.Models.Dto;
 using CyberLosowanie.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
@@ -14,11 +15,13 @@ namespace CyberLosowanie.Controllers
     {
         private readonly ApplicationDbContext _dbContext;
         private readonly IGiftingService _giftingService;
+        private readonly UserManager<ApplicationUser> _userManager;
         private ApiResponse _apiResponse;
-        public CyberLosowanieController(ApplicationDbContext dbContext, IGiftingService giftingService)
+        public CyberLosowanieController(ApplicationDbContext dbContext, IGiftingService giftingService, UserManager<ApplicationUser> userManager)
         {
             _dbContext = dbContext;
             _giftingService = giftingService;
+            _userManager = userManager;
             _apiResponse = new ApiResponse();
         }
 
@@ -76,31 +79,45 @@ namespace CyberLosowanie.Controllers
             }
         }
 
-        [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse>> UpdateCyberek(int id, [FromForm] CyberekUpdateDTO cyberekUpdateDto)
+        [HttpPut]
+        public async Task<ActionResult<ApiResponse>> UpdateUser(string userName, [FromForm] CyberekUpdateDTO cyberekUpdateDto)
         {
             try
             {
+                var applicationUser = await _userManager.FindByNameAsync(userName);
                 var cyberki = await _dbContext.Cyberki.ToListAsync();
-                var cyberek = cyberki.FirstOrDefault(c => c.Id == id);
-                if (cyberek != null)
-                {
-                    if (cyberek.ApplicationUserId == 0)
-                    {
-                        cyberek.ApplicationUserId = cyberekUpdateDto.ApplicationUserId;
-                    }
-                    if (cyberek.GiftedCyberekId == 0)
-                    {
-                        cyberek.GiftedCyberekId = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, cyberekUpdateDto.GiftedCyberekId);
-                    }
-                }
-                else
+                if (applicationUser == null)
                 {
                     _apiResponse.StatusCode = HttpStatusCode.NotFound;
                     return NotFound(_apiResponse);
                 }
+                else
+                {
+                    if (applicationUser.CyberekId == 0)
+                    {
+                        applicationUser.CyberekId = cyberekUpdateDto.CyberekId;
+                    }
+                    else 
+                    {
+                        var cyberek = cyberki.FirstOrDefault(c => c.Id == applicationUser.CyberekId);
+                        if (cyberek != null)
+                        {
+                            if (cyberek.GiftedCyberekId == 0)
+                            {
+                                cyberek.GiftedCyberekId = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, cyberekUpdateDto.GiftedCyberekId);
+                                applicationUser.GiftedCyberekId = cyberek.GiftedCyberekId;
+                            }
+                            _dbContext.Cyberki.Update(cyberek);
+                        }
+                        else
+                        {
+                            _apiResponse.StatusCode = HttpStatusCode.NotFound;
+                            return NotFound(_apiResponse);
+                        }
+                    }
+                }
 
-                _dbContext.Cyberki.Update(cyberek);
+                _dbContext.ApplicationUsers.Update(applicationUser);
                 await _dbContext.SaveChangesAsync();
                 _apiResponse.StatusCode = HttpStatusCode.NoContent;
                 return Ok(_apiResponse);

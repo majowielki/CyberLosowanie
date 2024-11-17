@@ -3,24 +3,8 @@
   "WorkspaceRootPath": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|d:\\project\\cyberlosowanie\\api\\cyberlosowanie\\cyberlosowanie\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|solutionrelative:cyberlosowanie\\data\\applicationdbcontext.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|d:\\project\\cyberlosowanie\\api\\cyberlosowanie\\cyberlosowanie\\controllers\\cyberlosowaniecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|solutionrelative:cyberlosowanie\\controllers\\cyberlosowaniecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|d:\\project\\cyberlosowanie\\api\\cyberlosowanie\\cyberlosowanie\\services\\giftingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|solutionrelative:cyberlosowanie\\services\\giftingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|d:\\project\\cyberlosowanie\\api\\cyberlosowanie\\cyberlosowanie\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|solutionrelative:cyberlosowanie\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|d:\\project\\cyberlosowanie\\api\\cyberlosowanie\\cyberlosowanie\\services\\igiftingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|solutionrelative:cyberlosowanie\\services\\igiftingservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -30,75 +14,23 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "ApplicationDbContext.cs",
-              "DocumentMoniker": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Data\\ApplicationDbContext.cs",
-              "RelativeDocumentMoniker": "CyberLosowanie\\Data\\ApplicationDbContext.cs",
-              "ToolTip": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Data\\ApplicationDbContext.cs",
-              "RelativeToolTip": "CyberLosowanie\\Data\\ApplicationDbContext.cs",
-              "ViewState": "AgIAAEEAAAAAAAAAAAAIwGcAAAAjAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-14T14:52:35.237Z",
-              "EditorCaption": ""
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "Program.cs",
-              "DocumentMoniker": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Program.cs",
-              "RelativeDocumentMoniker": "CyberLosowanie\\Program.cs",
-              "ToolTip": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Program.cs",
-              "RelativeToolTip": "CyberLosowanie\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAADAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-14T14:16:52.627Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "IGiftingService.cs",
-              "DocumentMoniker": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Services\\IGiftingService.cs",
-              "RelativeDocumentMoniker": "CyberLosowanie\\Services\\IGiftingService.cs",
-              "ToolTip": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Services\\IGiftingService.cs",
-              "RelativeToolTip": "CyberLosowanie\\Services\\IGiftingService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-14T09:54:43.826Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
               "Title": "GiftingService.cs",
               "DocumentMoniker": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Services\\GiftingService.cs",
               "RelativeDocumentMoniker": "CyberLosowanie\\Services\\GiftingService.cs",
               "ToolTip": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Services\\GiftingService.cs",
               "RelativeToolTip": "CyberLosowanie\\Services\\GiftingService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACAAAAAIAAAAAAAAAA==",
+              "ViewState": "AgIAABUAAAAAAAAAAAAIwCEAAAB6AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-14T09:54:25.977Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "CyberLosowanieController.cs",
-              "DocumentMoniker": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Controllers\\CyberLosowanieController.cs",
-              "RelativeDocumentMoniker": "CyberLosowanie\\Controllers\\CyberLosowanieController.cs",
-              "ToolTip": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\Controllers\\CyberLosowanieController.cs",
-              "RelativeToolTip": "CyberLosowanie\\Controllers\\CyberLosowanieController.cs",
-              "ViewState": "AgIAACwAAAAAAAAAAAAwwFAAAAAIAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-13T21:40:45.079Z",
+              "WhenOpened": "2024-11-17T20:25:19.784Z",
               "EditorCaption": ""
             }
           ]
