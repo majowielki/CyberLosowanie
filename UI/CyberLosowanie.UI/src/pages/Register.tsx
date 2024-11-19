@@ -6,6 +6,7 @@ import { inputHelper} from "../helpers";
 import { useRegisterUserMutation } from "../apis/authApi";
 import { apiResponse } from "../interfaces";
 import { toast } from '@/hooks/use-toast';
+import React from "react";
 
 function Register() {
   const [error, setError] = useState("");
