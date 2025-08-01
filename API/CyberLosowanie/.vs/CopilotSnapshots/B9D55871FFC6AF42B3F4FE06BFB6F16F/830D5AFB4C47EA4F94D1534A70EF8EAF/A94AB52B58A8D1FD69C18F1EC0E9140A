@@ -1,0 +1,91 @@
+﻿using CyberLosowanie.Models;
+using CyberLosowanie.Models.Dto;
+using CyberLosowanie.Services;
+using Microsoft.AspNetCore.Mvc;
+using System.Net;
+
+namespace CyberLosowanie.Controllers
+{
+    [Route("api/auth")]
+    [ApiController]
+    public class AuthController : ControllerBase
+    {
+        private readonly IAuthService _authService;
+        private ApiResponse _apiResponse;
+
+        public AuthController(IAuthService authService)
+        {
+            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+            _apiResponse = new ApiResponse();
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequestDTO model)
+        {
+            try
+            {
+                var loginResponse = await _authService.LoginAsync(model);
+                _apiResponse.StatusCode = HttpStatusCode.OK;
+                _apiResponse.IsSuccess = true;
+                _apiResponse.Result = loginResponse;
+                return Ok(_apiResponse);
+            }
+            catch (ArgumentException ex)
+            {
+                _apiResponse.Result = new LoginResponseDTO();
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.IsSuccess = false;
+                _apiResponse.ErrorMessages.Add(ex.Message);
+                return BadRequest(_apiResponse);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _apiResponse.Result = new LoginResponseDTO();
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.IsSuccess = false;
+                _apiResponse.ErrorMessages.Add(ex.Message);
+                return BadRequest(_apiResponse);
+            }
+            catch (Exception ex)
+            {
+                _apiResponse.IsSuccess = false;
+                _apiResponse.StatusCode = HttpStatusCode.InternalServerError;
+                _apiResponse.ErrorMessages.Add(ex.Message);
+                return StatusCode((int)HttpStatusCode.InternalServerError, _apiResponse);
+            }
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequestDTO model)
+        {
+            try
+            {
+                await _authService.RegisterAsync(model);
+                _apiResponse.StatusCode = HttpStatusCode.OK;
+                _apiResponse.IsSuccess = true;
+                return Ok(_apiResponse);
+            }
+            catch (ArgumentException ex)
+            {
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.IsSuccess = false;
+                _apiResponse.ErrorMessages.Add(ex.Message);
+                return BadRequest(_apiResponse);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.IsSuccess = false;
+                _apiResponse.ErrorMessages.Add(ex.Message);
+                return BadRequest(_apiResponse);
+            }
+            catch (Exception ex)
+            {
+                _apiResponse.StatusCode = HttpStatusCode.BadRequest;
+                _apiResponse.IsSuccess = false;
+                _apiResponse.ErrorMessages.Add("Error while registering");
+                return BadRequest(_apiResponse);
+            }
+        }
+    }
+}

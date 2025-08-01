@@ -1,0 +1,72 @@
+﻿using CyberLosowanie.Models;
+using CyberLosowanie.Models.Dto;
+using CyberLosowanie.Services;
+using Microsoft.AspNetCore.Mvc;
+using System.Net;
+
+namespace CyberLosowanie.Controllers
+{
+    [Route("api/CyberLosowanie")]
+    [ApiController]
+    public class CyberLosowanieController : ControllerBase
+    {
+        private readonly ICyberekService _cyberekService;
+
+        public CyberLosowanieController(ICyberekService cyberekService)
+        {
+            _cyberekService = cyberekService ?? throw new ArgumentNullException(nameof(cyberekService));
+        }
+
+        [HttpGet]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<Cyberek>>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> GetCyberki()
+        {
+            var cyberki = await _cyberekService.GetAllCyberkiAsync();
+            return Ok(ApiResponse<IEnumerable<Cyberek>>.Success(cyberki));
+        }
+
+        [HttpGet("{id:int}", Name = "GetCyberek")]
+        [ProducesResponseType(typeof(ApiResponse<Cyberek>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> GetCyberek(int id)
+        {
+            var cyberek = await _cyberekService.GetCyberekByIdAsync(id);
+            return Ok(ApiResponse<Cyberek>.Success(cyberek));
+        }
+
+        [HttpGet("validate")]
+        [ProducesResponseType(typeof(ApiResponse<List<int>>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> GetToBeGiftedCyberki(int id)
+        {
+            var availableTargets = await _cyberekService.GetAvailableGiftTargetsAsync(id);
+            return Ok(ApiResponse<List<int>>.Success(availableTargets));
+        }
+
+        [HttpPut]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> UpdateUser(string userName, [FromForm] CyberekUpdateDTO cyberekUpdateDto)
+        {
+            // Validate model state
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                return BadRequest(ApiResponse<object>.ValidationError(errors));
+            }
+
+            await _cyberekService.AssignGiftAsync(userName, cyberekUpdateDto);
+            return Ok(ApiResponse<object>.Success(null, "Gift assignment completed successfully"));
+        }
+    }
+}

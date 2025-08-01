@@ -1,0 +1,182 @@
+﻿using CyberLosowanie.Data;
+using CyberLosowanie.Models;
+using System.Text.Json;
+
+namespace CyberLosowanie.Services
+{
+    public class AuditService : IAuditService
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger<AuditService> _logger;
+
+        public AuditService(ApplicationDbContext context, ILogger<AuditService> logger)
+        {
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        public async Task LogErrorAsync(Exception exception, HttpContext context, string? userId = null, string? userName = null)
+        {
+            try
+            {
+                var auditLog = CreateBaseAuditLog("Error", context, userId, userName);
+                auditLog.Message = exception.Message;
+                auditLog.ExceptionDetails = exception.ToString();
+                auditLog.StackTrace = exception.StackTrace;
+
+                await SaveAuditLogAsync(auditLog);
+                
+                // Also log to standard logger for immediate visibility
+                _logger.LogError(exception, "Error logged to audit table: {Message}", exception.Message);
+            }
+            catch (Exception ex)
+            {
+                // Fallback to standard logging if audit logging fails
+                _logger.LogError(ex, "Failed to save audit log for exception: {OriginalException}", exception.Message);
+            }
+        }
+
+        public async Task LogInformationAsync(string message, HttpContext? context = null, string? userId = null, string? userName = null, object? additionalData = null)
+        {
+            try
+            {
+                var auditLog = CreateBaseAuditLog("Information", context, userId, userName);
+                auditLog.Message = message;
+                
+                if (additionalData != null)
+                {
+                    auditLog.AdditionalData = JsonSerializer.Serialize(additionalData);
+                }
+
+                await SaveAuditLogAsync(auditLog);
+                _logger.LogInformation("Audit log saved: {Message}", message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save information audit log: {Message}", message);
+            }
+        }
+
+        public async Task LogWarningAsync(string message, HttpContext? context = null, string? userId = null, string? userName = null, object? additionalData = null)
+        {
+            try
+            {
+                var auditLog = CreateBaseAuditLog("Warning", context, userId, userName);
+                auditLog.Message = message;
+                
+                if (additionalData != null)
+                {
+                    auditLog.AdditionalData = JsonSerializer.Serialize(additionalData);
+                }
+
+                await SaveAuditLogAsync(auditLog);
+                _logger.LogWarning("Warning audit log saved: {Message}", message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save warning audit log: {Message}", message);
+            }
+        }
+
+        public async Task LogCriticalAsync(string message, Exception? exception = null, HttpContext? context = null, string? userId = null, string? userName = null)
+        {
+            try
+            {
+                var auditLog = CreateBaseAuditLog("Critical", context, userId, userName);
+                auditLog.Message = message;
+                
+                if (exception != null)
+                {
+                    auditLog.ExceptionDetails = exception.ToString();
+                    auditLog.StackTrace = exception.StackTrace;
+                }
+
+                await SaveAuditLogAsync(auditLog);
+                _logger.LogCritical(exception, "Critical audit log saved: {Message}", message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save critical audit log: {Message}", message);
+            }
+        }
+
+        private AuditLog CreateBaseAuditLog(string logLevel, HttpContext? context, string? userId, string? userName)
+        {
+            var correlationId = context?.TraceIdentifier ?? Guid.NewGuid().ToString();
+            
+            var auditLog = new AuditLog
+            {
+                CorrelationId = correlationId,
+                Timestamp = DateTime.UtcNow,
+                LogLevel = logLevel,
+                Source = "CyberLosowanie.API",
+                UserId = userId,
+                UserName = userName
+            };
+
+            if (context != null)
+            {
+                auditLog.IpAddress = GetClientIpAddress(context);
+                auditLog.UserAgent = context.Request.Headers.UserAgent.ToString();
+                auditLog.HttpMethod = context.Request.Method;
+                auditLog.RequestPath = context.Request.Path + context.Request.QueryString;
+                auditLog.ResponseStatusCode = context.Response.StatusCode;
+
+                // Capture request body for POST/PUT requests (be careful with sensitive data)
+                if (context.Request.Method == "POST" || context.Request.Method == "PUT")
+                {
+                    auditLog.RequestBody = GetRequestBody(context);
+                }
+            }
+
+            return auditLog;
+        }
+
+        private async Task SaveAuditLogAsync(AuditLog auditLog)
+        {
+            _context.AuditLogs.Add(auditLog);
+            await _context.SaveChangesAsync();
+        }
+
+        private static string GetClientIpAddress(HttpContext context)
+        {
+            // Check for forwarded IP first (in case of proxy/load balancer)
+            var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(forwardedFor))
+            {
+                return forwardedFor.Split(',')[0].Trim();
+            }
+
+            var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(realIp))
+            {
+                return realIp;
+            }
+
+            return context.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        }
+
+        private static string? GetRequestBody(HttpContext context)
+        {
+            try
+            {
+                context.Request.EnableBuffering();
+                using var reader = new StreamReader(context.Request.Body, leaveOpen: true);
+                var body = reader.ReadToEndAsync().Result;
+                context.Request.Body.Position = 0;
+                
+                // Don't log passwords or sensitive data
+                if (body.Contains("password", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "[CONTAINS_SENSITIVE_DATA]";
+                }
+                
+                return body.Length > 1000 ? body.Substring(0, 1000) + "..." : body;
+            }
+            catch
+            {
+                return "[UNABLE_TO_READ]";
+            }
+        }
+    }
+}

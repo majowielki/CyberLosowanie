@@ -1,0 +1,13 @@
+﻿using CyberLosowanie.Models;
+using CyberLosowanie.Models.Dto;
+
+namespace CyberLosowanie.Interfaces.Services
+{
+    public interface ICyberekService
+    {
+        Task<IEnumerable<Cyberek>> GetAllCyberkiAsync();
+        Task<Cyberek> GetCyberekByIdAsync(int id);
+        Task<List<int>> GetAvailableGiftTargetsAsync(int cyberekId);
+        Task<bool> AssignGiftAsync(string userName, CyberekUpdateDTO updateDto);
+    }
+}

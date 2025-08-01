@@ -1,0 +1,214 @@
+﻿using CyberLosowanie.Constants;
+using CyberLosowanie.Exceptions;
+using CyberLosowanie.Interfaces.Repositories;
+using CyberLosowanie.Interfaces.Services;
+using CyberLosowanie.Models;
+using CyberLosowanie.Models.Dto;
+using Microsoft.Extensions.Caching.Memory;
+
+namespace CyberLosowanie.Services
+{
+    public class CyberekService : ICyberekService
+    {
+        private readonly ICyberekRepository _cyberekRepository;
+        private readonly IApplicationUserRepository _userRepository;
+        private readonly IGiftingService _giftingService;
+        private readonly IValidationService _validationService;
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<CyberekService> _logger;
+        private readonly IAuditService _auditService;
+        
+        private const string ALL_CYBERKI_CACHE_KEY = "all_cyberki";
+        private const int CACHE_EXPIRATION_MINUTES = 30;
+
+        public CyberekService(
+            ICyberekRepository cyberekRepository,
+            IApplicationUserRepository userRepository,
+            IGiftingService giftingService,
+            IValidationService validationService,
+            IMemoryCache cache,
+            ILogger<CyberekService> logger,
+            IAuditService auditService)
+        {
+            _cyberekRepository = cyberekRepository ?? throw new ArgumentNullException(nameof(cyberekRepository));
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _giftingService = giftingService ?? throw new ArgumentNullException(nameof(giftingService));
+            _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
+            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
+        }
+
+        public async Task<IEnumerable<Cyberek>> GetAllCyberkiAsync()
+        {
+            try
+            {
+                if (_cache.TryGetValue(ALL_CYBERKI_CACHE_KEY, out IEnumerable<Cyberek>? cachedCyberki))
+                {
+                    _logger.LogDebug("Retrieved cyberki from cache");
+                    return cachedCyberki!;
+                }
+
+                var cyberki = await _cyberekRepository.GetAllAsync();
+                
+                _cache.Set(ALL_CYBERKI_CACHE_KEY, cyberki, TimeSpan.FromMinutes(CACHE_EXPIRATION_MINUTES));
+                _logger.LogDebug("Cached cyberki for {Minutes} minutes", CACHE_EXPIRATION_MINUTES);
+                
+                return cyberki;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to retrieve cyberki");
+                throw new InvalidOperationException("Failed to retrieve cyberki", ex);
+            }
+        }
+
+        public async Task<Cyberek> GetCyberekByIdAsync(int id)
+        {
+            var validationErrors = _validationService.ValidateCyberekId(id);
+            if (validationErrors.Any())
+            {
+                throw new BusinessValidationException(validationErrors);
+            }
+
+            var cyberek = await _cyberekRepository.GetByIdAsync(id);
+            if (cyberek == null)
+            {
+                throw new CyberekNotFoundException(id);
+            }
+
+            return cyberek;
+        }
+
+        public async Task<List<int>> GetAvailableGiftTargetsAsync(int cyberekId)
+        {
+            var validationErrors = _validationService.ValidateCyberekId(cyberekId);
+            if (validationErrors.Any())
+            {
+                throw new BusinessValidationException(validationErrors);
+            }
+
+            var cyberek = await _cyberekRepository.GetByIdAsync(cyberekId);
+            if (cyberek == null)
+            {
+                throw new CyberekNotFoundException(cyberekId);
+            }
+
+            if (cyberek.GiftedCyberekId != 0)
+                return new List<int> { cyberek.GiftedCyberekId };
+
+            try
+            {
+                var allCyberki = await GetAllCyberkiAsync(); // Use cached version
+                return _giftingService.GetAvailableToBeGiftedCyberki(
+                    allCyberki.ToList(),
+                    cyberek.BannedCyberki);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to calculate available gift targets for cyberek {CyberekId}", cyberekId);
+                throw new InvalidOperationException("Failed to calculate available gift targets", ex);
+            }
+        }
+
+        public async Task<bool> AssignGiftAsync(string userName, CyberekUpdateDTO updateDto)
+        {
+            var validationErrors = await _validationService.ValidateGiftAssignmentAsync(userName, updateDto);
+            if (validationErrors.Any())
+            {
+                throw new BusinessValidationException(validationErrors);
+            }
+
+            var applicationUser = await _userRepository.GetByUsernameAsync(userName);
+            if (applicationUser == null)
+            {
+                throw new UserNotFoundException(userName);
+            }
+
+            // Use database transaction for data consistency
+            using var transaction = await _userRepository.BeginTransactionAsync();
+            try
+            {
+                var allCyberki = await _cyberekRepository.GetAllAsync(); // Don't use cache for transactions
+                var cyberkiList = allCyberki.ToList();
+
+                if (applicationUser.CyberekId == 0)
+                {
+                    applicationUser.CyberekId = updateDto.CyberekId;
+                    await _userRepository.UpdateAsync(applicationUser);
+                    
+                    // Save all changes in one call since both repositories use the same context
+                    await _userRepository.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    
+                    // Invalidate cache after data changes
+                    _cache.Remove(ALL_CYBERKI_CACHE_KEY);
+                    
+                    // Log successful assignment
+                    await _auditService.LogInformationAsync(
+                        $"User {userName} assigned to cyberek {updateDto.CyberekId}",
+                        additionalData: new { UserId = applicationUser.Id, CyberekId = updateDto.CyberekId }
+                    );
+                    
+                    return true;
+                }
+
+                var cyberek = cyberkiList.FirstOrDefault(c => c.Id == applicationUser.CyberekId);
+                if (cyberek == null)
+                {
+                    throw new CyberekNotFoundException(applicationUser.CyberekId);
+                }
+
+                if (cyberek.GiftedCyberekId != 0)
+                {
+                    throw new InvalidGiftAssignmentException(
+                        cyberek.Id, 
+                        cyberek.GiftedCyberekId, 
+                        CyberLosowanieConstants.GIFT_ALREADY_ASSIGNED);
+                }
+
+                cyberek.GiftedCyberekId = _giftingService.GetAvailableToBeGiftedCyberek(
+                    cyberkiList, 
+                    cyberek, 
+                    updateDto.GiftedCyberekId);
+                
+                applicationUser.GiftedCyberekId = cyberek.GiftedCyberekId;
+
+                await _cyberekRepository.UpdateAsync(cyberek);
+                await _userRepository.UpdateAsync(applicationUser);
+                
+                // Save all changes in one call since both repositories use the same context
+                await _cyberekRepository.SaveChangesAsync();
+                await transaction.CommitAsync();
+                
+                // Invalidate cache after successful data changes
+                _cache.Remove(ALL_CYBERKI_CACHE_KEY);
+                _logger.LogInformation("Successfully assigned gift for user {UserName}", userName);
+                
+                // Log successful gift assignment
+                await _auditService.LogInformationAsync(
+                    $"Gift assignment completed: {userName} -> Cyberek {cyberek.GiftedCyberekId}",
+                    additionalData: new 
+                    { 
+                        UserId = applicationUser.Id, 
+                        UserName = userName,
+                        CyberekId = cyberek.Id,
+                        GiftedCyberekId = cyberek.GiftedCyberekId
+                    }
+                );
+                
+                return true;
+            }
+            catch (Exception ex) when (!(ex is BusinessValidationException || ex is InvalidGiftAssignmentException))
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Failed to assign gift for user {UserName}", userName);
+                
+                // Log failed gift assignment
+                await _auditService.LogErrorAsync(ex, null, applicationUser?.Id, userName);
+                
+                throw new InvalidOperationException("Failed to assign gift", ex);
+            }
+        }
+    }
+}

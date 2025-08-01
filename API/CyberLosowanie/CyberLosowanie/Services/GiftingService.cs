@@ -1,84 +1,196 @@
-﻿using CyberLosowanie.Models;
-using System.Net;
+﻿using CyberLosowanie.Interfaces.Services;
+using CyberLosowanie.Models;
+using CyberLosowanie.Constants;
+using CyberLosowanie.Exceptions;
 
 namespace CyberLosowanie.Services
 {
     public class GiftingService : IGiftingService
     {
-        private static readonly Random random = new Random();
+        private readonly Random _random;
+
+        public GiftingService()
+        {
+            _random = new Random();
+        }
 
         public List<int> GetAvailableToBeGiftedCyberki(List<Cyberek> cyberki, List<int> bannedCyberki)
         {
-            List<int> toBeGiftedCyberki = cyberki.AsEnumerable().Select(r => r.Id).ToList();
-            foreach (var cyber in cyberki)
+            if (cyberki == null)
+                return new List<int>();
+
+            // Start with all cyberek IDs
+            var availableTargets = cyberki.Select(c => c.Id).ToHashSet();
+
+            // Remove already gifted cyberki
+            foreach (var cyberek in cyberki.Where(c => c.GiftedCyberekId != 0))
             {
-                if (cyber.GiftedCyberekId != 0)
+                availableTargets.Remove(cyberek.GiftedCyberekId);
+            }
+
+            // Remove banned cyberki
+            if (bannedCyberki != null)
+            {
+                foreach (var bannedId in bannedCyberki)
                 {
-                    toBeGiftedCyberki.Remove(cyber.GiftedCyberekId);
+                    availableTargets.Remove(bannedId);
                 }
             }
 
-            foreach (var bannedCyberek in bannedCyberki)
-            {
-                if (toBeGiftedCyberki.Contains(bannedCyberek))
-                {
-                    toBeGiftedCyberki.Remove(bannedCyberek);
-                }
-            }
-
-            return toBeGiftedCyberki;
+            return availableTargets.ToList();
         }
 
         public int GetAvailableToBeGiftedCyberek(List<Cyberek> cyberki, Cyberek cyberek, int toBeGiftedCyberkId)
         {
-            var availableToBeGiftedCyberki = GetAvailableToBeGiftedCyberki(cyberki, new List<int>());
-            var availableToBeGiftedCyberkiCopy = new List<int>();
-            availableToBeGiftedCyberkiCopy.AddRange(availableToBeGiftedCyberki);
-            if (!availableToBeGiftedCyberki.Contains(toBeGiftedCyberkId))
+            // Input validation
+            if (cyberki == null || !cyberki.Any())
+                throw new ArgumentException("Cyberki list cannot be null or empty", nameof(cyberki));
+            
+            if (cyberek == null)
+                throw new ArgumentNullException(nameof(cyberek));
+
+            // If the requested target is valid, try to assign it
+            if (IsValidGiftAssignment(cyberki, cyberek, toBeGiftedCyberkId))
             {
-                foreach (var cyberUser in cyberki.Where(c => c.GiftedCyberekId == 0 && c.Id != cyberek.Id))
-                {
-                    var pickedCyberekId = availableToBeGiftedCyberki.Where(c => !cyberUser.BannedCyberki.Contains(c)).FirstOrDefault();
-                    if (pickedCyberekId == 0)
-                    {
-                        throw new Exception("Fatal Error");
-                    }
-                    availableToBeGiftedCyberki.Remove(pickedCyberekId);
-                }
-                var result = availableToBeGiftedCyberki.Where(c => !cyberek.BannedCyberki.Contains(c)).ElementAt(random.Next(availableToBeGiftedCyberki.Count));
-                return result;
+                return toBeGiftedCyberkId;
             }
-            else
+
+            // Find a valid alternative using simulation
+            var validAlternatives = FindValidAlternatives(cyberki, cyberek);
+            
+            if (!validAlternatives.Any())
             {
-                availableToBeGiftedCyberki.Remove(toBeGiftedCyberkId);
+                throw new InvalidGiftAssignmentException(
+                    cyberek.Id, 
+                    toBeGiftedCyberkId,
+                    $"No valid gift targets available for cyberek {cyberek.Id}. " +
+                    "This may indicate insufficient available targets or conflicting banned lists.");
             }
-            foreach (var cyber in cyberki.Where(c => c.GiftedCyberekId == 0 && c.Id != cyberek.Id))
+
+            // Return a random valid alternative
+            var randomIndex = _random.Next(validAlternatives.Count);
+            return validAlternatives[randomIndex];
+        }
+
+        /// <summary>
+        /// Checks if assigning a specific gift target would leave all other cyberki with valid options
+        /// </summary>
+        private bool IsValidGiftAssignment(List<Cyberek> cyberki, Cyberek giftGiver, int targetId)
+        {
+            // Basic validation - target must exist and not be banned
+            if (!cyberki.Any(c => c.Id == targetId))
+                return false;
+
+            if (giftGiver.BannedCyberki?.Contains(targetId) == true)
+                return false;
+
+            // Cannot gift to self
+            if (targetId == giftGiver.Id)
+                return false;
+
+            // Simulate the assignment and check if remaining cyberki have valid options
+            return SimulateAssignmentValidity(cyberki, giftGiver, targetId);
+        }
+
+        /// <summary>
+        /// Simulates the gift assignment and validates that all remaining cyberki have valid options
+        /// </summary>
+        private bool SimulateAssignmentValidity(List<Cyberek> cyberki, Cyberek giftGiver, int targetId)
+        {
+            // You might even want to try multiple simulation runs for complex scenarios
+            const int maxAttempts = 3;
+
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                var pickedCyberek = availableToBeGiftedCyberki.Where(c => !cyber.BannedCyberki.Contains(c)).FirstOrDefault();
-                if (pickedCyberek == 0)
+                if (TrySingleSimulation(cyberki, giftGiver, targetId))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private bool TrySingleSimulation(List<Cyberek> cyberki, Cyberek giftGiver, int targetId)
+        {
+            var simulatedState = CreateSimulationState(cyberki, giftGiver, targetId);
+            var remainingCyberki = cyberki
+                .Where(c => c.Id != giftGiver.Id && c.GiftedCyberekId == 0)
+                .ToList();
+
+            var usedTargets = new HashSet<int>(simulatedState.Values);
+
+            foreach (var remainingCyberek in remainingCyberki)
+            {
+                var validTargetsForCyberek = GetValidTargetsForCyberek(
+                    cyberki, remainingCyberek, usedTargets);
+
+                if (!validTargetsForCyberek.Any())
+                    return false;
+
+                // Use random selection for better exploration
+                var randomIndex = _random.Next(validTargetsForCyberek.Count);
+                var assignedTarget = validTargetsForCyberek[randomIndex];
+                usedTargets.Add(assignedTarget);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Creates a simulation state with the proposed assignment
+        /// </summary>
+        private Dictionary<int, int> CreateSimulationState(List<Cyberek> cyberki, Cyberek giftGiver, int targetId)
+        {
+            var state = new Dictionary<int, int>();
+
+            // Add existing assignments
+            foreach (var cyberek in cyberki.Where(c => c.GiftedCyberekId != 0))
+            {
+                state[cyberek.Id] = cyberek.GiftedCyberekId;
+            }
+
+            // Add the proposed assignment
+            state[giftGiver.Id] = targetId;
+
+            return state;
+        }
+
+        /// <summary>
+        /// Gets valid targets for a specific cyberek, excluding already used targets
+        /// </summary>
+        private List<int> GetValidTargetsForCyberek(List<Cyberek> cyberki, Cyberek cyberek, HashSet<int> usedTargets)
+        {
+            return cyberki
+                .Where(c => c.Id != cyberek.Id) // Cannot gift to self
+                .Where(c => !usedTargets.Contains(c.Id)) // Target not already taken
+                .Where(c => cyberek.BannedCyberki?.Contains(c.Id) != true) // Not banned
+                .Select(c => c.Id)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Finds all valid alternatives for a cyberek using comprehensive simulation
+        /// </summary>
+        private List<int> FindValidAlternatives(List<Cyberek> cyberki, Cyberek giftGiver)
+        {
+            var validAlternatives = new List<int>();
+
+            // Get all potential targets (excluding self and banned)
+            var potentialTargets = cyberki
+                .Where(c => c.Id != giftGiver.Id)
+                .Where(c => giftGiver.BannedCyberki?.Contains(c.Id) != true)
+                .Select(c => c.Id)
+                .ToList();
+
+            // Test each potential target
+            foreach (var targetId in potentialTargets)
+            {
+                if (IsValidGiftAssignment(cyberki, giftGiver, targetId))
                 {
-                    foreach (var cyberUser in cyberki.Where(c => c.GiftedCyberekId == 0 && c.Id != cyberek.Id))
-                    {
-                        var pickedCyberekId = availableToBeGiftedCyberkiCopy.Where(c => !cyberUser.BannedCyberki.Contains(c)).FirstOrDefault();
-                        if (pickedCyberekId == 0)
-                        {
-                            throw new Exception("Fatal Error");
-                        }
-                        availableToBeGiftedCyberkiCopy.Remove(pickedCyberekId);
-                    }
-                    var result = availableToBeGiftedCyberkiCopy.Where(c => !cyberek.BannedCyberki.Contains(c)).ElementAt(random.Next(availableToBeGiftedCyberkiCopy.Count));
-                    if (result == 0)
-                    {
-                        throw new Exception("Fatal Error");
-                    }
-                    return result;
-                }
-                else
-                {
-                    availableToBeGiftedCyberki.Remove(pickedCyberek);
+                    validAlternatives.Add(targetId);
                 }
             }
-            return toBeGiftedCyberkId;
+
+            return validAlternatives;
         }
     }
 }

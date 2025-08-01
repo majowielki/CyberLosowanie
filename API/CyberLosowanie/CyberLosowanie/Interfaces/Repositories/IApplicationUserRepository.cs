@@ -1,0 +1,15 @@
+using CyberLosowanie.Models;
+using Microsoft.EntityFrameworkCore.Storage;
+
+namespace CyberLosowanie.Interfaces.Repositories
+{
+    public interface IApplicationUserRepository
+    {
+        Task<IEnumerable<ApplicationUser>> GetAllAsync();
+        Task<ApplicationUser> GetByIdAsync(string id);
+        Task<ApplicationUser> GetByUsernameAsync(string username);
+        Task UpdateAsync(ApplicationUser user);
+        Task SaveChangesAsync();
+        Task<IDbContextTransaction> BeginTransactionAsync();
+    }
+}

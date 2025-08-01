@@ -1,0 +1,21 @@
+﻿using CyberLosowanie.Models.Dto;
+
+namespace CyberLosowanie.Interfaces.Services
+{
+    public interface IValidationService
+    {
+        /// <summary>
+        /// Validates cyberek assignment to user (one-time setup)
+        /// </summary>
+        Task<List<string>> ValidateCyberekAssignmentAsync(string userName, CyberekAssignmentDTO assignmentDto);
+        
+        /// <summary>
+        /// Validates gift assignment (requires user to already have a cyberek)
+        /// </summary>
+        Task<List<string>> ValidateGiftAssignmentAsync(string userName, GiftedCyberekAssignmentDTO giftDto);
+        
+        Task<List<string>> ValidateLoginRequestAsync(LoginRequestDTO request);
+        Task<List<string>> ValidateRegisterRequestAsync(RegisterRequestDTO request);
+        List<string> ValidateCyberekId(int cyberekId);
+    }
+}

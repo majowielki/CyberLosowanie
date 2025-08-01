@@ -1,0 +1,30 @@
+﻿using CyberLosowanie.Constants;
+using System.ComponentModel.DataAnnotations;
+
+namespace CyberLosowanie.Models.Dto
+{
+    /// <summary>
+    /// Legacy DTO for combined cyberek operations - use CyberekAssignmentDTO or GiftedCyberekAssignmentDTO instead
+    /// </summary>
+    [Obsolete("Use CyberekAssignmentDTO or GiftedCyberekAssignmentDTO instead")]
+    public class CyberekUpdateDTO
+    {
+        [Range(CyberLosowanieConstants.MIN_CYBEREK_ID, CyberLosowanieConstants.MAX_CYBEREK_ID, 
+               ErrorMessage = CyberLosowanieConstants.INVALID_CYBEREK_ID)]
+        public int CyberekId { get; set; }
+
+        [Range(CyberLosowanieConstants.MIN_CYBEREK_ID, CyberLosowanieConstants.MAX_CYBEREK_ID, 
+               ErrorMessage = CyberLosowanieConstants.INVALID_CYBEREK_ID)]
+        public int GiftedCyberekId { get; set; }
+    }
+
+    /// <summary>
+    /// DTO for assigning a user to a cyberek (one-time setup)
+    /// </summary>
+    public class CyberekAssignmentDTO
+    {
+        [Range(CyberLosowanieConstants.MIN_CYBEREK_ID, CyberLosowanieConstants.MAX_CYBEREK_ID, 
+               ErrorMessage = CyberLosowanieConstants.INVALID_CYBEREK_ID)]
+        public int CyberekId { get; set; }
+    }
+}

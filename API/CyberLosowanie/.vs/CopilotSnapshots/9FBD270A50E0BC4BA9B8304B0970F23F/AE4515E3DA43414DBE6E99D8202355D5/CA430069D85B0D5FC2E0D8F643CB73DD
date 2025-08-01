@@ -1,0 +1,40 @@
+﻿using CyberLosowanie.Data;
+using CyberLosowanie.Interfaces.Repositories;
+using CyberLosowanie.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace CyberLosowanie.Repositories
+{
+    public class CyberekRepository : ICyberekRepository
+    {
+        private readonly ApplicationDbContext _context;
+
+        public CyberekRepository(ApplicationDbContext context)
+        {
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+        }
+
+        public async Task<IEnumerable<Cyberek>> GetAllAsync()
+        {
+            return await _context.Cyberki
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        public async Task<Cyberek> GetByIdAsync(int id)
+        {
+            return await _context.Cyberki
+                .FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        public async Task UpdateAsync(Cyberek cyberek)
+        {
+            _context.Cyberki.Update(cyberek);
+        }
+
+        public async Task SaveChangesAsync()
+        {
+            await _context.SaveChangesAsync();
+        }
+    }
+}

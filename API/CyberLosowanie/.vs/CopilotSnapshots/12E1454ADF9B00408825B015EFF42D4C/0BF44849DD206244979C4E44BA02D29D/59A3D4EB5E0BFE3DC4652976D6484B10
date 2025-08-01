@@ -1,0 +1,169 @@
+﻿using CyberLosowanie.Constants;
+using CyberLosowanie.Interfaces.Repositories;
+using CyberLosowanie.Interfaces.Services;
+using CyberLosowanie.Models.Dto;
+
+namespace CyberLosowanie.Services
+{
+    public class ValidationService : IValidationService
+    {
+        private readonly ICyberekRepository _cyberekRepository;
+        private readonly IApplicationUserRepository _userRepository;
+
+        public ValidationService(ICyberekRepository cyberekRepository, IApplicationUserRepository userRepository)
+        {
+            _cyberekRepository = cyberekRepository ?? throw new ArgumentNullException(nameof(cyberekRepository));
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        }
+
+        /// <summary>
+        /// Validates cyberek assignment to user (one-time setup)
+        /// </summary>
+        public async Task<List<string>> ValidateCyberekAssignmentAsync(string userName, CyberekAssignmentDTO assignmentDto)
+        {
+            var errors = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                errors.Add(CyberLosowanieConstants.INVALID_USERNAME);
+            }
+
+            if (assignmentDto == null)
+            {
+                errors.Add("Assignment data cannot be null");
+                return errors;
+            }
+
+            errors.AddRange(ValidateCyberekId(assignmentDto.CyberekId));
+
+            if (errors.Any())
+                return errors;
+
+            // Check if user exists
+            var user = await _userRepository.GetByUsernameAsync(userName);
+            if (user == null)
+            {
+                errors.Add(CyberLosowanieConstants.USER_NOT_FOUND);
+                return errors;
+            }
+
+            // Check if cyberek exists
+            var cyberek = await _cyberekRepository.GetByIdAsync(assignmentDto.CyberekId);
+            if (cyberek == null)
+            {
+                errors.Add(CyberLosowanieConstants.CYBEREK_NOT_FOUND);
+            }
+
+            return errors;
+        }
+
+        /// <summary>
+        /// Validates gift assignment (requires user to already have a cyberek)
+        /// </summary>
+        public async Task<List<string>> ValidateGiftAssignmentAsync(string userName, GiftedCyberekAssignmentDTO giftDto)
+        {
+            var errors = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                errors.Add(CyberLosowanieConstants.INVALID_USERNAME);
+            }
+
+            if (giftDto == null)
+            {
+                errors.Add("Gift assignment data cannot be null");
+                return errors;
+            }
+
+            errors.AddRange(ValidateCyberekId(giftDto.GiftedCyberekId));
+
+            if (errors.Any())
+                return errors;
+
+            // Check if user exists
+            var user = await _userRepository.GetByUsernameAsync(userName);
+            if (user == null)
+            {
+                errors.Add(CyberLosowanieConstants.USER_NOT_FOUND);
+                return errors;
+            }
+
+            // Check if target cyberek exists
+            var targetCyberek = await _cyberekRepository.GetByIdAsync(giftDto.GiftedCyberekId);
+            if (targetCyberek == null)
+            {
+                errors.Add($"Target {CyberLosowanieConstants.CYBEREK_NOT_FOUND}");
+            }
+
+            return errors;
+        }
+
+        public async Task<List<string>> ValidateLoginRequestAsync(LoginRequestDTO request)
+        {
+            var errors = new List<string>();
+
+            if (request == null)
+            {
+                errors.Add("Login request cannot be null");
+                return errors;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.UserName))
+            {
+                errors.Add(CyberLosowanieConstants.INVALID_USERNAME);
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Password))
+            {
+                errors.Add(CyberLosowanieConstants.INVALID_PASSWORD);
+            }
+
+            return errors;
+        }
+
+        public async Task<List<string>> ValidateRegisterRequestAsync(RegisterRequestDTO request)
+        {
+            var errors = new List<string>();
+
+            if (request == null)
+            {
+                errors.Add("Register request cannot be null");
+                return errors;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.UserName))
+            {
+                errors.Add(CyberLosowanieConstants.INVALID_USERNAME);
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Password))
+            {
+                errors.Add(CyberLosowanieConstants.INVALID_PASSWORD);
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.UserName))
+            {
+                var existingUser = await _userRepository.GetByUsernameAsync(request.UserName);
+                if (existingUser != null)
+                {
+                    errors.Add(CyberLosowanieConstants.USERNAME_ALREADY_EXISTS);
+                }
+            }
+
+            return errors;
+        }
+
+        public List<string> ValidateCyberekId(int cyberekId)
+        {
+            var errors = new List<string>();
+
+            if (cyberekId < CyberLosowanieConstants.MIN_CYBEREK_ID || 
+                cyberekId > CyberLosowanieConstants.MAX_CYBEREK_ID)
+            {
+                errors.Add(CyberLosowanieConstants.INVALID_CYBEREK_ID);
+            }
+
+            return errors;
+        }
+    }
+}

@@ -1,0 +1,409 @@
+﻿using CyberLosowanie.Models;
+using CyberLosowanie.Services;
+using FluentAssertions;
+
+namespace CyberLosowanie.Test
+{
+    public class GiftingServiceTests
+    {
+        private readonly GiftingService _giftingService;
+
+        public GiftingServiceTests()
+        {
+            _giftingService = new GiftingService();
+        }
+
+        #region Constructor Tests
+
+        [Fact]
+        public void Constructor_CreatesInstance_Successfully()
+        {
+            // Act
+            var service = new GiftingService();
+
+            // Assert
+            service.Should().NotBeNull();
+        }
+
+        #endregion
+
+        #region GetAvailableToBeGiftedCyberki Tests
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberki_WithNullCyberki_ReturnsEmptyList()
+        {
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberki(null!, new List<int>());
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberki_WithEmptyList_ReturnsEmptyList()
+        {
+            // Arrange
+            var cyberki = new List<Cyberek>();
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberki(cyberki, new List<int>());
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberki_WithNoGiftsAndNoBanned_ReturnsAllIds()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(3);
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberki(cyberki, new List<int>());
+
+            // Assert
+            result.Should().BeEquivalentTo(new[] { 1, 2, 3 });
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberki_WithGiftedCyberki_ExcludesGiftedTargets()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(4);
+            cyberki[0].GiftedCyberekId = 2; // Cyberek 1 gifts to Cyberek 2
+            cyberki[1].GiftedCyberekId = 3; // Cyberek 2 gifts to Cyberek 3
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberki(cyberki, new List<int>());
+
+            // Assert
+            result.Should().BeEquivalentTo(new[] { 1, 4 }); // 2 and 3 are taken as gift targets
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberki_WithBannedCyberki_ExcludesBannedIds()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(4);
+            var bannedIds = new List<int> { 2, 4 };
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberki(cyberki, bannedIds);
+
+            // Assert
+            result.Should().BeEquivalentTo(new[] { 1, 3 });
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberki_WithBothGiftedAndBanned_ExcludesBoth()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(5);
+            cyberki[0].GiftedCyberekId = 2; // Cyberek 1 gifts to Cyberek 2
+            var bannedIds = new List<int> { 4 };
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberki(cyberki, bannedIds);
+
+            // Assert
+            result.Should().BeEquivalentTo(new[] { 1, 3, 5 }); // 2 is gifted, 4 is banned
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberki_WithNullBannedList_HandlesGracefully()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(3);
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberki(cyberki, null!);
+
+            // Assert
+            result.Should().BeEquivalentTo(new[] { 1, 2, 3 });
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberki_WithDuplicateBannedIds_HandlesCorrectly()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(4);
+            var bannedIds = new List<int> { 2, 2, 3, 3 }; // Duplicates
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberki(cyberki, bannedIds);
+
+            // Assert
+            result.Should().BeEquivalentTo(new[] { 1, 4 });
+        }
+
+        #endregion
+
+        #region GetAvailableToBeGiftedCyberek Tests
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithNullCyberki_ThrowsArgumentException()
+        {
+            // Arrange
+            var cyberek = CreateTestCyberek(1);
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _giftingService.GetAvailableToBeGiftedCyberek(null!, cyberek, 2));
+            
+            exception.ParamName.Should().Be("cyberki");
+            exception.Message.Should().Contain("cannot be null or empty");
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithEmptyCyberki_ThrowsArgumentException()
+        {
+            // Arrange
+            var cyberki = new List<Cyberek>();
+            var cyberek = CreateTestCyberek(1);
+
+            // Act & Assert  
+            var exception = Assert.Throws<ArgumentException>(() =>
+                _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2));
+            
+            exception.ParamName.Should().Be("cyberki");
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithNullCyberek_ThrowsArgumentNullException()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(3);
+
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                _giftingService.GetAvailableToBeGiftedCyberek(cyberki, null!, 2));
+            
+            exception.ParamName.Should().Be("cyberek");
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithValidRequestedTarget_ReturnsRequestedTarget()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(4);
+            var cyberek = cyberki[0]; // Cyberek 1
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 3);
+
+            // Assert
+            result.Should().Be(3);
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithNonExistentTarget_ReturnsAlternative()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(3);
+            var cyberek = cyberki[0]; // Cyberek 1
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 999); // Non-existent
+
+            // Assert
+            result.Should().BeOneOf(2, 3); // Should return a valid alternative
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithBannedRequestedTarget_ReturnsAlternative()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(4);
+            var cyberek = cyberki[0]; // Cyberek 1
+            cyberek.BannedCyberki = new List<int> { 2 };
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2); // Banned target
+
+            // Assert
+            result.Should().BeOneOf(3, 4); // Should return a valid alternative (not 1 - self, not 2 - banned)
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithSelfAsTarget_ReturnsAlternative()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(3);
+            var cyberek = cyberki[0]; // Cyberek 1
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 1); // Self
+
+            // Assert
+            result.Should().BeOneOf(2, 3); // Cannot gift to self
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithComplexScenario_ReturnsValidTarget()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(6);
+            
+            // Set up existing assignments
+            cyberki[1].GiftedCyberekId = 3; // Cyberek 2 -> Cyberek 3
+            cyberki[2].GiftedCyberekId = 4; // Cyberek 3 -> Cyberek 4
+            
+            // Set up banned lists
+            var cyberek = cyberki[0]; // Cyberek 1
+            cyberek.BannedCyberki = new List<int> { 5 }; // Cyberek 1 cannot gift to Cyberek 5
+            
+            cyberki[4].BannedCyberki = new List<int> { 6 }; // Cyberek 5 cannot gift to Cyberek 6
+            cyberki[5].BannedCyberki = new List<int> { 1 }; // Cyberek 6 cannot gift to Cyberek 1
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 6);
+
+            // Assert - Should return 6 if it ensures all other cyberki can still find valid targets
+            result.Should().BeInRange(1, 6);
+            result.Should().NotBe(1); // Cannot gift to self
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithNoValidOptions_ThrowsInvalidOperationException()
+        {
+            // Arrange - Create a scenario where no valid assignment is possible
+            var cyberki = CreateTestCyberki(3);
+            
+            // Everyone has already gifted (except the current cyberek)
+            cyberki[1].GiftedCyberekId = 1; // Cyberek 2 -> Cyberek 1
+            cyberki[2].GiftedCyberekId = 2; // Cyberek 3 -> Cyberek 2
+            
+            var cyberek = cyberki[0]; // Cyberek 1
+            cyberek.BannedCyberki = new List<int> { 2, 3 }; // Cannot gift to anyone else
+
+            // Act & Assert
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2));
+            
+            exception.Message.Should().Contain("No valid gift targets available");
+            exception.Message.Should().Contain("cyberek 1");
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithMinimalValidScenario_ReturnsValidTarget()
+        {
+            // Arrange - Minimal case: 2 cyberki, each can gift to the other
+            var cyberki = CreateTestCyberki(2);
+            var cyberek = cyberki[0]; // Cyberek 1
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2);
+
+            // Assert
+            result.Should().Be(2);
+        }
+
+        [Theory]
+        [InlineData(3, 1, 2)]
+        [InlineData(4, 1, 3)]
+        [InlineData(5, 2, 4)]
+        public void GetAvailableToBeGiftedCyberek_WithVariousValidScenarios_ReturnsValidTargets(
+            int totalCyberki, int giftGiverId, int requestedTargetId)
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(totalCyberki);
+            var cyberek = cyberki[giftGiverId - 1]; // Convert to 0-based index
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, requestedTargetId);
+
+            // Assert
+            result.Should().BeInRange(1, totalCyberki);
+            result.Should().NotBe(giftGiverId); // Should not gift to self
+        }
+
+        #endregion
+
+        #region Helper Methods
+
+        private List<Cyberek> CreateTestCyberki(int count)
+        {
+            var cyberki = new List<Cyberek>();
+            for (int i = 1; i <= count; i++)
+            {
+                cyberki.Add(CreateTestCyberek(i));
+            }
+            return cyberki;
+        }
+
+        private Cyberek CreateTestCyberek(int id)
+        {
+            return new Cyberek
+            {
+                Id = id,
+                Name = $"Cyberek{id}",
+                Surname = $"Surname{id}",
+                ImageUrl = $"image{id}.jpg",
+                GiftedCyberekId = 0,
+                BannedCyberki = new List<int>()
+            };
+        }
+
+        #endregion
+
+        #region Edge Case Tests
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithLargeBannedList_HandlesCorrectly()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(10);
+            var cyberek = cyberki[0]; // Cyberek 1
+            cyberek.BannedCyberki = new List<int> { 2, 3, 4, 5, 6, 7, 8 }; // Ban most options
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 9);
+
+            // Assert
+            result.Should().BeOneOf(9, 10); // Only 9 and 10 are not banned
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_WithCircularDependency_ResolvesCorrectly()
+        {
+            // Arrange - Create a circular dependency scenario
+            var cyberki = CreateTestCyberki(4);
+            
+            // Each cyberek can only gift to the next one in a circle
+            cyberki[0].BannedCyberki = new List<int> { 3, 4 }; // Cyberek 1 -> only 2
+            cyberki[1].BannedCyberki = new List<int> { 1, 4 }; // Cyberek 2 -> only 3
+            cyberki[2].BannedCyberki = new List<int> { 1, 2 }; // Cyberek 3 -> only 4
+            cyberki[3].BannedCyberki = new List<int> { 2, 3 }; // Cyberek 4 -> only 1
+
+            var cyberek = cyberki[0]; // Cyberek 1
+
+            // Act
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2);
+
+            // Assert
+            result.Should().Be(2); // Should maintain the circular chain
+        }
+
+        [Fact]
+        public void GetAvailableToBeGiftedCyberek_MultipleCallsWithSameInputs_MayReturnDifferentValidResults()
+        {
+            // Arrange
+            var cyberki = CreateTestCyberki(5);
+            var cyberek = cyberki[0]; // Cyberek 1
+
+            // Act - Make multiple calls
+            var results = new HashSet<int>();
+            for (int i = 0; i < 10; i++)
+            {
+                var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 999); // Invalid target
+                results.Add(result);
+            }
+
+            // Assert - All results should be valid, but may vary due to randomness
+            results.Should().NotBeEmpty();
+            results.Should().OnlyContain(id => id >= 2 && id <= 5); // Valid range (not self)
+        }
+
+        #endregion
+    }
+}

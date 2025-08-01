@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate} from 'react-router-dom';
+import { useNavigate} from 'react-router-dom';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { inputHelper} from "../helpers";
 import { useRegisterUserMutation } from "../apis/authApi";
-import { apiResponse } from "../interfaces";
 import { toast } from '@/hooks/use-toast';
 import React from "react";
 
@@ -26,15 +26,43 @@ function Register() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const response: apiResponse = await registerUser({
-      userName: userInput.userName,
-      password: userInput.password,
-    });
-    if (response.data) {
-      toast({description: "Registeration successful! Please login to continue."});
-      navigate("/login");
-    } else if (response.error) {
-      setError(response.error.data.errorMessages[0]);
+    setError(""); // Clear previous errors
+    
+    try {
+      const response = await registerUser({
+        userName: userInput.userName,
+        password: userInput.password,
+      });
+      
+      // Handle successful response
+      if (response.data && response.data.isSuccess) {
+        toast({description: "Registration successful! Please login to continue."});
+        navigate("/login");
+      } else if (response.data && response.data.isSuccess === false) {
+        // Handle API error response (when isSuccess is false)
+        const errorMessage = response.data.errors?.[0] || response.data.message || "Registration failed. Please try again.";
+        setError(errorMessage);
+      } else if (response.error) {
+        // Handle network or other errors (HTTP errors, network issues, etc.)
+        let errorMessage = "Registration failed. Please try again.";
+        
+        // Handle FetchBaseQueryError (has status and data)
+        if ('status' in response.error && response.error.data) {
+          const errorData = response.error.data as {errors?: string[]; message?: string};
+          errorMessage = errorData?.errors?.[0] || errorData?.message || errorMessage;
+        }
+        // Handle SerializedError (has message)
+        else if ('message' in response.error && response.error.message) {
+          errorMessage = response.error.message;
+        }
+        
+        setError(errorMessage);
+      } else {
+        setError("Unexpected response format. Please try again.");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      setError("An error occurred during registration. Please try again.");
     }
   };
 
@@ -48,7 +76,7 @@ function Register() {
         <form method="post" onSubmit={handleSubmit} className="w-3/5 flex flex-col items-center">
         <div>
           <div className="w-full mt-4">
-            <input
+            <Input
               type="text"
               className="form-control w-full"
               placeholder="Enter Username"
@@ -59,7 +87,7 @@ function Register() {
             />
           </div>
           <div className="w-full mt-4">
-            <input
+            <Input
               type="password"
               className="form-control w-full"
               placeholder="Enter Password"
@@ -78,11 +106,11 @@ function Register() {
         </div>
       </form>
           <div className="mt-4 w-full flex justify-between">
-            <Button variant="link" style={{ width: "45%" }}>
-              <Link to="/">Home</Link>
+            <Button variant="link" style={{ width: "45%" }} onClick={() => navigate("/")}>
+              Home
             </Button>
-            <Button variant="link" style={{ width: "45%" }}>
-              <Link to="/login">Login</Link>
+            <Button variant="link" style={{ width: "45%" }} onClick={() => navigate("/login")}>
+              Login
             </Button>
           </div>
         </CardContent>

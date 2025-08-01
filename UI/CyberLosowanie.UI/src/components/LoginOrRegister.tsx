@@ -1,19 +1,30 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useSelector } from "react-redux";
 import { RootState } from "@/features/redux/store";
 import { useDispatch } from "react-redux";
 import { resetUser } from "@/features/redux/userSlice";
 import { resetCyberek } from "@/features/redux/cyberekSlice";
+import { tokenUtils } from "@/hooks/useAuthPersistence";
+import { persistor } from "@/features/redux/store";
+import { userStateUtils } from "@/helpers/userStateHelper";
 
 const LoginOrRegister = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.userAuthStore.id);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Clear all authentication data
+    tokenUtils.clearAuthData();
+    userStateUtils.clearUserState();
     dispatch(resetUser());
     dispatch(resetCyberek());
+    
+    // Purge persisted state
+    await persistor.purge();
+    
+    // Navigate to home
     navigate("/");
   };
 
@@ -28,11 +39,11 @@ const LoginOrRegister = () => {
           </div>
         ) : (
           <div className="flex gap-x-6 justify-center items-center -mr-8">
-            <Button asChild >
-              <Link to="/login">Sign in</Link>
+            <Button onClick={() => navigate("/login")}>
+              Sign in
             </Button>
-            <Button asChild >
-              <Link to="/register">Register</Link>
+            <Button onClick={() => navigate("/register")}>
+              Register
             </Button>
           </div>
         )}

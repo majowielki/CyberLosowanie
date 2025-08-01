@@ -1,0 +1,15 @@
+2025-07-30T07:09:15.1754216+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Version: 1.8.0+cbe2c37371429b81c53f85e4ab4ad62b4df7a71e
+2025-07-30T07:09:15.1833853+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging mode: asynchronous
+2025-07-30T07:09:15.1841355+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging level: Information
+2025-07-30T07:09:15.1841388+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION CreateBuilderAsync entry time: 07:09:15.159
+2025-07-30T07:09:15.1843913+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION PID: 20780
+2025-07-30T07:09:15.1844088+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime information: win-x64 - .NET 9.0.7
+2025-07-30T07:09:15.1844181+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime location: C:\Program Files\dotnet\shared\Microsoft.NETCore.App\9.0.7\System.Private.CoreLib.dll
+2025-07-30T07:09:15.1844237+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION IsDynamicCodeSupported: True
+2025-07-30T07:09:15.1844594+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Test module: D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\CyberLosowanie.Test.dll
+2025-07-30T07:09:15.1845125+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Command line arguments: '--server --diagnostic --diagnostic-verbosity Information --diagnostic-output-directory D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\Log --results-directory D:\Project\CyberLosowanie\API\CyberLosowanie\TestResults --client-port 51162'
+2025-07-30T07:09:15.1853822+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION TESTINGPLATFORM_DEFAULT_HANG_TIMEOUT: ''
+2025-07-30T07:09:15.1942860+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting RegisterEnvironmentVariablesConfigurationSource: 'True'
+2025-07-30T07:09:15.2017100+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting PlatformExitProcessOnUnhandledException: 'False', config file: False environment variable: 
+2025-07-30T07:09:15.3137538+00:00 Microsoft.Testing.Platform.Requests.TestHostTestFrameworkInvoker INFORMATION Test framework UID: '30ea7c6e-dd24-4152-a360-1387158cd41d' Version: '3.0.0' DisplayName: 'xUnit.net v3 Microsoft.Testing.Platform test framework' Description: 'xUnit.net v3 Microsoft.Testing.Platform test framework'
+2025-07-30T07:09:15.3161992+00:00 xUnit.net INFORMATION xUnit.net v3 In-Process Runner v3.0.0+d0213fc4e5 (64-bit .NET 9.0.7)

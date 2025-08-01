@@ -1,0 +1,126 @@
+﻿using CyberLosowanie.Interfaces.Data;
+using CyberLosowanie.Interfaces.Repositories;
+using CyberLosowanie.Repositories;
+using Microsoft.EntityFrameworkCore.Storage;
+
+namespace CyberLosowanie.Data
+{
+    public class UnitOfWork : IUnitOfWork
+    {
+        private readonly ApplicationDbContext _context;
+        private IDbContextTransaction? _transaction;
+        private bool _disposed = false;
+
+        // Lazy-loaded repositories
+        private ICyberekRepository? _cyberekRepository;
+        private IApplicationUserRepository? _applicationUserRepository;
+
+        public UnitOfWork(ApplicationDbContext context)
+        {
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+        }
+
+        public ICyberekRepository CyberekRepository
+        {
+            get
+            {
+                _cyberekRepository ??= new CyberekRepository(_context);
+                return _cyberekRepository;
+            }
+        }
+
+        public IApplicationUserRepository ApplicationUserRepository
+        {
+            get
+            {
+                if (_applicationUserRepository == null)
+                {
+                    // Note: You'll need to inject UserManager<ApplicationUser> here
+                    // This requires refactoring to inject dependencies properly
+                    throw new InvalidOperationException("ApplicationUserRepository requires UserManager dependency. Consider using dependency injection instead of lazy loading for this repository.");
+                }
+                return _applicationUserRepository;
+            }
+        }
+
+        public async Task<int> SaveChangesAsync()
+        {
+            try
+            {
+                return await _context.SaveChangesAsync();
+            }
+            catch (Exception)
+            {
+                // If we have an active transaction, roll it back
+                if (_transaction != null)
+                {
+                    await _transaction.RollbackAsync();
+                }
+                throw;
+            }
+        }
+
+        public async Task<IDbContextTransaction> BeginTransactionAsync()
+        {
+            if (_transaction != null)
+            {
+                throw new InvalidOperationException("Transaction already in progress");
+            }
+
+            _transaction = await _context.Database.BeginTransactionAsync();
+            return _transaction;
+        }
+
+        public async Task CommitTransactionAsync()
+        {
+            if (_transaction == null)
+            {
+                throw new InvalidOperationException("No transaction in progress");
+            }
+
+            try
+            {
+                await _transaction.CommitAsync();
+            }
+            finally
+            {
+                await _transaction.DisposeAsync();
+                _transaction = null;
+            }
+        }
+
+        public async Task RollbackTransactionAsync()
+        {
+            if (_transaction == null)
+            {
+                throw new InvalidOperationException("No transaction in progress");
+            }
+
+            try
+            {
+                await _transaction.RollbackAsync();
+            }
+            finally
+            {
+                await _transaction.DisposeAsync();
+                _transaction = null;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed && disposing)
+            {
+                _transaction?.Dispose();
+                _context?.Dispose();
+                _disposed = true;
+            }
+        }
+    }
+}

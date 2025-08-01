@@ -10,6 +10,9 @@ import {
   Login
 } from "./pages";
 import { ErrorElement } from "./components";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { useAuthPersistence } from "./hooks/useAuthPersistence";
+import { Toaster } from "./components/ui/toaster";
 
 const router = createBrowserRouter([
   {
@@ -52,6 +55,14 @@ const router = createBrowserRouter([
 ]);
 
 function App() {
-  return <RouterProvider router={router} />;
+  // Restore authentication state on app load
+  useAuthPersistence();
+
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+      <Toaster />
+    </ErrorBoundary>
+  );
 };
 export default App;

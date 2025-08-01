@@ -1,0 +1,674 @@
+﻿using CyberLosowanie.Constants;
+using CyberLosowanie.Interfaces.Repositories;
+using CyberLosowanie.Models;
+using CyberLosowanie.Models.Dto;
+using CyberLosowanie.Services;
+using FluentAssertions;
+using Moq;
+
+namespace CyberLosowanie.Test
+{
+    public class ValidationServiceTests
+    {
+        private readonly Mock<ICyberekRepository> _cyberekRepositoryMock;
+        private readonly Mock<IApplicationUserRepository> _userRepositoryMock;
+        private readonly ValidationService _validationService;
+
+        public ValidationServiceTests()
+        {
+            _cyberekRepositoryMock = new Mock<ICyberekRepository>();
+            _userRepositoryMock = new Mock<IApplicationUserRepository>();
+            _validationService = new ValidationService(_cyberekRepositoryMock.Object, _userRepositoryMock.Object);
+        }
+
+        #region Constructor Tests
+
+        [Fact]
+        public void Constructor_WithNullCyberekRepository_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new ValidationService(null!, _userRepositoryMock.Object));
+
+            exception.ParamName.Should().Be("cyberekRepository");
+        }
+
+        [Fact]
+        public void Constructor_WithNullUserRepository_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new ValidationService(_cyberekRepositoryMock.Object, null!));
+
+            exception.ParamName.Should().Be("userRepository");
+        }
+
+        #endregion
+
+        #region ValidateCyberekId Tests
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(-100)]
+        [InlineData(13)]
+        [InlineData(100)]
+        [InlineData(int.MinValue)]
+        [InlineData(int.MaxValue)]
+        public void ValidateCyberekId_WithInvalidId_ReturnsValidationError(int invalidId)
+        {
+            // Act
+            var result = _validationService.ValidateCyberekId(invalidId);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_CYBEREK_ID);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(6)]
+        [InlineData(12)]
+        public void ValidateCyberekId_WithValidId_ReturnsNoErrors(int validId)
+        {
+            // Act
+            var result = _validationService.ValidateCyberekId(validId);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void ValidateCyberekId_WithBoundaryValues_ValidatesCorrectly()
+        {
+            // Test minimum valid value
+            var minResult = _validationService.ValidateCyberekId(CyberLosowanieConstants.MIN_CYBEREK_ID);
+            minResult.Should().BeEmpty();
+
+            // Test maximum valid value
+            var maxResult = _validationService.ValidateCyberekId(CyberLosowanieConstants.MAX_CYBEREK_ID);
+            maxResult.Should().BeEmpty();
+
+            // Test just below minimum
+            var belowMinResult = _validationService.ValidateCyberekId(CyberLosowanieConstants.MIN_CYBEREK_ID - 1);
+            belowMinResult.Should().HaveCount(1);
+
+            // Test just above maximum
+            var aboveMaxResult = _validationService.ValidateCyberekId(CyberLosowanieConstants.MAX_CYBEREK_ID + 1);
+            aboveMaxResult.Should().HaveCount(1);
+        }
+
+        #endregion
+
+        #region ValidateCyberekAssignmentAsync Tests
+
+        [Fact]
+        public async Task ValidateCyberekAssignmentAsync_WithNullUserName_ReturnsValidationError()
+        {
+            // Arrange
+            var assignmentDto = new CyberekAssignmentDTO { CyberekId = 1 };
+
+            // Act
+            var result = await _validationService.ValidateCyberekAssignmentAsync(null!, assignmentDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_USERNAME);
+        }
+
+        [Fact]
+        public async Task ValidateCyberekAssignmentAsync_WithEmptyUserName_ReturnsValidationError()
+        {
+            // Arrange
+            var assignmentDto = new CyberekAssignmentDTO { CyberekId = 1 };
+
+            // Act
+            var result = await _validationService.ValidateCyberekAssignmentAsync("", assignmentDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_USERNAME);
+        }
+
+        [Fact]
+        public async Task ValidateCyberekAssignmentAsync_WithWhitespaceUserName_ReturnsValidationError()
+        {
+            // Arrange
+            var assignmentDto = new CyberekAssignmentDTO { CyberekId = 1 };
+
+            // Act
+            var result = await _validationService.ValidateCyberekAssignmentAsync("   ", assignmentDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_USERNAME);
+        }
+
+        [Fact]
+        public async Task ValidateCyberekAssignmentAsync_WithNullDto_ReturnsValidationError()
+        {
+            // Act
+            var result = await _validationService.ValidateCyberekAssignmentAsync("testuser", null!);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be("Assignment data cannot be null");
+        }
+
+        [Fact]
+        public async Task ValidateCyberekAssignmentAsync_WithInvalidCyberekId_ReturnsValidationError()
+        {
+            // Arrange
+            var assignmentDto = new CyberekAssignmentDTO { CyberekId = 0 };
+
+            // Act
+            var result = await _validationService.ValidateCyberekAssignmentAsync("testuser", assignmentDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_CYBEREK_ID);
+        }
+
+        [Fact]
+        public async Task ValidateCyberekAssignmentAsync_WithNonExistentUser_ReturnsUserNotFoundError()
+        {
+            // Arrange
+            var assignmentDto = new CyberekAssignmentDTO { CyberekId = 1 };
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("testuser"))
+                .ReturnsAsync((ApplicationUser?)null);
+
+            // Act
+            var result = await _validationService.ValidateCyberekAssignmentAsync("testuser", assignmentDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.USER_NOT_FOUND);
+        }
+
+        [Fact]
+        public async Task ValidateCyberekAssignmentAsync_WithNonExistentCyberek_ReturnsCyberekNotFoundError()
+        {
+            // Arrange
+            var assignmentDto = new CyberekAssignmentDTO { CyberekId = 1 };
+            var user = new ApplicationUser { UserName = "testuser" };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("testuser"))
+                .ReturnsAsync(user);
+            _cyberekRepositoryMock.Setup(x => x.GetByIdAsync(1))
+                .ReturnsAsync((Cyberek?)null);
+
+            // Act
+            var result = await _validationService.ValidateCyberekAssignmentAsync("testuser", assignmentDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.CYBEREK_NOT_FOUND);
+        }
+
+        [Fact]
+        public async Task ValidateCyberekAssignmentAsync_WithValidData_ReturnsNoErrors()
+        {
+            // Arrange
+            var assignmentDto = new CyberekAssignmentDTO { CyberekId = 1 };
+            var user = new ApplicationUser { UserName = "testuser" };
+            var cyberek = new Cyberek { Id = 1 };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("testuser"))
+                .ReturnsAsync(user);
+            _cyberekRepositoryMock.Setup(x => x.GetByIdAsync(1))
+                .ReturnsAsync(cyberek);
+
+            // Act
+            var result = await _validationService.ValidateCyberekAssignmentAsync("testuser", assignmentDto);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ValidateCyberekAssignmentAsync_WithRepositoryException_PropagatesException()
+        {
+            // Arrange
+            var assignmentDto = new CyberekAssignmentDTO { CyberekId = 1 };
+            var user = new ApplicationUser { UserName = "testuser" };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("testuser"))
+                .ReturnsAsync(user);
+            _cyberekRepositoryMock.Setup(x => x.GetByIdAsync(1))
+                .ThrowsAsync(new InvalidOperationException("Database connection failed"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _validationService.ValidateCyberekAssignmentAsync("testuser", assignmentDto));
+        }
+
+        #endregion
+
+        #region ValidateGiftAssignmentAsync Tests
+
+        [Fact]
+        public async Task ValidateGiftAssignmentAsync_WithNullUserName_ReturnsValidationError()
+        {
+            // Arrange
+            var giftDto = new GiftedCyberekAssignmentDTO { GiftedCyberekId = 2 };
+
+            // Act
+            var result = await _validationService.ValidateGiftAssignmentAsync(null!, giftDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_USERNAME);
+        }
+
+        [Fact]
+        public async Task ValidateGiftAssignmentAsync_WithEmptyUserName_ReturnsValidationError()
+        {
+            // Arrange
+            var giftDto = new GiftedCyberekAssignmentDTO { GiftedCyberekId = 2 };
+
+            // Act
+            var result = await _validationService.ValidateGiftAssignmentAsync("", giftDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_USERNAME);
+        }
+
+        [Fact]
+        public async Task ValidateGiftAssignmentAsync_WithWhitespaceUserName_ReturnsValidationError()
+        {
+            // Arrange
+            var giftDto = new GiftedCyberekAssignmentDTO { GiftedCyberekId = 2 };
+
+            // Act
+            var result = await _validationService.ValidateGiftAssignmentAsync("   ", giftDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_USERNAME);
+        }
+
+        [Fact]
+        public async Task ValidateGiftAssignmentAsync_WithNullDto_ReturnsValidationError()
+        {
+            // Act
+            var result = await _validationService.ValidateGiftAssignmentAsync("testuser", null!);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be("Gift assignment data cannot be null");
+        }
+
+        [Fact]
+        public async Task ValidateGiftAssignmentAsync_WithInvalidGiftedCyberekId_ReturnsValidationError()
+        {
+            // Arrange
+            var giftDto = new GiftedCyberekAssignmentDTO { GiftedCyberekId = 0 };
+
+            // Act
+            var result = await _validationService.ValidateGiftAssignmentAsync("testuser", giftDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_CYBEREK_ID);
+        }
+
+        [Fact]
+        public async Task ValidateGiftAssignmentAsync_WithNonExistentUser_ReturnsUserNotFoundError()
+        {
+            // Arrange
+            var giftDto = new GiftedCyberekAssignmentDTO { GiftedCyberekId = 2 };
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("testuser"))
+                .ReturnsAsync((ApplicationUser?)null);
+
+            // Act
+            var result = await _validationService.ValidateGiftAssignmentAsync("testuser", giftDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.USER_NOT_FOUND);
+        }
+
+        [Fact]
+        public async Task ValidateGiftAssignmentAsync_WithNonExistentTargetCyberek_ReturnsTargetCyberekNotFoundError()
+        {
+            // Arrange
+            var giftDto = new GiftedCyberekAssignmentDTO { GiftedCyberekId = 2 };
+            var user = new ApplicationUser { UserName = "testuser" };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("testuser"))
+                .ReturnsAsync(user);
+            _cyberekRepositoryMock.Setup(x => x.GetByIdAsync(2))
+                .ReturnsAsync((Cyberek?)null);
+
+            // Act
+            var result = await _validationService.ValidateGiftAssignmentAsync("testuser", giftDto);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be($"Target {CyberLosowanieConstants.CYBEREK_NOT_FOUND}");
+        }
+
+        [Fact]
+        public async Task ValidateGiftAssignmentAsync_WithValidData_ReturnsNoErrors()
+        {
+            // Arrange
+            var giftDto = new GiftedCyberekAssignmentDTO { GiftedCyberekId = 2 };
+            var user = new ApplicationUser { UserName = "testuser" };
+            var targetCyberek = new Cyberek { Id = 2 };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("testuser"))
+                .ReturnsAsync(user);
+            _cyberekRepositoryMock.Setup(x => x.GetByIdAsync(2))
+                .ReturnsAsync(targetCyberek);
+
+            // Act
+            var result = await _validationService.ValidateGiftAssignmentAsync("testuser", giftDto);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ValidateGiftAssignmentAsync_WithRepositoryException_PropagatesException()
+        {
+            // Arrange
+            var giftDto = new GiftedCyberekAssignmentDTO { GiftedCyberekId = 2 };
+            var user = new ApplicationUser { UserName = "testuser" };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("testuser"))
+                .ReturnsAsync(user);
+            _cyberekRepositoryMock.Setup(x => x.GetByIdAsync(2))
+                .ThrowsAsync(new InvalidOperationException("Database connection failed"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _validationService.ValidateGiftAssignmentAsync("testuser", giftDto));
+        }
+
+        #endregion
+
+        #region ValidateLoginRequestAsync Tests
+
+        [Fact]
+        public async Task ValidateLoginRequestAsync_WithNullRequest_ReturnsValidationError()
+        {
+            // Act
+            var result = await _validationService.ValidateLoginRequestAsync(null!);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be("Login request cannot be null");
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\t")]
+        [InlineData("\n")]
+        public async Task ValidateLoginRequestAsync_WithInvalidUserName_ReturnsValidationError(string invalidUserName)
+        {
+            // Arrange
+            var request = new LoginRequestDTO { UserName = invalidUserName, Password = "password" };
+
+            // Act
+            var result = await _validationService.ValidateLoginRequestAsync(request);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_USERNAME);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\t")]
+        [InlineData("\n")]
+        public async Task ValidateLoginRequestAsync_WithInvalidPassword_ReturnsValidationError(string invalidPassword)
+        {
+            // Arrange
+            var request = new LoginRequestDTO { UserName = "testuser", Password = invalidPassword };
+
+            // Act
+            var result = await _validationService.ValidateLoginRequestAsync(request);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_PASSWORD);
+        }
+
+        [Fact]
+        public async Task ValidateLoginRequestAsync_WithBothInvalidUserNameAndPassword_ReturnsBothErrors()
+        {
+            // Arrange
+            var request = new LoginRequestDTO { UserName = "", Password = "" };
+
+            // Act
+            var result = await _validationService.ValidateLoginRequestAsync(request);
+
+            // Assert
+            result.Should().HaveCount(2);
+            result.Should().Contain(CyberLosowanieConstants.INVALID_USERNAME);
+            result.Should().Contain(CyberLosowanieConstants.INVALID_PASSWORD);
+        }
+
+        [Fact]
+        public async Task ValidateLoginRequestAsync_WithValidRequest_ReturnsNoErrors()
+        {
+            // Arrange
+            var request = new LoginRequestDTO { UserName = "testuser", Password = "password" };
+
+            // Act
+            var result = await _validationService.ValidateLoginRequestAsync(request);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ValidateLoginRequestAsync_WithSpecialCharactersInUserName_ReturnsNoErrors()
+        {
+            // Arrange
+            var request = new LoginRequestDTO { UserName = "test@user.com", Password = "password" };
+
+            // Act
+            var result = await _validationService.ValidateLoginRequestAsync(request);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ValidateLoginRequestAsync_WithLongUserNameAndPassword_ReturnsNoErrors()
+        {
+            // Arrange
+            var longUserName = new string('a', 256);
+            var longPassword = new string('b', 100);
+            var request = new LoginRequestDTO { UserName = longUserName, Password = longPassword };
+
+            // Act
+            var result = await _validationService.ValidateLoginRequestAsync(request);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        #endregion
+
+        #region ValidateRegisterRequestAsync Tests
+
+        [Fact]
+        public async Task ValidateRegisterRequestAsync_WithNullRequest_ReturnsValidationError()
+        {
+            // Act
+            var result = await _validationService.ValidateRegisterRequestAsync(null!);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be("Register request cannot be null");
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\t")]
+        [InlineData("\n")]
+        public async Task ValidateRegisterRequestAsync_WithInvalidUserName_ReturnsValidationError(string invalidUserName)
+        {
+            // Arrange
+            var request = new RegisterRequestDTO { UserName = invalidUserName, Password = "password" };
+
+            // Act
+            var result = await _validationService.ValidateRegisterRequestAsync(request);
+
+            // Assert
+            result.Should().Contain(CyberLosowanieConstants.INVALID_USERNAME);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        [InlineData("\t")]
+        [InlineData("\n")]
+        public async Task ValidateRegisterRequestAsync_WithInvalidPassword_ReturnsValidationError(string invalidPassword)
+        {
+            // Arrange
+            var request = new RegisterRequestDTO { UserName = "testuser", Password = invalidPassword };
+
+            // Act
+            var result = await _validationService.ValidateRegisterRequestAsync(request);
+
+            // Assert
+            result.Should().Contain(CyberLosowanieConstants.INVALID_PASSWORD);
+        }
+
+        [Fact]
+        public async Task ValidateRegisterRequestAsync_WithBothInvalidUserNameAndPassword_ReturnsBothErrors()
+        {
+            // Arrange
+            var request = new RegisterRequestDTO { UserName = "", Password = "" };
+
+            // Act
+            var result = await _validationService.ValidateRegisterRequestAsync(request);
+
+            // Assert
+            result.Should().HaveCount(2);
+            result.Should().Contain(CyberLosowanieConstants.INVALID_USERNAME);
+            result.Should().Contain(CyberLosowanieConstants.INVALID_PASSWORD);
+        }
+
+        [Fact]
+        public async Task ValidateRegisterRequestAsync_WithExistingUserName_ReturnsValidationError()
+        {
+            // Arrange
+            var request = new RegisterRequestDTO { UserName = "existinguser", Password = "password" };
+            var existingUser = new ApplicationUser { UserName = "existinguser" };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("existinguser"))
+                .ReturnsAsync(existingUser);
+
+            // Act
+            var result = await _validationService.ValidateRegisterRequestAsync(request);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.USERNAME_ALREADY_EXISTS);
+        }
+
+        [Fact]
+        public async Task ValidateRegisterRequestAsync_WithInvalidUserNameButExistingCheck_ReturnsOnlyUsernameError()
+        {
+            // Arrange - Username is invalid (empty), so user existence check should not be performed
+            var request = new RegisterRequestDTO { UserName = "", Password = "password" };
+
+            // Act
+            var result = await _validationService.ValidateRegisterRequestAsync(request);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.INVALID_USERNAME);
+
+            // Verify that user repository was not called since username is invalid
+            _userRepositoryMock.Verify(x => x.GetByUsernameAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ValidateRegisterRequestAsync_WithValidNewUser_ReturnsNoErrors()
+        {
+            // Arrange
+            var request = new RegisterRequestDTO { UserName = "newuser", Password = "password" };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("newuser"))
+                .ReturnsAsync((ApplicationUser?)null);
+
+            // Act
+            var result = await _validationService.ValidateRegisterRequestAsync(request);
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ValidateRegisterRequestAsync_WithRepositoryException_PropagatesException()
+        {
+            // Arrange
+            var request = new RegisterRequestDTO { UserName = "testuser", Password = "password" };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("testuser"))
+                .ThrowsAsync(new InvalidOperationException("Database connection failed"));
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _validationService.ValidateRegisterRequestAsync(request));
+        }
+
+        [Fact]
+        public async Task ValidateRegisterRequestAsync_WithCaseInsensitiveUserName_ChecksCorrectly()
+        {
+            // Arrange - This test assumes the repository handles case sensitivity
+            var request = new RegisterRequestDTO { UserName = "TestUser", Password = "password" };
+            var existingUser = new ApplicationUser { UserName = "testuser" };
+
+            _userRepositoryMock.Setup(x => x.GetByUsernameAsync("TestUser"))
+                .ReturnsAsync(existingUser);
+
+            // Act
+            var result = await _validationService.ValidateRegisterRequestAsync(request);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result[0].Should().Be(CyberLosowanieConstants.USERNAME_ALREADY_EXISTS);
+        }
+
+        #endregion
+
+        #region Integration Tests
+
+        [Fact]
+        public async Task ValidationService_WithMultipleMethodCalls_MaintainsConsistentBehavior()
+        {
+            // Arrange
+            var validId = 5;
+            var invalidId = 15;
+            var validUser = "testuser";
+            var validPassword = "password123";
+
+            // Act & Assert - Multiple calls should be consistent
+            var idResult1 = _validationService.ValidateCyberekId(validId);
+            var idResult2 = _validationService.ValidateCyberekId(validId);
+            var invalidIdResult1 = _validationService.ValidateCyberekId(invalidId);
+            var invalidIdResult2 = _validationService.ValidateCyberekId(invalidId);
+
+            var loginRequest = new LoginRequestDTO { UserName = validUser, Password = validPassword };
+            var loginResult1 = await _validationService.ValidateLoginRequestAsync(loginRequest);
+            var loginResult2 = await _validationService.ValidateLoginRequestAsync(loginRequest);
+
+            // Assert consistency
+            idResult1.Should().BeEquivalentTo(idResult2);
+            invalidIdResult1.Should().BeEquivalentTo(invalidIdResult2);
+            loginResult1.Should().BeEquivalentTo(loginResult2);
+        }
+
+        #endregion
+    }
+}

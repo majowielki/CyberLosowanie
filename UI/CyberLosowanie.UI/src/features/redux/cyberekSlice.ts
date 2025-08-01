@@ -15,12 +15,15 @@ export const cyberekSlice = createSlice({
   initialState: initialState,
   reducers: {
     setCyberekItem: (state, action) => {
-      state.id = action.payload.id;
-      state.name = action.payload.name;
-      state.surname = action.payload.surname;
-      state.imageUrl = action.payload.imageUrl;
-      state.giftedCyberekId = action.payload.giftedCyberekId;
-      state.bannedCyberki = action.payload.bannedCyberki;
+      // Add validation to ensure we're setting the right data
+      if (action.payload && typeof action.payload === 'object') {
+        state.id = action.payload.id || 0;
+        state.name = action.payload.name || "";
+        state.surname = action.payload.surname || "";
+        state.imageUrl = action.payload.imageUrl || "";
+        state.giftedCyberekId = action.payload.giftedCyberekId || 0;
+        state.bannedCyberki = action.payload.bannedCyberki || [];
+      }
     },
     resetCyberek: (state) => {
       state.id = 0;

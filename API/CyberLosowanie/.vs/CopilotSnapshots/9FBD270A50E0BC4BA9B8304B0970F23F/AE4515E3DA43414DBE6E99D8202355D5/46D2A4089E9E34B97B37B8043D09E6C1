@@ -1,0 +1,16 @@
+﻿using CyberLosowanie.Interfaces.Repositories;
+using Microsoft.EntityFrameworkCore.Storage;
+
+namespace CyberLosowanie.Interfaces.Data
+{
+    public interface IUnitOfWork : IDisposable
+    {
+        ICyberekRepository CyberekRepository { get; }
+        IApplicationUserRepository ApplicationUserRepository { get; }
+        
+        Task<int> SaveChangesAsync();
+        Task<IDbContextTransaction> BeginTransactionAsync();
+        Task CommitTransactionAsync();
+        Task RollbackTransactionAsync();
+    }
+}

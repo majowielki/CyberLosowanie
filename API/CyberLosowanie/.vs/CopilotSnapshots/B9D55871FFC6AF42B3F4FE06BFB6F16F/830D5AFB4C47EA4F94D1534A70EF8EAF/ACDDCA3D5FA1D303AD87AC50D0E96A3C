@@ -1,0 +1,12 @@
+﻿using CyberLosowanie.Models;
+
+namespace CyberLosowanie.Repositories
+{
+    public interface IApplicationUserRepository
+    {
+        Task<ApplicationUser> GetByIdAsync(string id);
+        Task<ApplicationUser> GetByUsernameAsync(string username);
+        Task UpdateAsync(ApplicationUser user);
+        Task SaveChangesAsync();
+    }
+}

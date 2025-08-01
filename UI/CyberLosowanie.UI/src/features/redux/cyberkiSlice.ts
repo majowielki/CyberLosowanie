@@ -1,6 +1,11 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { cyberekModel } from "@/interfaces";
 
-const initialState = {
+interface CyberkiState {
+  cyberki: cyberekModel[];
+}
+
+const initialState: CyberkiState = {
   cyberki: [],
 };
 
@@ -8,7 +13,7 @@ export const cyberkiSlice = createSlice({
   name: "CyberkiList",
   initialState: initialState,
   reducers: {
-    setCyberkiList: (state, action) => {
+    setCyberkiList: (state, action: PayloadAction<cyberekModel[]>) => {
       state.cyberki = action.payload;
     },
   },

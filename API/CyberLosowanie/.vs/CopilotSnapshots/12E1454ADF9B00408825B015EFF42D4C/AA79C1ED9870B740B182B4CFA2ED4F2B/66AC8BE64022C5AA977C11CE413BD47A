@@ -1,0 +1,12 @@
+﻿using CyberLosowanie.Models.Dto;
+
+namespace CyberLosowanie.Interfaces.Services
+{
+    public interface IValidationService
+    {
+        Task<List<string>> ValidateGiftAssignmentAsync(string userName, CyberekUpdateDTO updateDto);
+        Task<List<string>> ValidateLoginRequestAsync(LoginRequestDTO request);
+        Task<List<string>> ValidateRegisterRequestAsync(RegisterRequestDTO request);
+        List<string> ValidateCyberekId(int cyberekId);
+    }
+}

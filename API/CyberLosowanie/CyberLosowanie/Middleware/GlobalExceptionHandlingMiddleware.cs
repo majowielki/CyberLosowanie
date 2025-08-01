@@ -1,0 +1,106 @@
+using CyberLosowanie.Constants;
+using CyberLosowanie.Exceptions;
+using CyberLosowanie.Interfaces.Services;
+using CyberLosowanie.Models;
+using System.Net;
+using System.Security.Claims;
+using System.Text.Json;
+
+namespace CyberLosowanie.Middleware
+{
+    public class GlobalExceptionHandlingMiddleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly ILogger<GlobalExceptionHandlingMiddleware> _logger;
+        private readonly IWebHostEnvironment _env;
+
+        public GlobalExceptionHandlingMiddleware(
+            RequestDelegate next, 
+            ILogger<GlobalExceptionHandlingMiddleware> logger, 
+            IWebHostEnvironment env)
+        {
+            _next = next;
+            _logger = logger;
+            _env = env;
+        }
+
+        public async Task InvokeAsync(HttpContext context, IAuditService auditService)
+        {
+            try
+            {
+                await _next.Invoke(context);
+            }
+            catch (Exception ex)
+            {
+                var userId = context.User?.FindFirst("id")?.Value;
+                var userName = context.User?.FindFirst("fullName")?.Value;
+                
+                // Log structured error with correlation ID
+                _logger.LogError(ex, 
+                    "Unhandled exception occurred. CorrelationId: {CorrelationId}, UserId: {UserId}, Path: {Path}", 
+                    context.TraceIdentifier, userId, context.Request.Path);
+
+                // Log to audit table asynchronously (don't block response)
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await auditService.LogErrorAsync(ex, context, userId, userName);
+                    }
+                    catch (Exception auditEx)
+                    {
+                        _logger.LogError(auditEx, "Failed to log exception to audit table");
+                    }
+                });
+
+                await HandleExceptionAsync(context, ex, _env);
+            }
+        }
+
+        private static async Task HandleExceptionAsync(HttpContext context, Exception exception, IWebHostEnvironment env)
+        {
+            var response = context.Response;
+            response.ContentType = "application/json";
+
+            var (statusCode, message, errors) = exception switch
+            {
+                CyberekNotFoundException ex => (HttpStatusCode.NotFound, ex.Message, null as List<string>),
+                UserNotFoundException ex => (HttpStatusCode.NotFound, ex.Message, null as List<string>),
+                InvalidGiftAssignmentException ex => (HttpStatusCode.BadRequest, ex.Message, null as List<string>),
+                BusinessValidationException ex => (HttpStatusCode.BadRequest, "Validation failed", ex.ValidationErrors),
+                ArgumentNullException ex => (HttpStatusCode.BadRequest, $"Required parameter is missing: {ex.ParamName}", null as List<string>),
+                ArgumentException ex => (HttpStatusCode.BadRequest, ex.Message, null as List<string>),
+                UnauthorizedAccessException ex => (HttpStatusCode.Unauthorized, ex.Message, null as List<string>),
+                InvalidOperationException ex => (HttpStatusCode.BadRequest, ex.Message, null as List<string>),
+                _ => env.IsDevelopment()
+                    ? (HttpStatusCode.InternalServerError, exception.Message, null as List<string>)
+                    : (HttpStatusCode.InternalServerError, CyberLosowanieConstants.DEFAULT_ERROR_MESSAGE, null as List<string>)
+            };
+
+            response.StatusCode = (int)statusCode;
+
+            var apiResponse = errors?.Any() == true 
+                ? ApiResponse<object>.ValidationError(errors)
+                : ApiResponse<object>.Error(message, statusCode);
+
+            // Add correlation ID to response for tracking
+            var responseObject = new
+            {
+                apiResponse.IsSuccess,
+                apiResponse.Data,
+                apiResponse.Message,
+                apiResponse.Errors,
+                apiResponse.StatusCode,
+                CorrelationId = context.TraceIdentifier,
+                Timestamp = DateTime.UtcNow
+            };
+
+            var jsonResponse = JsonSerializer.Serialize(responseObject, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+
+            await response.WriteAsync(jsonResponse);
+        }
+    }
+}

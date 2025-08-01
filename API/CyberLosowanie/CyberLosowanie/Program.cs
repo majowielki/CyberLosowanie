@@ -1,5 +1,9 @@
 using CyberLosowanie.Data;
+using CyberLosowanie.Interfaces.Repositories;
+using CyberLosowanie.Interfaces.Services;
+using CyberLosowanie.Middleware;
 using CyberLosowanie.Models;
+using CyberLosowanie.Repositories;
 using CyberLosowanie.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -10,71 +14,168 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
-builder.Services.AddSingleton<IGiftingService, GiftingService>();
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
 
-builder.Services.Configure<IdentityOptions>(options =>
+// Register repositories
+builder.Services.AddScoped<ICyberekRepository, CyberekRepository>();
+builder.Services.AddScoped<IApplicationUserRepository, ApplicationUserRepository>();
+
+// Register services
+builder.Services.AddScoped<ICyberekService, CyberekService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IGiftingService, GiftingService>();
+builder.Services.AddScoped<IValidationService, ValidationService>();
+
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
+    // Improve password security
     options.Password.RequireDigit = false;
     options.Password.RequiredLength = 1;
     options.Password.RequireLowercase = false;
     options.Password.RequireUppercase = false;
     options.Password.RequireNonAlphanumeric = false;
-});
+    
+    // Account lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+    
+    // User settings
+    options.User.RequireUniqueEmail = false;
+    options.SignIn.RequireConfirmedEmail = false;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
 
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secret");
-builder.Services.AddAuthentication(u =>
+if (string.IsNullOrEmpty(key))
 {
-    u.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    u.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(u =>
+    throw new InvalidOperationException("JWT Secret key is not configured in appsettings.json");
+}
+
+builder.Services.AddAuthentication(options =>
 {
-    u.RequireHttpsMetadata = false;
-    u.SaveToken = true;
-    u.TokenValidationParameters = new TokenValidationParameters
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(key)),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
         ValidateIssuer = false,
-        ValidateAudience = false
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero,
+        RequireExpirationTime = true
     };
 });
 
-builder.Services.AddCors();
+// Configure CORS properly
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DefaultPolicy", policy =>
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
+        else
+        {
+            // In production, specify allowed origins
+            policy.WithOrigins("https://yourdomain.com")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+    });
+});
+
+// Add memory cache for performance
+builder.Services.AddMemoryCache();
+
+// Add API versioning
+builder.Services.AddApiVersioning();
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "CyberLosowanie API", Version = "v1" });
+    
+    // Add JWT authentication to Swagger
+    c.AddSecurityDefinition("Bearer", new()
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme."
+    });
+    
+    c.AddSecurityRequirement(new()
+    {
+        {
+            new()
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-app.UseSwagger();
+// Add global exception handling middleware first
+app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
+// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    app.UseSwagger();
     app.UseSwaggerUI();
 }
 else
 {
+    app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "CyberLosowanie API V1");
         c.RoutePrefix = string.Empty;
     });
 }
 
 app.UseHttpsRedirection();
-app.UseCors(o => o.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
+
+// Use the configured CORS policy
+app.UseCors("DefaultPolicy");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Auto-migrate database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    context.Database.Migrate();
+}
 
 app.Run();

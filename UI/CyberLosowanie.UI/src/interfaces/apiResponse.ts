@@ -1,14 +1,22 @@
-export default interface apiResponse {
+export default interface apiResponse<T = unknown> {
+    // RTK Query success response - contains your C# ApiResponse structure
     data?: {
-      // this will be included in suggestions so if possible use the format if you know that.
-      statusCode?: number;
-      isSuccess?: boolean;
-      errorMessages?: Array<string>;
-      result: {
-        // this will not give suggestions
-        [key: string]: string;
-      };
+      isSuccess: boolean;
+      data?: T;
+      message: string;
+      errors: string[];
+      statusCode: number;
     };
-    error?: any;
+    // RTK Query error response - can be various formats
+    error?: {
+      status?: number;
+      data?: {
+        isSuccess?: boolean;
+        message?: string;
+        errors?: string[];
+        statusCode?: number;
+      };
+      message?: string;
+    };
   }
   

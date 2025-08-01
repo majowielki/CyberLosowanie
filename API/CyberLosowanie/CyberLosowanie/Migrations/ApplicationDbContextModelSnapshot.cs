@@ -93,6 +93,87 @@ namespace CyberLosowanie.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("CyberLosowanie.Models.AuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AdditionalData")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ExceptionDetails")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<string>("LogLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RequestBody")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RequestPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("ResponseStatusCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("StackTrace")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CorrelationId");
+
+                    b.HasIndex("LogLevel");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AuditLogs");
+                });
+
             modelBuilder.Entity("CyberLosowanie.Models.Cyberek", b =>
                 {
                     b.Property<int>("Id")
@@ -126,7 +207,7 @@ namespace CyberLosowanie.Migrations
                             Id = 1,
                             BannedCyberki = "[1,2,6]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/Snapchat-1097463068.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
                             Name = "Michał",
                             Surname = "Majewski"
                         },
@@ -135,7 +216,7 @@ namespace CyberLosowanie.Migrations
                             Id = 2,
                             BannedCyberki = "[1,2,10]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/PIC06751.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/women/2.jpg",
                             Name = "Kornelia",
                             Surname = "Majewska"
                         },
@@ -144,7 +225,7 @@ namespace CyberLosowanie.Migrations
                             Id = 3,
                             BannedCyberki = "[3,9,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/PIC06756.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/women/3.jpg",
                             Name = "Ola",
                             Surname = "Sudoł"
                         },
@@ -153,7 +234,7 @@ namespace CyberLosowanie.Migrations
                             Id = 4,
                             BannedCyberki = "[2,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/PIC07182.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/women/4.jpg",
                             Name = "Daria",
                             Surname = "Kurowska"
                         },
@@ -162,7 +243,7 @@ namespace CyberLosowanie.Migrations
                             Id = 5,
                             BannedCyberki = "[5,7,8]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_1194698987364878.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
                             Name = "Asia",
                             Surname = "Małek"
                         },
@@ -171,7 +252,7 @@ namespace CyberLosowanie.Migrations
                             Id = 6,
                             BannedCyberki = "[5,6,12]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/filip.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/men/6.jpg",
                             Name = "Filip",
                             Surname = "Wilczyński"
                         },
@@ -180,7 +261,7 @@ namespace CyberLosowanie.Migrations
                             Id = 7,
                             BannedCyberki = "[3,7,10]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_1601092693274773.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/men/7.jpg",
                             Name = "Marek",
                             Surname = "Grabowski"
                         },
@@ -189,7 +270,7 @@ namespace CyberLosowanie.Migrations
                             Id = 8,
                             BannedCyberki = "[1,5,8]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/PIC06728.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/men/8.jpg",
                             Name = "Michał",
                             Surname = "Karbowiak"
                         },
@@ -198,7 +279,7 @@ namespace CyberLosowanie.Migrations
                             Id = 9,
                             BannedCyberki = "[3,4,9]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_1392476584166599.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/men/9.jpg",
                             Name = "Karol",
                             Surname = "Jagiełło"
                         },
@@ -207,7 +288,7 @@ namespace CyberLosowanie.Migrations
                             Id = 10,
                             BannedCyberki = "[7,10,12]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/naja.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/women/10.jpg",
                             Name = "Natalia",
                             Surname = "Dutka"
                         },
@@ -216,7 +297,7 @@ namespace CyberLosowanie.Migrations
                             Id = 11,
                             BannedCyberki = "[4,8,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_969302823211650.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/men/11.jpg",
                             Name = "Paweł",
                             Surname = "Kurowski"
                         },
@@ -225,7 +306,7 @@ namespace CyberLosowanie.Migrations
                             Id = 12,
                             BannedCyberki = "[6,9,12]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowaniedata.blob.core.windows.net/losowanko/received_1823180021058625.jpg",
+                            ImageUrl = "https://randomuser.me/api/portraits/women/12.jpg",
                             Name = "Wiktoria",
                             Surname = "Wilczyńska"
                         });

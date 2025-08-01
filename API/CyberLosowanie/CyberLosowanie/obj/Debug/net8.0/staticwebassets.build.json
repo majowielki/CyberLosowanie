@@ -1,11 +1,1 @@
-{
-  "Version": 1,
-  "Hash": "9hqmr2+x3xH9yd8gD84Hk+99HPNQW8d02ixJkoilT2Q=",
-  "Source": "CyberLosowanie",
-  "BasePath": "_content/CyberLosowanie",
-  "Mode": "Default",
-  "ManifestType": "Build",
-  "ReferencedProjectsConfiguration": [],
-  "DiscoveryPatterns": [],
-  "Assets": []
-}
+{"Version":1,"Hash":"VNPLkkuUGvntd5sXnyd3kuu4ka+AVuizkgEL55l4BsE=","Source":"CyberLosowanie","BasePath":"_content/CyberLosowanie","Mode":"Default","ManifestType":"Build","ReferencedProjectsConfiguration":[],"DiscoveryPatterns":[],"Assets":[],"Endpoints":[]}

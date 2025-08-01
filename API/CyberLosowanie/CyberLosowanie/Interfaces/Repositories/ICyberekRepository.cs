@@ -1,0 +1,12 @@
+using CyberLosowanie.Models;
+
+namespace CyberLosowanie.Interfaces.Repositories
+{
+    public interface ICyberekRepository
+    {
+        Task<IEnumerable<Cyberek>> GetAllAsync();
+        Task<Cyberek> GetByIdAsync(int id);
+        Task UpdateAsync(Cyberek cyberek);
+        Task SaveChangesAsync();
+    }
+}

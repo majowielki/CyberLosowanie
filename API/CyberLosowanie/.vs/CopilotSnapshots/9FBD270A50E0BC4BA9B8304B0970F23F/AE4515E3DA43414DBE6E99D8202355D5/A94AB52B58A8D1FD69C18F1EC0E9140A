@@ -1,0 +1,33 @@
+﻿using CyberLosowanie.Models;
+using CyberLosowanie.Models.Dto;
+using CyberLosowanie.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CyberLosowanie.Controllers
+{
+    [Route("api/auth")]
+    [ApiController]
+    public class AuthController : ControllerBase
+    {
+        private readonly IAuthService _authService;
+
+        public AuthController(IAuthService authService)
+        {
+            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequestDTO model)
+        {
+            var loginResponse = await _authService.LoginAsync(model);
+            return Ok(ApiResponse<LoginResponseDTO>.Success(loginResponse));
+        }
+
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequestDTO model)
+        {
+            await _authService.RegisterAsync(model);
+            return Ok(ApiResponse<object>.Success(null, "Registration successful"));
+        }
+    }
+}

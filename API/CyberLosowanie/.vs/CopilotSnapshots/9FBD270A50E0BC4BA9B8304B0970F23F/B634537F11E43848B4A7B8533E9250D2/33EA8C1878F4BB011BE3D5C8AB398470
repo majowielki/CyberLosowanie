@@ -1,0 +1,90 @@
+﻿using CyberLosowanie.Constants;
+using CyberLosowanie.Exceptions;
+using CyberLosowanie.Interfaces.Services;
+using CyberLosowanie.Models;
+using System.Net;
+using System.Security.Claims;
+using System.Text.Json;
+
+namespace CyberLosowanie.Middleware
+{
+    public class GlobalExceptionHandlingMiddleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly ILogger<GlobalExceptionHandlingMiddleware> _logger;
+        private readonly IWebHostEnvironment _env;
+
+        public GlobalExceptionHandlingMiddleware(RequestDelegate next, ILogger<GlobalExceptionHandlingMiddleware> logger, IWebHostEnvironment env)
+        {
+            _next = next;
+            _logger = logger;
+            _env = env;
+        }
+
+        public async Task InvokeAsync(HttpContext context)
+        {
+            try
+            {
+                await _next(context);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unhandled exception occurred: {Message}", ex.Message);
+                await HandleExceptionAsync(context, ex, _env);
+            }
+        }
+
+        private static async Task HandleExceptionAsync(HttpContext context, Exception exception, IWebHostEnvironment env)
+        {
+            var response = context.Response;
+            response.ContentType = "application/json";
+
+            var apiResponse = exception switch
+            {
+                CyberekNotFoundException ex => ApiResponse<object>.Error(
+                    ex.Message, 
+                    HttpStatusCode.NotFound),
+
+                UserNotFoundException ex => ApiResponse<object>.Error(
+                    ex.Message, 
+                    HttpStatusCode.NotFound),
+
+                InvalidGiftAssignmentException ex => ApiResponse<object>.Error(
+                    ex.Message, 
+                    HttpStatusCode.BadRequest),
+
+                BusinessValidationException ex => ApiResponse<object>.ValidationError(
+                    ex.ValidationErrors),
+
+                ArgumentNullException ex => ApiResponse<object>.Error(
+                    $"Required parameter is missing: {ex.ParamName}", 
+                    HttpStatusCode.BadRequest),
+
+                ArgumentException ex => ApiResponse<object>.Error(
+                    ex.Message, 
+                    HttpStatusCode.BadRequest),
+
+                UnauthorizedAccessException ex => ApiResponse<object>.Error(
+                    ex.Message, 
+                    HttpStatusCode.Unauthorized),
+
+                InvalidOperationException ex => ApiResponse<object>.Error(
+                    ex.Message, 
+                    HttpStatusCode.BadRequest),
+
+                _ => env.IsDevelopment()
+                    ? ApiResponse<object>.Error(exception.Message, HttpStatusCode.InternalServerError)
+                    : ApiResponse<object>.Error(CyberLosowanieConstants.DEFAULT_ERROR_MESSAGE, HttpStatusCode.InternalServerError)
+            };
+
+            response.StatusCode = (int)apiResponse.StatusCode;
+
+            var jsonResponse = JsonSerializer.Serialize(apiResponse, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+
+            await response.WriteAsync(jsonResponse);
+        }
+    }
+}

@@ -1,0 +1,21 @@
+2025-07-30T09:30:02.5403979+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Version: 1.8.0+cbe2c37371429b81c53f85e4ab4ad62b4df7a71e
+2025-07-30T09:30:02.5486712+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging mode: asynchronous
+2025-07-30T09:30:02.5494878+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging level: Information
+2025-07-30T09:30:02.5494919+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION CreateBuilderAsync entry time: 09:30:02.524
+2025-07-30T09:30:02.5497486+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION PID: 21680
+2025-07-30T09:30:02.5497668+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime information: win-x64 - .NET 9.0.7
+2025-07-30T09:30:02.5497763+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime location: C:\Program Files\dotnet\shared\Microsoft.NETCore.App\9.0.7\System.Private.CoreLib.dll
+2025-07-30T09:30:02.5497822+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION IsDynamicCodeSupported: True
+2025-07-30T09:30:02.5498188+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Test module: D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\CyberLosowanie.Test.dll
+2025-07-30T09:30:02.5498739+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Command line arguments: '--server --diagnostic --diagnostic-verbosity Information --diagnostic-output-directory D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\Log --results-directory D:\Project\CyberLosowanie\API\CyberLosowanie\TestResults --client-port 52122'
+2025-07-30T09:30:02.5507305+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION TESTINGPLATFORM_DEFAULT_HANG_TIMEOUT: ''
+2025-07-30T09:30:02.5594127+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting RegisterEnvironmentVariablesConfigurationSource: 'True'
+2025-07-30T09:30:02.5667731+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting PlatformExitProcessOnUnhandledException: 'False', config file: False environment variable: 
+2025-07-30T09:30:02.6821156+00:00 Microsoft.Testing.Platform.Requests.TestHostTestFrameworkInvoker INFORMATION Test framework UID: '30ea7c6e-dd24-4152-a360-1387158cd41d' Version: '3.0.0' DisplayName: 'xUnit.net v3 Microsoft.Testing.Platform test framework' Description: 'xUnit.net v3 Microsoft.Testing.Platform test framework'
+2025-07-30T09:30:02.6844789+00:00 xUnit.net INFORMATION xUnit.net v3 In-Process Runner v3.0.0+d0213fc4e5 (64-bit .NET 9.0.7)
+2025-07-30T09:30:02.7073047+00:00 xUnit.net INFORMATION   Discovering: CyberLosowanie.Test
+2025-07-30T09:30:02.7414123+00:00 xUnit.net INFORMATION   Discovered:  CyberLosowanie.Test
+2025-07-30T09:30:02.7534692+00:00 xUnit.net INFORMATION   Starting:    CyberLosowanie.Test
+2025-07-30T09:30:02.9401835+00:00 xUnit.net INFORMATION   Finished:    CyberLosowanie.Test
+2025-07-30T09:30:02.9421613+00:00 xUnit.net INFORMATION === TEST EXECUTION SUMMARY ===
+2025-07-30T09:30:02.9450512+00:00 xUnit.net INFORMATION    CyberLosowanie.Test  Total: 88, Errors: 0, Failed: 0, Skipped: 0, Not Run: 0, Time: 0,190s

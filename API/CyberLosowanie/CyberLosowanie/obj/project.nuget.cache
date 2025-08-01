@@ -1,9 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "5FcnlMKbngE=",
+  "dgSpecHash": "E36OQzsuz3Q=",
   "success": true,
   "projectFilePath": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\CyberLosowanie.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\mmaje\\.nuget\\packages\\asp.versioning.abstractions\\8.1.0\\asp.versioning.abstractions.8.1.0.nupkg.sha512",
+    "C:\\Users\\mmaje\\.nuget\\packages\\asp.versioning.http\\8.1.0\\asp.versioning.http.8.1.0.nupkg.sha512",
+    "C:\\Users\\mmaje\\.nuget\\packages\\asp.versioning.mvc\\8.1.0\\asp.versioning.mvc.8.1.0.nupkg.sha512",
     "C:\\Users\\mmaje\\.nuget\\packages\\azure.core\\1.44.1\\azure.core.1.44.1.nupkg.sha512",
     "C:\\Users\\mmaje\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
     "C:\\Users\\mmaje\\.nuget\\packages\\azure.storage.blobs\\12.23.0\\azure.storage.blobs.12.23.0.nupkg.sha512",

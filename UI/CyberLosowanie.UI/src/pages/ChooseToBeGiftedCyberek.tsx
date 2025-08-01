@@ -3,54 +3,74 @@ import { Card, CardContent } from "@/components/ui/card";
 import CyberLosowanieClosed from "@/assets/CyberLosowanieClosed.svg";
 import CyberLosowanieOpen from "@/assets/CyberLosowanieOpen.svg";
 import { useDispatch } from "react-redux";
-import { useGetValidateIdsQuery, useUpdateCyberekMutation } from "@/apis/cyberLosowanieApi";
+import { useGetAvailableGiftTargetsQuery, useAssignGiftedCyberekMutation } from "@/apis/cyberLosowanieApi";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { RootState } from "@/features/redux/store";
 import { useSelector } from "react-redux";
 import { setGiftedCyberekId } from "@/features/redux/userSlice";
-import { setCyberkiList } from "@/features/redux/cyberkiSlice";
+import { resetCyberek } from "@/features/redux/cyberekSlice";
+import { toast } from "@/hooks/use-toast";
 
 function ChooseToBeGiftedCyberek() {
+  const navigate = useNavigate();
   const userName = useSelector((state: RootState) => state.userAuthStore.fullName);
   const cyberekId = useSelector((state: RootState) => state.userAuthStore.cyberekId);
   const cards = Array.from({ length: 12 });
   const dispatch = useDispatch();
-  const [updateCyberek] = useUpdateCyberekMutation();
-  const { data, isLoading } = useGetValidateIdsQuery(cyberekId);
+  const [assignGiftedCyberek] = useAssignGiftedCyberekMutation();
+  const { data, isLoading } = useGetAvailableGiftTargetsQuery(parseInt(cyberekId || "0"));
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && data) {
-      dispatch(setCyberkiList(data.result));
-      setCyberkiList(data.result);
+    const typedData = data as {data?: number[]};
+    if (!isLoading && typedData?.data) {
+      console.log('Available gift targets:', typedData.data);
+      // Note: We don't dispatch setCyberkiList here anymore since this endpoint 
+      // returns available target IDs, not cyberek objects
     }
-  }, [isLoading]);
+  }, [isLoading, data, dispatch]);
 
-  const handleSelect = (index: string) => {
+  const handleSelect = async (index: string) => {
     setLoading(true);
 
-    const formData = new FormData();
-
-    formData.append("GiftedCyberekId", index);
-    formData.append("CyberekId", "0");
-
     try {
-      updateCyberek({ data: formData, userName: userName });
-    } catch (error) {
-      console.error("Failed to update cyberek:", error);
-    } finally {
+      await assignGiftedCyberek({ 
+        giftedCyberekId: parseInt(index), 
+        userName: userName 
+      }).unwrap();
+      
       dispatch(setGiftedCyberekId(index));
+      
+      // Clear the cyberek item store to ensure fresh data on FinalPage
+      dispatch(resetCyberek());
+      
+      navigate("/final-page");
+    } catch (error) {
+      console.error("Failed to assign gifted cyberek:", error);
+      toast({ 
+        description: "Failed to select cyberek. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <></>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-white text-lg">Processing your selection...</div>
+      </div>
+    );
   }
 
   if (isLoading) {
-    return <></>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-white text-lg">Loading mystery boxes...</div>
+      </div>
+    );
   }
 
   return (
@@ -60,11 +80,11 @@ function ChooseToBeGiftedCyberek() {
         {cards.map((_, index) => (
           <Card key={index} className="bg-transparent border-2 border-white">
             <CardContent className="p-4 flex flex-col items-center">
-              {data.result.includes(index + 1) ? (
+              {(data as {data?: number[]})?.data?.includes(index + 1) ? (
                 <>
                   <img src={CyberLosowanieClosed} alt={`Cyber Losowanie Closed ${index + 1}`} className="w-full h-64 md:h-48 rounded-md object-cover mb-4" />
                   <Button className="text-xl font-semibold capitalize" onClick={() => handleSelect(`${index + 1}`)}>
-                    <Link to="/final-page">Select</Link>
+                    Select
                   </Button>
                 </>
               ) : (

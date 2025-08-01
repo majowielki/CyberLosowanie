@@ -1,8 +1,9 @@
-import { useRouteError, Link, isRouteErrorResponse } from "react-router-dom";
+import { useRouteError, useNavigate, isRouteErrorResponse } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 function Error() {
   const error = useRouteError();
+  const navigate = useNavigate();
   console.log(error);
   if (isRouteErrorResponse(error) && error.status === 404) {
     return (
@@ -16,8 +17,8 @@ function Error() {
             Sorry, we could not find the page you are looking for.
           </p>
           <div className="mt-10">
-            <Button asChild size="lg" variant="secondary">
-              <Link to="/"> Go back home</Link>
+            <Button size="lg" variant="secondary" onClick={() => navigate("/")}>
+              Go back home
             </Button>
           </div>
         </div>

@@ -1,0 +1,55 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace CyberLosowanie.Models
+{
+    public class AuditLog
+    {
+        [Key]
+        public int Id { get; set; }
+        
+        [Required]
+        public string CorrelationId { get; set; } = string.Empty;
+        
+        [Required]
+        public DateTime Timestamp { get; set; }
+        
+        [Required]
+        [MaxLength(50)]
+        public string LogLevel { get; set; } = string.Empty;
+        
+        [Required]
+        [MaxLength(200)]
+        public string Source { get; set; } = string.Empty;
+        
+        [Required]
+        public string Message { get; set; } = string.Empty;
+        
+        public string? ExceptionDetails { get; set; }
+        
+        public string? StackTrace { get; set; }
+        
+        [MaxLength(50)]
+        public string? UserId { get; set; }
+        
+        [MaxLength(256)]
+        public string? UserName { get; set; }
+        
+        [MaxLength(45)]
+        public string? IpAddress { get; set; }
+        
+        [MaxLength(500)]
+        public string? UserAgent { get; set; }
+        
+        [MaxLength(10)]
+        public string? HttpMethod { get; set; }
+        
+        [MaxLength(500)]
+        public string? RequestPath { get; set; }
+        
+        public string? RequestBody { get; set; }
+        
+        public int? ResponseStatusCode { get; set; }
+        
+        public string? AdditionalData { get; set; }
+    }
+}
