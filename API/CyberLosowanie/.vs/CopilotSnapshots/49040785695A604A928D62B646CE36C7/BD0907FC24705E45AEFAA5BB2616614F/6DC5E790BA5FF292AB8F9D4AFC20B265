@@ -1,0 +1,138 @@
+﻿using CyberLosowanie.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+
+namespace CyberLosowanie.Data
+{
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    {
+        public ApplicationDbContext(DbContextOptions options) : base(options)
+        {
+            
+        }
+
+        public DbSet<ApplicationUser> ApplicationUsers { get; set; }
+        public DbSet<Cyberek> Cyberki { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            
+            // Configure AuditLog entity
+            modelBuilder.Entity<AuditLog>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.CorrelationId);
+                entity.HasIndex(e => e.Timestamp);
+                entity.HasIndex(e => e.LogLevel);
+                entity.HasIndex(e => e.UserId);
+                
+                // Configure text fields for SQL Server
+                entity.Property(e => e.Message).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.ExceptionDetails).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.StackTrace).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.RequestBody).HasColumnType("nvarchar(max)");
+                entity.Property(e => e.AdditionalData).HasColumnType("nvarchar(max)");
+            });
+            
+            modelBuilder.Entity<Cyberek>().HasData(
+                new Cyberek
+                {
+                    Id = 1,
+                    Name = "Marcin",
+                    Surname = "Malinowski",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
+                    BannedCyberki = new List<int> { 1, 2, 6 }
+                },
+                new Cyberek
+                {
+                    Id = 2,
+                    Name = "Karolina",
+                    Surname = "Malinowska",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/2.jpg",
+                    BannedCyberki = new List<int> { 1, 2, 10 }
+                },
+                new Cyberek
+                {
+                    Id = 3,
+                    Name = "Alicja",
+                    Surname = "Sudnik",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/3.jpg",
+                    BannedCyberki = new List<int> { 3, 9, 11 }
+                },
+                new Cyberek
+                {
+                    Id = 4,
+                    Name = "Dagmara",
+                    Surname = "Kurkowska",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/4.jpg",
+                    BannedCyberki = new List<int> { 2, 4, 11 }
+                },
+                new Cyberek
+                {
+                    Id = 5,
+                    Name = "Joanna",
+                    Surname = "Małecka",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
+                    BannedCyberki = new List<int> { 5, 7, 8 }
+                },
+                new Cyberek
+                {
+                    Id = 6,
+                    Name = "Fabian",
+                    Surname = "Wilczyk",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/6.jpg",
+                    BannedCyberki = new List<int> { 5, 6, 12 }
+                },
+                new Cyberek
+                {
+                    Id = 7,
+                    Name = "Maksymilian",
+                    Surname = "Grabek",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/7.jpg",
+                    BannedCyberki = new List<int> { 3, 7, 10 }
+                },
+                new Cyberek
+                {
+                    Id = 8,
+                    Name = "Miłosz",
+                    Surname = "Karbownik",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/8.jpg",
+                    BannedCyberki = new List<int> { 1, 5, 8 }
+                },
+                new Cyberek
+                {
+                    Id = 9,
+                    Name = "Kamil",
+                    Surname = "Jagielski",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/9.jpg",
+                    BannedCyberki = new List<int> { 3, 4, 9 }
+                },
+                new Cyberek
+                {
+                    Id = 10,
+                    Name = "Nikola",
+                    Surname = "Dutkiewicz",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/10.jpg",
+                    BannedCyberki = new List<int> { 7, 10, 12 }
+                },
+                new Cyberek
+                {
+                    Id = 11,
+                    Name = "Patryk",
+                    Surname = "Kurkowski",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/11.jpg",
+                    BannedCyberki = new List<int> { 4, 8, 11 }
+                },
+                new Cyberek
+                {
+                    Id = 12,
+                    Name = "Weronika",
+                    Surname = "Wilczyk",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/12.jpg",
+                    BannedCyberki = new List<int> { 6, 9, 12 }
+                });
+        }
+    }
+}

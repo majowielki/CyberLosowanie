@@ -1,0 +1,717 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "CyberLosowanie API",
+    "version": "v1"
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "consumes": [
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "$ref": "#/definitions/LoginRequestDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/LoginResponseDTOApiResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "consumes": [
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "$ref": "#/definitions/RegisterRequestDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          }
+        }
+      }
+    },
+    "/api/CyberLosowanie": {
+      "get": {
+        "tags": [
+          "CyberLosowanie"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CyberekIEnumerableApiResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          }
+        }
+      }
+    },
+    "/api/CyberLosowanie/available-to-pick": {
+      "get": {
+        "tags": [
+          "CyberLosowanie"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CyberekIEnumerableApiResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          }
+        }
+      }
+    },
+    "/api/CyberLosowanie/{id}": {
+      "get": {
+        "tags": [
+          "CyberLosowanie"
+        ],
+        "operationId": "GetCyberek",
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2147483647,
+            "minimum": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CyberekApiResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          }
+        }
+      }
+    },
+    "/api/CyberLosowanie/available-targets/{id}": {
+      "get": {
+        "tags": [
+          "CyberLosowanie"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "type": "integer",
+            "format": "int32",
+            "maximum": 2147483647,
+            "minimum": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Int32ListApiResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          }
+        }
+      }
+    },
+    "/api/CyberLosowanie/assign-cyberek": {
+      "post": {
+        "tags": [
+          "CyberLosowanie"
+        ],
+        "consumes": [
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "userName",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "$ref": "#/definitions/CyberekAssignmentDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          }
+        }
+      }
+    },
+    "/api/CyberLosowanie/assign-gift": {
+      "put": {
+        "tags": [
+          "CyberLosowanie"
+        ],
+        "consumes": [
+          "application/json",
+          "text/json",
+          "application/*+json"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "userName",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "$ref": "#/definitions/GiftedCyberekAssignmentDTO"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Cyberek": {
+      "required": [
+        "imageUrl",
+        "name",
+        "surname"
+      ],
+      "type": "object",
+      "properties": {
+        "id": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "surname": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        },
+        "imageUrl": {
+          "format": "uri",
+          "maxLength": 500,
+          "minLength": 0,
+          "type": "string"
+        },
+        "giftedCyberekId": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "bannedCyberki": {
+          "type": "array",
+          "items": {
+            "format": "int32",
+            "type": "integer"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "CyberekApiResponse": {
+      "type": "object",
+      "properties": {
+        "isSuccess": {
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/Cyberek"
+        },
+        "message": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "statusCode": {
+          "$ref": "#/definitions/HttpStatusCode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CyberekAssignmentDTO": {
+      "type": "object",
+      "properties": {
+        "cyberekId": {
+          "format": "int32",
+          "maximum": 12,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CyberekIEnumerableApiResponse": {
+      "type": "object",
+      "properties": {
+        "isSuccess": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Cyberek"
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "statusCode": {
+          "$ref": "#/definitions/HttpStatusCode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "GiftedCyberekAssignmentDTO": {
+      "type": "object",
+      "properties": {
+        "giftedCyberekId": {
+          "format": "int32",
+          "maximum": 12,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "HttpStatusCode": {
+      "format": "int32",
+      "enum": [
+        100,
+        101,
+        102,
+        103,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        226,
+        300,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        400,
+        401,
+        402,
+        403,
+        404,
+        405,
+        406,
+        407,
+        408,
+        409,
+        410,
+        411,
+        412,
+        413,
+        414,
+        415,
+        416,
+        417,
+        421,
+        422,
+        423,
+        424,
+        426,
+        428,
+        429,
+        431,
+        451,
+        500,
+        501,
+        502,
+        503,
+        504,
+        505,
+        506,
+        507,
+        508,
+        510,
+        511
+      ],
+      "type": "integer"
+    },
+    "Int32ListApiResponse": {
+      "type": "object",
+      "properties": {
+        "isSuccess": {
+          "type": "boolean"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "statusCode": {
+          "$ref": "#/definitions/HttpStatusCode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoginRequestDTO": {
+      "required": [
+        "password",
+        "userName"
+      ],
+      "type": "object",
+      "properties": {
+        "userName": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "password": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoginResponseDTO": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        },
+        "userName": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LoginResponseDTOApiResponse": {
+      "type": "object",
+      "properties": {
+        "isSuccess": {
+          "type": "boolean"
+        },
+        "data": {
+          "$ref": "#/definitions/LoginResponseDTO"
+        },
+        "message": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "statusCode": {
+          "$ref": "#/definitions/HttpStatusCode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ObjectApiResponse": {
+      "type": "object",
+      "properties": {
+        "isSuccess": {
+          "type": "boolean"
+        },
+        "data": { },
+        "message": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "statusCode": {
+          "$ref": "#/definitions/HttpStatusCode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RegisterRequestDTO": {
+      "required": [
+        "password",
+        "userName"
+      ],
+      "type": "object",
+      "properties": {
+        "userName": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "password": {
+          "maxLength": 100,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "JWT Authorization header using the Bearer scheme."
+    }
+  },
+  "security": [
+    {
+      "Bearer": [ ]
+    }
+  ]
+}

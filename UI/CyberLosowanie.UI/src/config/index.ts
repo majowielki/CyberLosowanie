@@ -17,7 +17,7 @@ const getBooleanEnvironmentVariable = (key: string, defaultValue: boolean): bool
 };
 
 export const config = {
-  API_BASE_URL: getEnvironmentVariable('VITE_API_BASE_URL', 'https://localhost:7078/api/'),
+  API_BASE_URL: getEnvironmentVariable('VITE_API_BASE_URL', '/api/'),
   NODE_ENV: import.meta.env.NODE_ENV || 'development',
   
   // Feature flags

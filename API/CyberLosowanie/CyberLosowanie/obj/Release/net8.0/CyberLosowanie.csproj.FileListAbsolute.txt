@@ -143,11 +143,6 @@ D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\C
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\CyberLosowanie.sourcelink.json
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets.build.json
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets.development.json
-D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets\msbuild.CyberLosowanie.Microsoft.AspNetCore.StaticWebAssets.props
-D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets\msbuild.build.CyberLosowanie.props
-D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets\msbuild.buildMultiTargeting.CyberLosowanie.props
-D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets\msbuild.buildTransitive.CyberLosowanie.props
-D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets.pack.json
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\scopedcss\bundle\CyberLosowanie.styles.css
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\CyberLos.7FB7E214.Up2Date
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\CyberLosowanie.dll
@@ -155,3 +150,15 @@ D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\r
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\CyberLosowanie.pdb
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\CyberLosowanie.genruntimeconfig.cache
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\ref\CyberLosowanie.dll
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\bin\Release\net8.0\CyberLosowanie.staticwebassets.runtime.json
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\bin\Release\net8.0\CyberLosowanie.staticwebassets.endpoints.json
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\bin\Release\net8.0\Asp.Versioning.Abstractions.dll
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\bin\Release\net8.0\Asp.Versioning.Http.dll
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\bin\Release\net8.0\Asp.Versioning.Mvc.dll
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\rpswa.dswa.cache.json
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\rjimswa.dswa.cache.json
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\rjsmrazor.dswa.cache.json
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\rjsmcshtml.dswa.cache.json
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets.build.json.cache
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets.build.endpoints.json
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\staticwebassets.upToDateCheck.txt

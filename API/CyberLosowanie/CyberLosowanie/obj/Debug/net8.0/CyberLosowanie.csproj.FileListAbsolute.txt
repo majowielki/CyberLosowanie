@@ -161,3 +161,4 @@ D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Debug\net8.0\ref
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Debug\net8.0\CyberLosowanie.pdb
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Debug\net8.0\CyberLosowanie.genruntimeconfig.cache
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Debug\net8.0\ref\CyberLosowanie.dll
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\bin\Debug\net8.0\CyberLosowanie.staticwebassets.runtime.json

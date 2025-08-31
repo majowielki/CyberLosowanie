@@ -151,23 +151,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-else
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "CyberLosowanie API V1");
-        c.RoutePrefix = string.Empty;
-    });
-}
+// Swagger is not enabled in production
 
 app.UseHttpsRedirection();
-
-// Use the configured CORS policy
 app.UseCors("DefaultPolicy");
-
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Serve React static files from wwwroot
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
 
 app.MapControllers();
 

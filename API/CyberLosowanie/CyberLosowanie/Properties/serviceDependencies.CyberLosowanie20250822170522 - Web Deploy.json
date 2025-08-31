@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "apis1": {
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.ApiManagement/service/CyberLosowanie-api/apis/CyberLosowanie",
+      "type": "apis.azure"
+    },
+    "mssql2": {
+      "serviceConnectorResourceId": "/subscriptions/[parameters('subscriptionId')]/resourcegroups/[parameters('serviceConnectorResourceGroupName')]/providers/Microsoft.Web/sites/CyberLosowanie20250822170522/providers/Microsoft.ServiceLinker/linkers/ConnectionStringsDefaultConnection2_80ABA05338",
+      "secretStore": "AzureAppSettings",
+      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Sql/servers/cyberlosowanie-sqlserver/databases/cyberlosowaniedb",
+      "type": "mssql.azure",
+      "connectionId": "ConnectionStrings:DefaultConnection2",
+      "dynamicId": null
+    }
+  }
+}

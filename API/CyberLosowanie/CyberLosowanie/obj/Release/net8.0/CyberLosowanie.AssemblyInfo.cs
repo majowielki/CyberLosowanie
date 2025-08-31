@@ -11,10 +11,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("97b5176f-2bcb-4f7f-b41f-7a2eed85987c")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("CyberLosowanie")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c6d12189c062c61ac24e0ea6004556a189608fd4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e5b39fbbcae474c3aada6a4743259f91437256ee")]
 [assembly: System.Reflection.AssemblyProductAttribute("CyberLosowanie")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CyberLosowanie")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

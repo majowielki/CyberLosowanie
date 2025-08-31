@@ -199,3 +199,4 @@ D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\obj\Debug\net9.
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\obj\Debug\net9.0\CyberLosowanie.Test.pdb
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\obj\Debug\net9.0\CyberLosowanie.Test.genruntimeconfig.cache
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\obj\Debug\net9.0\ref\CyberLosowanie.Test.dll
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\CyberLosowanie.staticwebassets.runtime.json

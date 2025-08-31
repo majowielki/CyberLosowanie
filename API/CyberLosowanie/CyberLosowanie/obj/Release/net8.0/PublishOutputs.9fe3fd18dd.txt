@@ -4,6 +4,9 @@ D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\P
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\PubTmp\Out\CyberLosowanie.dll
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\PubTmp\Out\CyberLosowanie.runtimeconfig.json
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\PubTmp\Out\CyberLosowanie.pdb
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\PubTmp\Out\Asp.Versioning.Abstractions.dll
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\PubTmp\Out\Asp.Versioning.Http.dll
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\PubTmp\Out\Asp.Versioning.Mvc.dll
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\PubTmp\Out\Azure.Core.dll
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\PubTmp\Out\Azure.Identity.dll
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie\obj\Release\net8.0\PubTmp\Out\Azure.Storage.Blobs.dll

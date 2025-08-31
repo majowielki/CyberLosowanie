@@ -189,13 +189,19 @@ namespace CyberLosowanie.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Surname")
-                        .HasColumnType("nvarchar(max)");
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -207,108 +213,108 @@ namespace CyberLosowanie.Migrations
                             Id = 1,
                             BannedCyberki = "[1,2,6]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
-                            Name = "Michał",
-                            Surname = "Majewski"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/MarcinMalinowski.jpg",
+                            Name = "Marcin",
+                            Surname = "Malinowski"
                         },
                         new
                         {
                             Id = 2,
                             BannedCyberki = "[1,2,10]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/2.jpg",
-                            Name = "Kornelia",
-                            Surname = "Majewska"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/KarolinaMalinowska.jpg",
+                            Name = "Karolina",
+                            Surname = "Malinowska"
                         },
                         new
                         {
                             Id = 3,
                             BannedCyberki = "[3,9,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/3.jpg",
-                            Name = "Ola",
-                            Surname = "Sudoł"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/AlicjaSudnik.jpg",
+                            Name = "Alicja",
+                            Surname = "Sudnik"
                         },
                         new
                         {
                             Id = 4,
                             BannedCyberki = "[2,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/4.jpg",
-                            Name = "Daria",
-                            Surname = "Kurowska"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/DagmaraKurkowska.jpg",
+                            Name = "Dagmara",
+                            Surname = "Kurkowska"
                         },
                         new
                         {
                             Id = 5,
                             BannedCyberki = "[5,7,8]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
-                            Name = "Asia",
-                            Surname = "Małek"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/AnnaMalecka.jpg",
+                            Name = "Anna",
+                            Surname = "Małecka"
                         },
                         new
                         {
                             Id = 6,
                             BannedCyberki = "[5,6,12]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/6.jpg",
-                            Name = "Filip",
-                            Surname = "Wilczyński"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/FabianWilczyk.jpg",
+                            Name = "Fabian",
+                            Surname = "Wilczyk"
                         },
                         new
                         {
                             Id = 7,
                             BannedCyberki = "[3,7,10]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/7.jpg",
-                            Name = "Marek",
-                            Surname = "Grabowski"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/MaksymilianGrabek.jpg",
+                            Name = "Maksymilian",
+                            Surname = "Grabek"
                         },
                         new
                         {
                             Id = 8,
                             BannedCyberki = "[1,5,8]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/8.jpg",
-                            Name = "Michał",
-                            Surname = "Karbowiak"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/MariuszKarbownik.jpg",
+                            Name = "Mariusz",
+                            Surname = "Karbownik"
                         },
                         new
                         {
                             Id = 9,
                             BannedCyberki = "[3,4,9]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/9.jpg",
-                            Name = "Karol",
-                            Surname = "Jagiełło"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/KamilJagielski.jpg",
+                            Name = "Kamil",
+                            Surname = "Jagielski"
                         },
                         new
                         {
                             Id = 10,
                             BannedCyberki = "[7,10,12]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/10.jpg",
-                            Name = "Natalia",
-                            Surname = "Dutka"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/NikolaGrabek.jpg",
+                            Name = "Nikola",
+                            Surname = "Grabek"
                         },
                         new
                         {
                             Id = 11,
                             BannedCyberki = "[4,8,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/11.jpg",
-                            Name = "Paweł",
-                            Surname = "Kurowski"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/PatrykKurkowski.jpg",
+                            Name = "Patryk",
+                            Surname = "Kurkowski"
                         },
                         new
                         {
                             Id = 12,
                             BannedCyberki = "[6,9,12]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/12.jpg",
-                            Name = "Wiktoria",
-                            Surname = "Wilczyńska"
+                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/WeronikaWilczyk.jpg",
+                            Name = "Weronika",
+                            Surname = "Wilczyk"
                         });
                 });
 

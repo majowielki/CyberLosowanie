@@ -1,7 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|d:\\project\\cyberlosowanie\\api\\cyberlosowanie\\cyberlosowanie\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{71ECE7F9-FFAB-4A68-A206-666EE567BB83}|CyberLosowanie\\CyberLosowanie.csproj|solutionrelative:cyberlosowanie\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -9,11 +14,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": -1,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\appsettings.json",
+              "RelativeDocumentMoniker": "CyberLosowanie\\appsettings.json",
+              "ToolTip": "D:\\Project\\CyberLosowanie\\API\\CyberLosowanie\\CyberLosowanie\\appsettings.json",
+              "RelativeToolTip": "CyberLosowanie\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-08-31T16:48:44.05Z",
+              "EditorCaption": ""
             }
           ]
         }

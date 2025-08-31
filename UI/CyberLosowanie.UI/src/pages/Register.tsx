@@ -8,6 +8,8 @@ import { useRegisterUserMutation } from "../apis/authApi";
 import { toast } from '@/hooks/use-toast';
 import React from "react";
 
+
+
 function Register() {
   const [error, setError] = useState("");
   const [registerUser] = useRegisterUserMutation();
@@ -16,6 +18,7 @@ function Register() {
     userName: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
 
   const handleUserInput = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -27,13 +30,13 @@ function Register() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(""); // Clear previous errors
-    
+    setLoading(true);
     try {
       const response = await registerUser({
         userName: userInput.userName,
         password: userInput.password,
       });
-      
+
       // Handle successful response
       if (response.data && response.data.isSuccess) {
         toast({description: "Registration successful! Please login to continue."});
@@ -45,7 +48,7 @@ function Register() {
       } else if (response.error) {
         // Handle network or other errors (HTTP errors, network issues, etc.)
         let errorMessage = "Registration failed. Please try again.";
-        
+
         // Handle FetchBaseQueryError (has status and data)
         if ('status' in response.error && response.error.data) {
           const errorData = response.error.data as {errors?: string[]; message?: string};
@@ -55,14 +58,21 @@ function Register() {
         else if ('message' in response.error && response.error.message) {
           errorMessage = response.error.message;
         }
-        
-        setError(errorMessage);
+
+        // Show a friendly message if transient failure detected
+        if (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('transient failure')) {
+          setError('This site was idle for a while. Please reload the page and try again in a moment.');
+        } else {
+          setError(errorMessage);
+        }
       } else {
         setError("Unexpected response format. Please try again.");
       }
     } catch (error) {
       console.error("Registration error:", error);
       setError("An error occurred during registration. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,8 +110,23 @@ function Register() {
         </div>
         <div className="mt-2 w-full flex flex-col items-center">
           {error && <p className="text-danger">{error}</p>}
-          <Button className="mt-5" style={{ width: "200px" }}>
-            Register
+          <Button
+            className="mt-5"
+            style={{ width: "200px", backgroundColor: loading ? '#991b1b' : undefined }}
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+                Loading...
+              </span>
+            ) : (
+              'Register'
+            )}
           </Button>
         </div>
       </form>

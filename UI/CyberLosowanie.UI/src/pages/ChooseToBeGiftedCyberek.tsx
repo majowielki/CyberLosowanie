@@ -19,13 +19,13 @@ function ChooseToBeGiftedCyberek() {
   const cards = Array.from({ length: 12 });
   const dispatch = useDispatch();
   const [assignGiftedCyberek] = useAssignGiftedCyberekMutation();
-  const { data, isLoading } = useGetAvailableGiftTargetsQuery(parseInt(cyberekId || "0"));
+  const parsedCyberekId = cyberekId && !isNaN(Number(cyberekId)) && Number(cyberekId) > 0 ? Number(cyberekId) : -1;
+  const { data, isLoading } = useGetAvailableGiftTargetsQuery(parsedCyberekId, { skip: parsedCyberekId === -1 });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const typedData = data as {data?: number[]};
     if (!isLoading && typedData?.data) {
-      console.log('Available gift targets:', typedData.data);
       // Note: We don't dispatch setCyberkiList here anymore since this endpoint 
       // returns available target IDs, not cyberek objects
     }
