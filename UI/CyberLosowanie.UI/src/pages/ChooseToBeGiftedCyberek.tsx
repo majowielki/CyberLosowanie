@@ -8,8 +8,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RootState } from "@/features/redux/store";
 import { useSelector } from "react-redux";
-import { setGiftedCyberekId } from "@/features/redux/userSlice";
 import { resetCyberek } from "@/features/redux/cyberekSlice";
+import { setGiftedCyberekId } from "@/features/redux/userSlice";
 import { toast } from "@/hooks/use-toast";
 
 function ChooseToBeGiftedCyberek() {
@@ -31,20 +31,28 @@ function ChooseToBeGiftedCyberek() {
     }
   }, [isLoading, data, dispatch]);
 
+  // NOTE: For gifting simulation we intentionally use the visual box index (1..12)
+  // as the giftedCyberekId parameter, not the real cyberek.id. Backend interprets
+  // this value according to its own simulation logic.
   const handleSelect = async (index: string) => {
     setLoading(true);
 
     try {
-      await assignGiftedCyberek({ 
-        giftedCyberekId: parseInt(index), 
+      const response = await assignGiftedCyberek({ 
+        giftedCyberekId: parseInt(index, 10), 
         userName: userName 
       }).unwrap();
-      
-      dispatch(setGiftedCyberekId(index));
-      
+
+      console.log("assignGiftedCyberek response for selected box", index, response);
+
+      // If API returns assigned giftedCyberekId, update user store immediately
+      const typed = response as { data?: number };
+      if (typed?.data && !isNaN(typed.data)) {
+        dispatch(setGiftedCyberekId(String(typed.data)));
+      }
+
       // Clear the cyberek item store to ensure fresh data on FinalPage
       dispatch(resetCyberek());
-      
       navigate("/final-page");
     } catch (error) {
       console.error("Failed to assign gifted cyberek:", error);

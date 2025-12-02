@@ -70,6 +70,23 @@ namespace CyberLosowanie.Controllers
             return Ok(ApiResponse<List<int>>.Success(availableTargets));
         }
 
+        [HttpGet("my-gifted-cyberek")]
+        [ProducesResponseType(typeof(ApiResponse<Cyberek>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 404)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 409)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> GetMyGiftedCyberek([FromQuery] string userName)
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                return BadRequest(ApiResponse<object>.Error("Username is required."));
+            }
+
+            var cyberek = await _cyberekService.GetGiftedCyberekForUserAsync(userName);
+            return Ok(ApiResponse<Cyberek>.Success(cyberek));
+        }
+
         [HttpPost("assign-cyberek")]
         [ProducesResponseType(typeof(ApiResponse<object>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
@@ -107,7 +124,7 @@ namespace CyberLosowanie.Controllers
         }
 
         [HttpPut("assign-gift")]
-        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<int>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - no cyberek assigned or gift already assigned
@@ -127,8 +144,9 @@ namespace CyberLosowanie.Controllers
 
             try
             {
-                await _cyberekService.AssignGiftAsync(userName, giftDto.GiftedCyberekId);
-                return Ok(ApiResponse<object>.Success(null, "Gift assignment completed successfully"));
+                // Service returns the actual gifted cyberek ID chosen by the algorithm
+                var assignedId = await _cyberekService.AssignGiftAsync(userName, giftDto.GiftedCyberekId);
+                return Ok(ApiResponse<int>.Success(assignedId, "Gift assignment completed successfully"));
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("must have a cyberek"))
             {

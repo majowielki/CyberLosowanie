@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CyberLosowanie.Test")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e5b39fbbcae474c3aada6a4743259f91437256ee")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ef6a34c9ee11b0793eb66b5778395fc60682a9ff")]
 [assembly: System.Reflection.AssemblyProductAttribute("CyberLosowanie.Test")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CyberLosowanie.Test")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

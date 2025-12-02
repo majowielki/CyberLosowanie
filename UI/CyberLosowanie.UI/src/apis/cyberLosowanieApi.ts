@@ -72,6 +72,18 @@ const cyberLosowanieApi = createApi({
       },
     }),
     
+    // GET /api/CyberLosowanie/my-gifted-cyberek - Get the cyberek the current user will gift to
+    getMyGiftedCyberek: builder.query({
+      query: (userName: string) => ({
+        url: `CyberLosowanie/my-gifted-cyberek?userName=${encodeURIComponent(userName)}`,
+      }),
+      providesTags: ["Cyberki"],
+      transformResponse: (response: unknown) => {
+        debugLog('Get my gifted cyberek response:', response);
+        return response;
+      },
+    }),
+    
     // POST /api/CyberLosowanie/assign-cyberek - Assign cyberek to user
     assignCyberek: builder.mutation({
       query: ({ cyberekId, userName }: { cyberekId: number; userName: string }) => ({
@@ -87,8 +99,9 @@ const cyberLosowanieApi = createApi({
     }),
     
     // PUT /api/CyberLosowanie/assign-gift - Assign gift to user
-    assignGiftedCyberek: builder.mutation({
-      query: ({ giftedCyberekId, userName }: { giftedCyberekId: number; userName: string }) => ({
+    // Returns ApiResponse<int> where data is the assigned giftedCyberekId
+    assignGiftedCyberek: builder.mutation<{ data: number } | any, { giftedCyberekId: number; userName: string }>({
+      query: ({ giftedCyberekId, userName }) => ({
         url: `CyberLosowanie/assign-gift?userName=${encodeURIComponent(userName)}`,
         method: "PUT",
         body: { giftedCyberekId },
@@ -107,6 +120,7 @@ export const {
   useGetCyberekByIdQuery,
   useGetAvailableToPickQuery,
   useGetAvailableGiftTargetsQuery,
+  useGetMyGiftedCyberekQuery,
   useAssignCyberekMutation,
   useAssignGiftedCyberekMutation,
 } = cyberLosowanieApi;

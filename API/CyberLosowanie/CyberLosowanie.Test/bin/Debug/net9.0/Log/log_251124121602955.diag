@@ -1,0 +1,35 @@
+2025-11-24T12:16:02.9599686+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Version: 1.8.0+cbe2c37371429b81c53f85e4ab4ad62b4df7a71e
+2025-11-24T12:16:02.9684596+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging mode: asynchronous
+2025-11-24T12:16:02.9693078+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Logging level: Information
+2025-11-24T12:16:02.9693118+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION CreateBuilderAsync entry time: 12:16:02.944
+2025-11-24T12:16:02.9695709+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION PID: 31136
+2025-11-24T12:16:02.9695885+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime information: win-x64 - .NET 9.0.8
+2025-11-24T12:16:02.9695979+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Runtime location: C:\Program Files\dotnet\shared\Microsoft.NETCore.App\9.0.8\System.Private.CoreLib.dll
+2025-11-24T12:16:02.9696049+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION IsDynamicCodeSupported: True
+2025-11-24T12:16:02.9696415+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Test module: D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\CyberLosowanie.Test.dll
+2025-11-24T12:16:02.9696957+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION Command line arguments: '--server --diagnostic --diagnostic-verbosity Information --diagnostic-output-directory D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\Log --results-directory D:\Project\CyberLosowanie\API\CyberLosowanie\TestResults --client-port 55274'
+2025-11-24T12:16:02.9705806+00:00 Microsoft.Testing.Platform.Builder.TestApplication INFORMATION TESTINGPLATFORM_DEFAULT_HANG_TIMEOUT: ''
+2025-11-24T12:16:02.9798093+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting RegisterEnvironmentVariablesConfigurationSource: 'True'
+2025-11-24T12:16:02.9875827+00:00 Microsoft.Testing.Platform.Hosts.TestHostBuilder INFORMATION Setting PlatformExitProcessOnUnhandledException: 'False', config file: False environment variable: 
+2025-11-24T12:16:03.1037667+00:00 Microsoft.Testing.Platform.Requests.TestHostTestFrameworkInvoker INFORMATION Test framework UID: '30ea7c6e-dd24-4152-a360-1387158cd41d' Version: '3.0.0' DisplayName: 'xUnit.net v3 Microsoft.Testing.Platform test framework' Description: 'xUnit.net v3 Microsoft.Testing.Platform test framework'
+2025-11-24T12:16:03.1064393+00:00 xUnit.net INFORMATION xUnit.net v3 In-Process Runner v3.0.0+d0213fc4e5 (64-bit .NET 9.0.8)
+2025-11-24T12:16:03.1298395+00:00 xUnit.net INFORMATION   Discovering: CyberLosowanie.Test
+2025-11-24T12:16:03.1651957+00:00 xUnit.net INFORMATION   Discovered:  CyberLosowanie.Test
+2025-11-24T12:16:03.1773841+00:00 xUnit.net INFORMATION   Starting:    CyberLosowanie.Test
+2025-11-24T12:16:03.3002757+00:00 xUnit.net ERROR     CyberLosowanie.Test.CyberLosowanieControllerTests.GetAvailableToPickCyberki_WithNullFromService_ReturnsNotFound [FAIL]
+2025-11-24T12:16:03.3004687+00:00 xUnit.net INFORMATION       Expected type to be Microsoft.AspNetCore.Mvc.NotFoundResult, but found Microsoft.AspNetCore.Mvc.OkObjectResult.
+2025-11-24T12:16:03.3006496+00:00 xUnit.net INFORMATION       Stack Trace:
+2025-11-24T12:16:03.3008101+00:00 xUnit.net INFORMATION            at FluentAssertions.Execution.LateBoundTestFramework.Throw(String message)
+2025-11-24T12:16:03.3008205+00:00 xUnit.net INFORMATION            at FluentAssertions.Execution.DefaultAssertionStrategy.HandleFailure(String message)
+2025-11-24T12:16:03.3008238+00:00 xUnit.net INFORMATION            at FluentAssertions.Execution.AssertionScope.AddPreFormattedFailure(String formattedFailureMessage)
+2025-11-24T12:16:03.3008258+00:00 xUnit.net INFORMATION            at FluentAssertions.Execution.AssertionChain.FailWith(Func`1 getFailureReason)
+2025-11-24T12:16:03.3008277+00:00 xUnit.net INFORMATION            at FluentAssertions.Execution.AssertionChain.FailWith(Func`1 getFailureReason)
+2025-11-24T12:16:03.3008294+00:00 xUnit.net INFORMATION            at FluentAssertions.Execution.AssertionChain.FailWith(String message)
+2025-11-24T12:16:03.3008317+00:00 xUnit.net INFORMATION            at FluentAssertions.Types.TypeAssertions.Be(Type expected, String because, Object[] becauseArgs)
+2025-11-24T12:16:03.3008347+00:00 xUnit.net INFORMATION            at FluentAssertions.Primitives.ReferenceTypeAssertions`2.BeOfType(Type expectedType, String because, Object[] becauseArgs)
+2025-11-24T12:16:03.3008371+00:00 xUnit.net INFORMATION            at FluentAssertions.Primitives.ReferenceTypeAssertions`2.BeOfType[T](String because, Object[] becauseArgs)
+2025-11-24T12:16:03.3008496+00:00 xUnit.net INFORMATION         D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\CyberLosowanieControllerTests.cs(289,0): at CyberLosowanie.Test.CyberLosowanieControllerTests.GetAvailableToPickCyberki_WithNullFromService_ReturnsNotFound()
+2025-11-24T12:16:03.3008507+00:00 xUnit.net INFORMATION         --- End of stack trace from previous location ---
+2025-11-24T12:16:03.3053878+00:00 xUnit.net INFORMATION   Finished:    CyberLosowanie.Test
+2025-11-24T12:16:03.3074522+00:00 xUnit.net INFORMATION === TEST EXECUTION SUMMARY ===
+2025-11-24T12:16:03.3103991+00:00 xUnit.net INFORMATION    CyberLosowanie.Test  Total: 101, Errors: 0, Failed: 1, Skipped: 0, Not Run: 0, Time: 0,131s

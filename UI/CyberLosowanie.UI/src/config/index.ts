@@ -17,6 +17,7 @@ const getBooleanEnvironmentVariable = (key: string, defaultValue: boolean): bool
 };
 
 export const config = {
+  // Domyślnie kierujemy bezpośrednio na lokalne API z prefiksem /api/
   API_BASE_URL: getEnvironmentVariable('VITE_API_BASE_URL', '/api/'),
   NODE_ENV: import.meta.env.NODE_ENV || 'development',
   

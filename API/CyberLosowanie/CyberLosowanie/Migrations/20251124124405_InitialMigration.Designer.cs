@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CyberLosowanie.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250822132220_InitialMigration")]
+    [Migration("20251124124405_InitialMigration")]
     partial class InitialMigration
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace CyberLosowanie.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("ProductVersion", "8.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -214,110 +214,110 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 1,
-                            BannedCyberki = "[1,2,6]",
+                            BannedCyberki = "[1,2,6,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/MarcinMalinowski.jpg",
-                            Name = "Marcin",
-                            Surname = "Malinowski"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MarcinMalinowski.jpg",
+                            Name = "Michał",
+                            Surname = "Majewski"
                         },
                         new
                         {
                             Id = 2,
-                            BannedCyberki = "[1,2,10]",
+                            BannedCyberki = "[1,2,10,12,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/KarolinaMalinowska.jpg",
-                            Name = "Karolina",
-                            Surname = "Malinowska"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/KarolinaMalinowska.jpg",
+                            Name = "Kornelia",
+                            Surname = "Majewska"
                         },
                         new
                         {
                             Id = 3,
-                            BannedCyberki = "[3,9,11]",
+                            BannedCyberki = "[3,9,11,1,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/AlicjaSudnik.jpg",
-                            Name = "Alicja",
-                            Surname = "Sudnik"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/AlicjaSudnik.jpg",
+                            Name = "Ola",
+                            Surname = "Sudoł"
                         },
                         new
                         {
                             Id = 4,
-                            BannedCyberki = "[2,4,11]",
+                            BannedCyberki = "[]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/DagmaraKurkowska.jpg",
-                            Name = "Dagmara",
-                            Surname = "Kurkowska"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/DagmaraKurkowska.jpg",
+                            Name = "Daria",
+                            Surname = "Kurowska"
                         },
                         new
                         {
                             Id = 5,
-                            BannedCyberki = "[5,7,8]",
+                            BannedCyberki = "[5,8,7,3,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/AnnaMalecka.jpg",
-                            Name = "Anna",
-                            Surname = "Małecka"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/AnnaMalecka.jpg",
+                            Name = "Asia",
+                            Surname = "Małek"
                         },
                         new
                         {
                             Id = 6,
-                            BannedCyberki = "[5,6,12]",
+                            BannedCyberki = "[6,12,5,9,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/FabianWilczyk.jpg",
-                            Name = "Fabian",
-                            Surname = "Wilczyk"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/FabianWilczyk.jpg",
+                            Name = "Filip",
+                            Surname = "Wilczyński"
                         },
                         new
                         {
                             Id = 7,
-                            BannedCyberki = "[3,7,10]",
+                            BannedCyberki = "[7,10,3,5,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/MaksymilianGrabek.jpg",
-                            Name = "Maksymilian",
-                            Surname = "Grabek"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MaksymilianGrabek.jpg",
+                            Name = "Marek",
+                            Surname = "Grabowski"
                         },
                         new
                         {
                             Id = 8,
-                            BannedCyberki = "[1,5,8]",
+                            BannedCyberki = "[5,8,1,7,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/MariuszKarbownik.jpg",
-                            Name = "Mariusz",
-                            Surname = "Karbownik"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MariuszKarbownik.jpg",
+                            Name = "Michał",
+                            Surname = "Karbowiak"
                         },
                         new
                         {
                             Id = 9,
-                            BannedCyberki = "[3,4,9]",
+                            BannedCyberki = "[3,9,4,10,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/KamilJagielski.jpg",
-                            Name = "Kamil",
-                            Surname = "Jagielski"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/KamilJagielski.jpg",
+                            Name = "Karol",
+                            Surname = "Jagiełło"
                         },
                         new
                         {
                             Id = 10,
-                            BannedCyberki = "[7,10,12]",
+                            BannedCyberki = "[7,10,12,6,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/NikolaGrabek.jpg",
-                            Name = "Nikola",
-                            Surname = "Grabek"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/NikolaGrabek.jpg",
+                            Name = "Natalia",
+                            Surname = "Grabowska"
                         },
                         new
                         {
                             Id = 11,
-                            BannedCyberki = "[4,8,11]",
+                            BannedCyberki = "[]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/PatrykKurkowski.jpg",
-                            Name = "Patryk",
-                            Surname = "Kurkowski"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/PatrykKurkowski.jpg",
+                            Name = "Paweł",
+                            Surname = "Kurowski"
                         },
                         new
                         {
                             Id = 12,
-                            BannedCyberki = "[6,9,12]",
+                            BannedCyberki = "[6,12,9,5,4,11]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/WeronikaWilczyk.jpg",
-                            Name = "Weronika",
-                            Surname = "Wilczyk"
+                            ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/WeronikaWilczyk.jpg",
+                            Name = "Wiktoria",
+                            Surname = "Wilczyńska"
                         });
                 });
 

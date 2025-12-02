@@ -276,15 +276,17 @@ namespace CyberLosowanie.Test
         }
 
         [Fact]
-        public async Task GetAvailableToPickCyberki_WithNullFromService_ThrowsException()
+        public async Task GetAvailableToPickCyberki_WithNullFromService_ReturnsNotFound()
         {
             // Arrange
             _cyberekServiceMock.Setup(x => x.GetAvailableToPickCyberkiAsync())
                 .ReturnsAsync((IEnumerable<Cyberek>)null!);
 
-            // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(() =>
-                _controller.GetAvailableToPickCyberki());
+            // Act
+            var result = await _controller.GetAvailableToPickCyberki();
+
+            // Assert
+            result.Should().BeOfType<NotFoundResult>();
         }
 
         #endregion

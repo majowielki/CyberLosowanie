@@ -260,6 +260,57 @@
         }
       }
     },
+    "/api/CyberLosowanie/my-gifted-cyberek": {
+      "get": {
+        "tags": [
+          "CyberLosowanie"
+        ],
+        "produces": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "userName",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CyberekApiResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "$ref": "#/definitions/ObjectApiResponse"
+            }
+          }
+        }
+      }
+    },
     "/api/CyberLosowanie/assign-cyberek": {
       "post": {
         "tags": [
@@ -358,7 +409,7 @@
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/ObjectApiResponse"
+              "$ref": "#/definitions/Int32ApiResponse"
             }
           },
           "400": {
@@ -573,6 +624,31 @@
         511
       ],
       "type": "integer"
+    },
+    "Int32ApiResponse": {
+      "type": "object",
+      "properties": {
+        "isSuccess": {
+          "type": "boolean"
+        },
+        "data": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "statusCode": {
+          "$ref": "#/definitions/HttpStatusCode"
+        }
+      },
+      "additionalProperties": false
     },
     "Int32ListApiResponse": {
       "type": "object",

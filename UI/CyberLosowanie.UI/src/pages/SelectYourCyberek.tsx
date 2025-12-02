@@ -46,16 +46,16 @@ function SelectYourCyberek() {
     }
   }, [isLoading, data, dispatch, userId, userName, navigate]);
 
-  const handleSelect = async (index: number) => {
+  const handleSelect = async (cyberekId: number) => {
     setLoading(true);
 
     try {
       await assignCyberek({ 
-        cyberekId: index + 1, 
+        cyberekId, 
         userName: userName 
       }).unwrap();
       
-      dispatch(setCyberekId(`${index + 1}`));
+      dispatch(setCyberekId(`${cyberekId}`));
       toast({ description: "Cyberek selected successfully!" });
     } catch (error) {
       console.error("Failed to assign cyberek:", error);
@@ -127,13 +127,14 @@ function SelectYourCyberek() {
         <CarouselContent>
           {((data as {data?: cyberekModel[]})?.data || []).map((cyberek: cyberekModel, index: number) => (
             <CarouselItem key={index}>
-              <Card>
-              <CardContent className="p-2 flex flex-col items-center">
+                <Card>
+                <CardContent className="p-2 flex flex-col items-center">
+                  <span className="text-black text-lg font-semibold mb-2">{cyberek.name}</span>
                   <img src={cyberek.imageUrl} alt="cyberki" className="w-full h-[24rem] rounded-md object-cover mb-4" />
                   <Button 
                     className="px-4 py-2 mb-2" 
-                    onClick={() => {
-                      handleSelect(cyberek.id - 1);
+                    onClick={async () => {
+                      await handleSelect(cyberek.id);
                       navigate(userHasGiftedCyberekId !== "0" ? "/final-page" : "/choose-to-be-gifted-cyberek");
                     }}
                   >

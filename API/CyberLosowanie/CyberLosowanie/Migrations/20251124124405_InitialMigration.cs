@@ -210,18 +210,18 @@ namespace CyberLosowanie.Migrations
                 columns: new[] { "Id", "BannedCyberki", "GiftedCyberekId", "ImageUrl", "Name", "Surname" },
                 values: new object[,]
                 {
-                    { 1, "[1,2,6]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/MarcinMalinowski.jpg", "Marcin", "Malinowski" },
-                    { 2, "[1,2,10]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/KarolinaMalinowska.jpg", "Karolina", "Malinowska" },
-                    { 3, "[3,9,11]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/AlicjaSudnik.jpg", "Alicja", "Sudnik" },
-                    { 4, "[2,4,11]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/DagmaraKurkowska.jpg", "Dagmara", "Kurkowska" },
-                    { 5, "[5,7,8]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/AnnaMalecka.jpg", "Anna", "Małecka" },
-                    { 6, "[5,6,12]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/FabianWilczyk.jpg", "Fabian", "Wilczyk" },
-                    { 7, "[3,7,10]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/MaksymilianGrabek.jpg", "Maksymilian", "Grabek" },
-                    { 8, "[1,5,8]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/MariuszKarbownik.jpg", "Mariusz", "Karbownik" },
-                    { 9, "[3,4,9]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/KamilJagielski.jpg", "Kamil", "Jagielski" },
-                    { 10, "[7,10,12]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/NikolaGrabek.jpg", "Nikola", "Grabek" },
-                    { 11, "[4,8,11]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/PatrykKurkowski.jpg", "Patryk", "Kurkowski" },
-                    { 12, "[6,9,12]", 0, "https://cyberlosowanie.blob.core.windows.net/cyberlosowanie/WeronikaWilczyk.jpg", "Weronika", "Wilczyk" }
+                    { 1, "[1,2,6,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MarcinMalinowski.jpg", "Michał", "Majewski" },
+                    { 2, "[1,2,10,12,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/KarolinaMalinowska.jpg", "Kornelia", "Majewska" },
+                    { 3, "[3,9,11,1,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/AlicjaSudnik.jpg", "Ola", "Sudoł" },
+                    { 4, "[]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/DagmaraKurkowska.jpg", "Daria", "Kurowska" },
+                    { 5, "[5,8,7,3,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/AnnaMalecka.jpg", "Asia", "Małek" },
+                    { 6, "[6,12,5,9,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/FabianWilczyk.jpg", "Filip", "Wilczyński" },
+                    { 7, "[7,10,3,5,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MaksymilianGrabek.jpg", "Marek", "Grabowski" },
+                    { 8, "[5,8,1,7,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MariuszKarbownik.jpg", "Michał", "Karbowiak" },
+                    { 9, "[3,9,4,10,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/KamilJagielski.jpg", "Karol", "Jagiełło" },
+                    { 10, "[7,10,12,6,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/NikolaGrabek.jpg", "Natalia", "Grabowska" },
+                    { 11, "[]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/PatrykKurkowski.jpg", "Paweł", "Kurowski" },
+                    { 12, "[6,12,9,5,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/WeronikaWilczyk.jpg", "Wiktoria", "Wilczyńska" }
                 });
 
             migrationBuilder.CreateIndex(

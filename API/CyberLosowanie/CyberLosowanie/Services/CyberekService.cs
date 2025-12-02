@@ -141,6 +141,38 @@ namespace CyberLosowanie.Services
         }
 
         /// <summary>
+        /// Gets the cyberek that the specified user will give a gift to.
+        /// </summary>
+        /// <param name="userName">Username whose gifted cyberek should be returned</param>
+        /// <returns>The cyberek that will receive a gift from this user</returns>
+        public async Task<Cyberek> GetGiftedCyberekForUserAsync(string userName)
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                throw new BusinessValidationException(CyberLosowanieConstants.INVALID_USERNAME);
+            }
+
+            var applicationUser = await _userRepository.GetByUsernameAsync(userName);
+            if (applicationUser == null)
+            {
+                throw new UserNotFoundException(userName);
+            }
+
+            if (applicationUser.GiftedCyberekId == 0)
+            {
+                throw new InvalidGiftAssignmentException(0, 0, "User does not have a gifted cyberek assigned yet.");
+            }
+
+            var cyberek = await _cyberekRepository.GetByIdAsync(applicationUser.GiftedCyberekId);
+            if (cyberek == null)
+            {
+                throw new CyberekNotFoundException(applicationUser.GiftedCyberekId);
+            }
+
+            return cyberek;
+        }
+
+        /// <summary>
         /// Assigns a cyberek to a user (one-time setup operation)
         /// </summary>
         /// <param name="userName">Username to assign cyberek to</param>
@@ -215,9 +247,9 @@ namespace CyberLosowanie.Services
         /// Assigns a gift target for a user's cyberek (requires user to already have a cyberek)
         /// </summary>
         /// <param name="userName">Username whose cyberek will give the gift</param>
-        /// <param name="giftedCyberekId">ID of the cyberek to receive the gift</param>
-        /// <returns>True if gift assignment was successful</returns>
-        public async Task<bool> AssignGiftAsync(string userName, int giftedCyberekId)
+        /// <param name="giftedCyberekId">Preferred ID of the cyberek to receive the gift (may be adjusted by algorithm)</param>
+        /// <returns>ID of the cyberek that was actually assigned as the gift target</returns>
+        public async Task<int> AssignGiftAsync(string userName, int giftedCyberekId)
         {
             // Validate inputs
             var validationErrors = _validationService.ValidateCyberekId(giftedCyberekId);
@@ -274,7 +306,7 @@ namespace CyberLosowanie.Services
                         CyberLosowanieConstants.GIFT_ALREADY_ASSIGNED);
                 }
 
-                // Use the gifting service to determine the best gift assignment
+                // Use the gifting service to determine the best (globally valid) gift assignment
                 cyberek.GiftedCyberekId = _giftingService.GetAvailableToBeGiftedCyberek(
                     cyberkiList, 
                     cyberek, 
@@ -303,7 +335,8 @@ namespace CyberLosowanie.Services
                     }
                 );
                 
-                return true;
+                // Return the actual assigned gifted cyberek ID
+                return cyberek.GiftedCyberekId;
             }
             catch (Exception ex) when (!(ex is BusinessValidationException || ex is InvalidGiftAssignmentException))
             {

@@ -1,4 +1,4 @@
-import { useGetCyberekByIdQuery } from "@/apis/cyberLosowanieApi";
+import { useGetMyGiftedCyberekQuery } from "@/apis/cyberLosowanieApi";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEffect} from "react";
@@ -10,19 +10,14 @@ import { useNavigate } from "react-router-dom";
 function FinalPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const userHasGiftedCyberekId = useSelector((state: RootState) => state.userAuthStore.giftedCyberekId);
   const userId = useSelector((state: RootState) => state.userAuthStore.id);
+  const userName = useSelector((state: RootState) => state.userAuthStore.fullName);
+  // FinalPage always asks backend for the final gifted cyberek using the
+  // current user context. Backend is the single source of truth.
+  const { data, isLoading, error } = useGetMyGiftedCyberekQuery(userName, {
+    skip: !userId || !userName,
+  });
   
-  // Skip API call if no gifted cyberek ID or invalid ID
-  const shouldSkipQuery = !userHasGiftedCyberekId || userHasGiftedCyberekId === "0" || isNaN(parseInt(userHasGiftedCyberekId));
-  
-  const { data, isLoading, error } = useGetCyberekByIdQuery(
-    parseInt(userHasGiftedCyberekId || "0"), 
-    { skip: shouldSkipQuery }
-  );
-  
-  // Only get from Redux store, but prefer fresh API data
-  const storedCyberek = useSelector((state: RootState) => state.cyberekItemStore);
 
   useEffect(() => {
     // If user is not logged in, redirect to login
@@ -31,17 +26,11 @@ function FinalPage() {
       return;
     }
 
-    // If no gifted cyberek is selected, redirect to the appropriate page
-    if (shouldSkipQuery) {
-      navigate("/");
-      return;
-    }
-
     const typedData = data as {data?: {name: string; imageUrl: string}};
     if (!isLoading && typedData?.data) {
       dispatch(setCyberekItem(typedData.data));
     }
-  }, [isLoading, data, dispatch, userId, shouldSkipQuery, navigate]);
+  }, [isLoading, data, dispatch, userId, navigate]);
 
   if (!userId) {
     return (
@@ -54,17 +43,7 @@ function FinalPage() {
     );
   }
 
-  if (shouldSkipQuery) {
-    return (
-      <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">No gifted cyberek selected yet.</div>
-        <Button onClick={() => navigate("/")} className="mt-4">
-          Go to Home
-        </Button>
-      </div>
-    );
-  }
-
+  // If we are still loading results from backend, show a loading state
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center mt-20">
@@ -84,11 +63,23 @@ function FinalPage() {
     );
   }
 
-  // Use fresh API data if available, otherwise fall back to stored data
+  // Use fresh API data; if unavailable, show an error state
   const typedData = data as {data?: {name: string; imageUrl: string}};
-  const currentCyberek = typedData?.data || storedCyberek;
-  const cyberekName = currentCyberek?.name || 'Unknown';
-  const cyberekImg = currentCyberek?.imageUrl || '';
+  const currentCyberek = typedData?.data;
+
+  if (!currentCyberek) {
+    return (
+      <div className="flex flex-col items-center justify-center mt-20">
+        <div className="text-white text-lg">Could not load your final cyberek. Please try again.</div>
+        <Button onClick={() => navigate("/")} className="mt-4">
+          Go to Home
+        </Button>
+      </div>
+    );
+  }
+
+  const cyberekName = currentCyberek.name || 'Unknown';
+  const cyberekImg = currentCyberek.imageUrl || '';
 
   return (
     <div className="flex flex-col items-center justify-center mt-20">

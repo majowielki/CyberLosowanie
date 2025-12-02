@@ -1,7 +1,0 @@
-wwwroot\assets\cyber2-QjODp1zr.svg
-wwwroot\assets\CyberLosowanieClosed-DnjhWEHD.svg
-wwwroot\assets\CyberLosowanieOpen-D0jimO_H.svg
-wwwroot\assets\index-BsGWPfX9.css
-wwwroot\assets\index-DBq_2zlx.js
-wwwroot\favicon.svg
-wwwroot\index.html

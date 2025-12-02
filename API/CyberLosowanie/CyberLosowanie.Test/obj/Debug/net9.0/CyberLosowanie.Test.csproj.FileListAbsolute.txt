@@ -5,6 +5,7 @@ D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\CyberLosowanie.runtimeconfig.json
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\appsettings.Development.json
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\appsettings.json
+D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\CyberLosowanie.staticwebassets.runtime.json
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\CyberLosowanie.staticwebassets.endpoints.json
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\CyberLosowanie.exe
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\testhost.exe
@@ -199,4 +200,3 @@ D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\obj\Debug\net9.
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\obj\Debug\net9.0\CyberLosowanie.Test.pdb
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\obj\Debug\net9.0\CyberLosowanie.Test.genruntimeconfig.cache
 D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\obj\Debug\net9.0\ref\CyberLosowanie.Test.dll
-D:\Project\CyberLosowanie\API\CyberLosowanie\CyberLosowanie.Test\bin\Debug\net9.0\CyberLosowanie.staticwebassets.runtime.json

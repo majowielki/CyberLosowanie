@@ -33,9 +33,10 @@ export const userStateUtils = {
     return {
       fullName: tokenData.fullName || savedData.fullName || '',
       id: tokenData.id || savedData.id || '',
-      // Prefer saved state for cyberek selections as they're more recent
+      // Prefer saved state for initial cyberek selection as it's local-only,
+      // but always trust backend/token for giftedCyberekId as the final result.
       cyberekId: savedData.cyberekId !== '0' ? savedData.cyberekId : (tokenData.cyberekId || '0'),
-      giftedCyberekId: savedData.giftedCyberekId !== '0' ? savedData.giftedCyberekId : (tokenData.giftedCyberekId || '0')
+      giftedCyberekId: tokenData.giftedCyberekId || savedData.giftedCyberekId || '0'
     };
   }
 };
