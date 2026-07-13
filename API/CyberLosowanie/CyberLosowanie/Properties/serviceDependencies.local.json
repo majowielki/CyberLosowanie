@@ -4,11 +4,14 @@
       "type": "secrets.user"
     },
     "mssql1": {
-      "serviceConnectorResourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('serviceConnectorResourceGroupName')]/providers/Microsoft.ServiceLinker/locations/westus/connectors/ConnectionStringsDefaultConnection1_782E9C02A5",
-      "secretStore": "LocalSecretsFile",
-      "resourceId": "/subscriptions/[parameters('subscriptionId')]/resourceGroups/[parameters('resourceGroupName')]/providers/Microsoft.Sql/servers/cyberlosowanie-sqlserver/databases/cyberlosowaniedb",
-      "type": "mssql.azure",
-      "connectionId": "ConnectionStrings:DefaultConnection1",
+      "ignored": "true",
+      "type": "mssql",
+      "connectionId": "ConnectionStrings:DefaultConnection"
+    },
+    "mssql2": {
+      "ignored": "true",
+      "type": "mssql",
+      "connectionId": "ConnectionStrings:DefaultConnection2",
       "dynamicId": null
     }
   }

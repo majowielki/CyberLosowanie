@@ -121,8 +121,8 @@ function SelectYourCyberek() {
 
   return (
     <div className="flex flex-col items-center justify-center mt-20">
-      <h1 className="text-4xl font-extrabold text-white mb-10">Choose your cyberek</h1>
-      <p className="text-white text-center mb-6">Select from the available cybereks below</p>
+      <h1 className="text-4xl font-extrabold text-white mb-10">Wybierz siebie z listy</h1>
+      <p className="text-white text-center mb-6">Wybierz spośród dostępnych opcji w karuzeli poniżej</p>
       <Carousel className="w-full max-w-xs">
         <CarouselContent>
           {((data as {data?: cyberekModel[]})?.data || []).map((cyberek: cyberekModel, index: number) => (

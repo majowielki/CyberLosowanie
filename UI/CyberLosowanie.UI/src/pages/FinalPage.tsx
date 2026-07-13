@@ -83,8 +83,8 @@ function FinalPage() {
 
   return (
     <div className="flex flex-col items-center justify-center mt-20">
-      <h1 className="text-4xl font-extrabold text-white mb-10">Congratulations!</h1>
-      <h2 className="text-2xl font-extrabold text-white mb-10">This year you will be santa for {cyberekName}</h2>
+      <h1 className="text-4xl font-extrabold text-white mb-10">Gratulacje!</h1>
+      <h2 className="text-2xl font-extrabold text-white mb-10">W tym roku będziesz mikołajem dla {cyberekName}</h2>
           <Card>
             <CardContent className="p-4 flex flex-col items-center">
               {cyberekImg ? (

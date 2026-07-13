@@ -51,7 +51,7 @@ namespace CyberLosowanie.Data
                     Id = 1,
                     Name = "Andrzej",
                     Surname = "Ziulweski",
-                    ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MarcinMalinowski.jpg",
+                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Andrzej.jpg",
                     BannedCyberki = new List<int> { 1 }
                 },
                 new Cyberek
@@ -59,7 +59,7 @@ namespace CyberLosowanie.Data
                     Id = 2,
                     Name = "Oskar",
                     Surname = "Ziulewski",
-                    ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/KarolinaMalinowska.jpg",
+                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Oskar.jpg",
                     BannedCyberki = new List<int> { 2, 5 }
                 },
                 new Cyberek
@@ -67,7 +67,7 @@ namespace CyberLosowanie.Data
                     Id = 3,
                     Name = "Iza",
                     Surname = "Kawulok",
-                    ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/AlicjaSudnik.jpg",
+                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Iza.jpg",
                     BannedCyberki = new List<int> { 3, 8 }
                 },
                 new Cyberek
@@ -75,7 +75,7 @@ namespace CyberLosowanie.Data
                     Id = 4,
                     Name = "Kornelia",
                     Surname = "Majewska",
-                    ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/DagmaraKurkowska.jpg",
+                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Kornelia.jpg",
                     BannedCyberki = new List<int> { 4, 7 }
                 },
                 new Cyberek
@@ -83,7 +83,7 @@ namespace CyberLosowanie.Data
                     Id = 5,
                     Name = "Ania",
                     Surname = "Velychko",
-                    ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/FabianWilczyk.jpg",
+                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Ania.jpg",
                     BannedCyberki = new List<int> { 5, 2 }
                 },
                 new Cyberek
@@ -91,7 +91,7 @@ namespace CyberLosowanie.Data
                     Id = 6,
                     Name = "Oksana",
                     Surname = "Velychko",
-                    ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/FabianWilczyk.jpg",
+                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Oksana.jpg",
                     BannedCyberki = new List<int> { 6 }
                 },
                 new Cyberek
@@ -99,7 +99,7 @@ namespace CyberLosowanie.Data
                     Id = 7,
                     Name = "Michał",
                     Surname = "Majewski",
-                    ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MaksymilianGrabek.jpg",
+                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Michal.jpg",
                     BannedCyberki = new List<int> { 7, 4 }
                 },
                 new Cyberek
@@ -107,7 +107,7 @@ namespace CyberLosowanie.Data
                     Id = 8,
                     Name = "Filip",
                     Surname = "Ziulewski",
-                    ImageUrl = "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MariuszKarbownik.jpg",
+                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Filip.jpg",
                     BannedCyberki = new List<int> { 8, 3 }
                 });
         }

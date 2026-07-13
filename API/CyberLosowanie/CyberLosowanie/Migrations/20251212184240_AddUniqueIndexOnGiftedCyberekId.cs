@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CyberLosowanie.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigration : Migration
+    public partial class AddUniqueIndexOnGiftedCyberekId : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -210,18 +210,14 @@ namespace CyberLosowanie.Migrations
                 columns: new[] { "Id", "BannedCyberki", "GiftedCyberekId", "ImageUrl", "Name", "Surname" },
                 values: new object[,]
                 {
-                    { 1, "[1,2,6,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MarcinMalinowski.jpg", "Michał", "Majewski" },
-                    { 2, "[1,2,10,12,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/KarolinaMalinowska.jpg", "Kornelia", "Majewska" },
-                    { 3, "[3,9,11,1,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/AlicjaSudnik.jpg", "Ola", "Sudoł" },
-                    { 4, "[]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/DagmaraKurkowska.jpg", "Daria", "Kurowska" },
-                    { 5, "[5,8,7,3,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/AnnaMalecka.jpg", "Asia", "Małek" },
-                    { 6, "[6,12,5,9,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/FabianWilczyk.jpg", "Filip", "Wilczyński" },
-                    { 7, "[7,10,3,5,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MaksymilianGrabek.jpg", "Marek", "Grabowski" },
-                    { 8, "[5,8,1,7,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/MariuszKarbownik.jpg", "Michał", "Karbowiak" },
-                    { 9, "[3,9,4,10,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/KamilJagielski.jpg", "Karol", "Jagiełło" },
-                    { 10, "[7,10,12,6,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/NikolaGrabek.jpg", "Natalia", "Grabowska" },
-                    { 11, "[]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/PatrykKurkowski.jpg", "Paweł", "Kurowski" },
-                    { 12, "[6,12,9,5,4,11]", 0, "https://cyberlosowanieblobs.blob.core.windows.net/cyberlosowanie/WeronikaWilczyk.jpg", "Wiktoria", "Wilczyńska" }
+                    { 1, "[1]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Andrzej.jpg", "Andrzej", "Ziulweski" },
+                    { 2, "[2,5]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Oskar.jpg", "Oskar", "Ziulewski" },
+                    { 3, "[3,8]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Iza.jpg", "Iza", "Kawulok" },
+                    { 4, "[4,7]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Kornelia.jpg", "Kornelia", "Majewska" },
+                    { 5, "[5,2]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Ania.jpg", "Ania", "Velychko" },
+                    { 6, "[6]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Oksana.jpg", "Oksana", "Velychko" },
+                    { 7, "[7,4]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Michal.jpg", "Michał", "Majewski" },
+                    { 8, "[8,3]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Filip.jpg", "Filip", "Ziulewski" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -282,6 +278,13 @@ namespace CyberLosowanie.Migrations
                 name: "IX_AuditLogs_UserId",
                 table: "AuditLogs",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cyberki_GiftedCyberekId",
+                table: "Cyberki",
+                column: "GiftedCyberekId",
+                unique: true,
+                filter: "[GiftedCyberekId] IS NOT NULL AND [GiftedCyberekId] <> 0");
         }
 
         /// <inheritdoc />

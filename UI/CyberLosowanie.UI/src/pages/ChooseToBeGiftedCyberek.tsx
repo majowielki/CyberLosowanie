@@ -83,7 +83,7 @@ function ChooseToBeGiftedCyberek() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-4xl font-extrabold text-white mb-10 mt-10">Choose mystery cyberek box</h1>
+      <h1 className="text-4xl font-extrabold text-white mb-10 mt-10">Wybierz dostępne pudełko aby wylosować</h1>
       <div className="grid grid-cols-1 mb-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {cards.map((_, index) => (
           <Card key={index} className="bg-transparent border-2 border-white">
