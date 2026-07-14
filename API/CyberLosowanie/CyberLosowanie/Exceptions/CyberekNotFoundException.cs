@@ -1,6 +1,6 @@
 namespace CyberLosowanie.Exceptions
 {
-    public class CyberekNotFoundException : Exception
+    public class CyberekNotFoundException : DomainException
     {
         public int CyberekId { get; }
 

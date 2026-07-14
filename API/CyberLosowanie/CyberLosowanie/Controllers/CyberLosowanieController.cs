@@ -107,21 +107,16 @@ namespace CyberLosowanie.Controllers
                 return BadRequest(ApiResponse<object>.ValidationError(errors));
             }
 
-            try
-            {
-                var result = await _cyberekService.AssignCyberekToUserAsync(userName, assignmentDto.CyberekId);
-                if (!result)
-                {
-                    return Conflict(ApiResponse<object>.Error(
-                        "User already has a cyberek assigned. Use the assign-gift endpoint to assign a gift."));
-                }
-                return Ok(ApiResponse<object>.Success(null, "Cyberek assigned to user successfully"));
-            }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("already"))
+            // Domain errors (validation, user/cyberek not found) propagate to the
+            // global exception handler. "Already has a cyberek" is signalled by a
+            // false result, not an exception.
+            var result = await _cyberekService.AssignCyberekToUserAsync(userName, assignmentDto.CyberekId);
+            if (!result)
             {
                 return Conflict(ApiResponse<object>.Error(
                     "User already has a cyberek assigned. Use the assign-gift endpoint to assign a gift."));
             }
+            return Ok(ApiResponse<object>.Success(null, "Cyberek assigned to user successfully"));
         }
 
         [HttpPut("assign-gift")]
@@ -143,17 +138,11 @@ namespace CyberLosowanie.Controllers
                 return BadRequest(ApiResponse<object>.ValidationError(errors));
             }
 
-            try
-            {
-                // Service returns the actual gifted cyberek ID chosen by the algorithm
-                var assignedId = await _cyberekService.AssignGiftAsync(userName, giftDto.GiftedCyberekId);
-                return Ok(ApiResponse<int>.Success(assignedId, "Gift assignment completed successfully"));
-            }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("must have a cyberek"))
-            {
-                return Conflict(ApiResponse<object>.Error(
-                    "User must have a cyberek assigned before they can assign gifts. Use the assign-cyberek endpoint first."));
-            }
+            // Domain errors (e.g. user has no cyberek yet, gift already assigned)
+            // are raised as domain exceptions and handled by the global exception
+            // handler. Service returns the actual gifted cyberek ID chosen by the algorithm.
+            var assignedId = await _cyberekService.AssignGiftAsync(userName, giftDto.GiftedCyberekId);
+            return Ok(ApiResponse<int>.Success(assignedId, "Gift assignment completed successfully"));
         }
     }
 }

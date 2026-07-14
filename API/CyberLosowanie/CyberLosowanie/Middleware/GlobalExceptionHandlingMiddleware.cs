@@ -71,7 +71,8 @@ namespace CyberLosowanie.Middleware
                 ArgumentNullException ex => (HttpStatusCode.BadRequest, $"Required parameter is missing: {ex.ParamName}", null as List<string>),
                 ArgumentException ex => (HttpStatusCode.BadRequest, ex.Message, null as List<string>),
                 UnauthorizedAccessException ex => (HttpStatusCode.Unauthorized, ex.Message, null as List<string>),
-                InvalidOperationException ex => (HttpStatusCode.BadRequest, ex.Message, null as List<string>),
+                // Anything not matched above (DataAccessException, unexpected InvalidOperationException,
+                // framework errors, ...) is an unexpected server error -> 500, never a client 4xx.
                 _ => env.IsDevelopment()
                     ? (HttpStatusCode.InternalServerError, exception.Message, null as List<string>)
                     : (HttpStatusCode.InternalServerError, CyberLosowanieConstants.DEFAULT_ERROR_MESSAGE, null as List<string>)

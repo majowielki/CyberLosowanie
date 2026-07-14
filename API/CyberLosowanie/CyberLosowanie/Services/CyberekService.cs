@@ -6,6 +6,7 @@ using CyberLosowanie.Models;
 using CyberLosowanie.Models.Dto;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore; // added for DbUpdateException
+using Microsoft.Data.SqlClient; // SqlException for unique-constraint detection
 
 namespace CyberLosowanie.Services
 {
@@ -61,7 +62,7 @@ namespace CyberLosowanie.Services
             {
                 _logger.LogError(ex, "Failed to retrieve cyberki");
                 await _auditService.LogErrorAsync(ex, null);
-                throw new InvalidOperationException("Failed to retrieve cyberki", ex);
+                throw new DataAccessException("Failed to retrieve cyberki", ex);
             }
         }
 
@@ -91,7 +92,7 @@ namespace CyberLosowanie.Services
             {
                 _logger.LogError(ex, "Failed to retrieve available cyberki to pick");
                 await _auditService.LogErrorAsync(ex, null);
-                throw new InvalidOperationException("Failed to retrieve available cyberki to pick", ex);
+                throw new DataAccessException("Failed to retrieve available cyberki to pick", ex);
             }
         }
 
@@ -150,7 +151,7 @@ namespace CyberLosowanie.Services
             {
                 _logger.LogError(ex, "Failed to calculate available gift targets for cyberek {CyberekId}", cyberekId);
                 await _auditService.LogErrorAsync(ex, null);
-                throw new InvalidOperationException("Failed to calculate available gift targets", ex);
+                throw new DataAccessException("Failed to calculate available gift targets", ex);
             }
         }
 
@@ -273,15 +274,15 @@ namespace CyberLosowanie.Services
 
                 return true;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not DomainException)
             {
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Failed to assign cyberek {CyberekId} to user {UserName}", cyberekId, userName);
-                
+
                 // Log failed assignment
                 await _auditService.LogErrorAsync(ex, null, applicationUser?.Id, userName);
-                
-                throw new InvalidOperationException("Failed to assign cyberek to user", ex);
+
+                throw new DataAccessException("Failed to assign cyberek to user", ex);
             }
         }
 
@@ -420,25 +421,27 @@ namespace CyberLosowanie.Services
                     }
 
                 }
-                catch (Exception ex) when (!(ex is BusinessValidationException || ex is InvalidGiftAssignmentException))
+                catch (Exception ex) when (ex is not DomainException)
                 {
                     await transaction.RollbackAsync();
                     _logger.LogError(ex, "Failed to assign gift for user {UserName}", userName);
-                    
+
                     await _auditService.LogErrorAsync(ex, null, applicationUser?.Id, userName);
-                    
-                    throw new InvalidOperationException("Failed to assign gift", ex);
+
+                    throw new DataAccessException("Failed to assign gift", ex);
                 }
             }
 
-            throw new InvalidOperationException("Failed to assign gift due to unexpected concurrency behaviour.");
+            throw new DataAccessException("Failed to assign gift due to unexpected concurrency behaviour.");
         }
 
-        private bool IsUniqueGiftConflict(DbUpdateException ex)
+        private static bool IsUniqueGiftConflict(DbUpdateException ex)
         {
-            var message = ex.InnerException?.Message ?? ex.Message;
-            return message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
-                   || message.Contains("GiftedCyberekId", StringComparison.OrdinalIgnoreCase);
+            // SQL Server error numbers for a unique-index/constraint violation:
+            //   2601 = cannot insert duplicate key row in object with unique index
+            //   2627 = violation of unique constraint
+            return ex.InnerException is SqlException sqlEx
+                   && (sqlEx.Number == 2601 || sqlEx.Number == 2627);
         }
     }
 }

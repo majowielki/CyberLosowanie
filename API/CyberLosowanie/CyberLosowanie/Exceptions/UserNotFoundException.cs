@@ -1,6 +1,6 @@
 namespace CyberLosowanie.Exceptions
 {
-    public class UserNotFoundException : Exception
+    public class UserNotFoundException : DomainException
     {
         public string UserName { get; }
 

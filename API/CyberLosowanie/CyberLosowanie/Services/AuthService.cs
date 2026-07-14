@@ -1,4 +1,5 @@
 using CyberLosowanie.Constants;
+using CyberLosowanie.Exceptions;
 using CyberLosowanie.Interfaces.Repositories;
 using CyberLosowanie.Interfaces.Services;
 using CyberLosowanie.Models;
@@ -65,7 +66,7 @@ namespace CyberLosowanie.Services
 
             var existingUser = await _userRepository.GetByUsernameAsync(request.UserName);
             if (existingUser != null)
-                throw new InvalidOperationException("Username already exists");
+                throw new BusinessValidationException(CyberLosowanieConstants.USERNAME_ALREADY_EXISTS);
 
             var newUser = new ApplicationUser
             {
@@ -74,7 +75,7 @@ namespace CyberLosowanie.Services
 
             var result = await _userManager.CreateAsync(newUser, request.Password);
             if (!result.Succeeded)
-                throw new InvalidOperationException($"User creation failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                throw new BusinessValidationException(result.Errors.Select(e => e.Description).ToList());
 
             if (!await _roleManager.RoleExistsAsync(CyberLosowanieConstants.Role_Admin))
             {

@@ -1,6 +1,6 @@
 namespace CyberLosowanie.Exceptions
 {
-    public class InvalidGiftAssignmentException : Exception
+    public class InvalidGiftAssignmentException : DomainException
     {
         public int CyberekId { get; }
         public int TargetId { get; }

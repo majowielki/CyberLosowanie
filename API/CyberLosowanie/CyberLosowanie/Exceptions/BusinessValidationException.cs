@@ -1,6 +1,6 @@
 namespace CyberLosowanie.Exceptions
 {
-    public class BusinessValidationException : Exception
+    public class BusinessValidationException : DomainException
     {
         public List<string> ValidationErrors { get; }
 
