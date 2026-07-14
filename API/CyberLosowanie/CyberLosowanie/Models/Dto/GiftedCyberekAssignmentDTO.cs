@@ -11,8 +11,8 @@ namespace CyberLosowanie.Models.Dto
         /// <summary>
         /// ID of the cyberek that will receive the gift
         /// </summary>
-        [Range(CyberLosowanieConstants.MIN_CYBEREK_ID, CyberLosowanieConstants.MAX_CYBEREK_ID, 
-               ErrorMessage = CyberLosowanieConstants.INVALID_CYBEREK_ID)]
+        [Range(CyberLosowanieConstants.MIN_CYBEREK_ID, CyberLosowanieConstants.MAX_CYBEREK_ID,
+               ErrorMessage = "Cyberek ID must be between {1} and {2}")]
         public int GiftedCyberekId { get; set; }
     }
 }

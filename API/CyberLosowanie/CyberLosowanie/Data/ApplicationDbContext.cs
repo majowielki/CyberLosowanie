@@ -45,70 +45,105 @@ namespace CyberLosowanie.Data
                       .HasFilter("[GiftedCyberekId] IS NOT NULL AND [GiftedCyberekId] <> 0");
             });
             
+            // Canonical set of TOTAL_CYBERKI_COUNT (12) cyberki. Kept in sync with the
+            // test fixture GiftingServiceTests.CreateRealisticDatabaseCyberki().
+            // Image URLs are placeholders for now — real photos move to Azure Blob (E6).
             modelBuilder.Entity<Cyberek>().HasData(
                 new Cyberek
                 {
                     Id = 1,
-                    Name = "Andrzej",
-                    Surname = "Ziulweski",
-                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Andrzej.jpg",
-                    BannedCyberki = new List<int> { 1 }
+                    Name = "Michał",
+                    Surname = "Majewski",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
+                    BannedCyberki = new List<int> { 1, 2, 6 }
                 },
                 new Cyberek
                 {
                     Id = 2,
-                    Name = "Oskar",
-                    Surname = "Ziulewski",
-                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Oskar.jpg",
-                    BannedCyberki = new List<int> { 2, 5 }
+                    Name = "Kornelia",
+                    Surname = "Majewska",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/2.jpg",
+                    BannedCyberki = new List<int> { 1, 2, 10 }
                 },
                 new Cyberek
                 {
                     Id = 3,
-                    Name = "Iza",
-                    Surname = "Kawulok",
-                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Iza.jpg",
-                    BannedCyberki = new List<int> { 3, 8 }
+                    Name = "Ola",
+                    Surname = "Sudoł",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/3.jpg",
+                    BannedCyberki = new List<int> { 3, 9, 11 }
                 },
                 new Cyberek
                 {
                     Id = 4,
-                    Name = "Kornelia",
-                    Surname = "Majewska",
-                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Kornelia.jpg",
-                    BannedCyberki = new List<int> { 4, 7 }
+                    Name = "Daria",
+                    Surname = "Kurowska",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/4.jpg",
+                    BannedCyberki = new List<int> { 2, 4, 11 }
                 },
                 new Cyberek
                 {
                     Id = 5,
-                    Name = "Ania",
-                    Surname = "Velychko",
-                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Ania.jpg",
-                    BannedCyberki = new List<int> { 5, 2 }
+                    Name = "Asia",
+                    Surname = "Małek",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
+                    BannedCyberki = new List<int> { 5, 7, 8 }
                 },
                 new Cyberek
                 {
                     Id = 6,
-                    Name = "Oksana",
-                    Surname = "Velychko",
-                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Oksana.jpg",
-                    BannedCyberki = new List<int> { 6 }
+                    Name = "Filip",
+                    Surname = "Wilczyński",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/6.jpg",
+                    BannedCyberki = new List<int> { 5, 6, 12 }
                 },
                 new Cyberek
                 {
                     Id = 7,
-                    Name = "Michał",
-                    Surname = "Majewski",
-                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Michal.jpg",
-                    BannedCyberki = new List<int> { 7, 4 }
+                    Name = "Marek",
+                    Surname = "Grabowski",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/7.jpg",
+                    BannedCyberki = new List<int> { 3, 7, 10 }
                 },
                 new Cyberek
                 {
                     Id = 8,
-                    Name = "Filip",
-                    Surname = "Ziulewski",
-                    ImageUrl = "https://losowanie.blob.core.windows.net/losowanieblobs/Filip.jpg",
-                    BannedCyberki = new List<int> { 8, 3 }
+                    Name = "Michał",
+                    Surname = "Karbowiak",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/8.jpg",
+                    BannedCyberki = new List<int> { 1, 5, 8 }
+                },
+                new Cyberek
+                {
+                    Id = 9,
+                    Name = "Karol",
+                    Surname = "Jagiełło",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/9.jpg",
+                    BannedCyberki = new List<int> { 3, 4, 9 }
+                },
+                new Cyberek
+                {
+                    Id = 10,
+                    Name = "Natalia",
+                    Surname = "Dutka",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/10.jpg",
+                    BannedCyberki = new List<int> { 7, 10, 12 }
+                },
+                new Cyberek
+                {
+                    Id = 11,
+                    Name = "Paweł",
+                    Surname = "Kurowski",
+                    ImageUrl = "https://randomuser.me/api/portraits/men/11.jpg",
+                    BannedCyberki = new List<int> { 4, 8, 11 }
+                },
+                new Cyberek
+                {
+                    Id = 12,
+                    Name = "Wiktoria",
+                    Surname = "Wilczyńska",
+                    ImageUrl = "https://randomuser.me/api/portraits/women/12.jpg",
+                    BannedCyberki = new List<int> { 6, 9, 12 }
                 });
         }
     }

@@ -2,16 +2,20 @@ namespace CyberLosowanie.Constants
 {
     public static class CyberLosowanieConstants
     {
+        // Single source of truth for the number of cyberki. The seed in
+        // ApplicationDbContext must produce exactly this many rows (ids MIN..MAX).
         public const int TOTAL_CYBERKI_COUNT = 12;
         public const int BANNED_CYBERKI_PER_USER = 3;
         public const int MIN_CYBEREK_ID = 1;
-        public const int MAX_CYBEREK_ID = 12;
+        public const int MAX_CYBEREK_ID = TOTAL_CYBERKI_COUNT;
 
         public const string Role_Admin = "admin";
         public const string Role_User = "user";
 
         // Error messages
-        public const string INVALID_CYBEREK_ID = "Cyberek ID must be between 1 and 12";
+        // Built from MIN/MAX so the numbers are never duplicated as literals (E1).
+        public static readonly string INVALID_CYBEREK_ID =
+            $"Cyberek ID must be between {MIN_CYBEREK_ID} and {MAX_CYBEREK_ID}";
         public const string CYBEREK_NOT_FOUND = "Cyberek not found";
         public const string USER_NOT_FOUND = "User not found";
         public const string INVALID_USERNAME = "Username cannot be null or empty";
