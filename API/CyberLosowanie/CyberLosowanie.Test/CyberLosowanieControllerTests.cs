@@ -1,6 +1,7 @@
 using CyberLosowanie.Controllers;
 using CyberLosowanie.Interfaces.Services;
 using CyberLosowanie.Models;
+using CyberLosowanie.Models.Dto.Responses;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -58,11 +59,12 @@ namespace CyberLosowanie.Test
             // Assert
             result.Should().BeOfType<OkObjectResult>();
             var okResult = result as OkObjectResult;
-            okResult!.Value.Should().BeOfType<ApiResponse<IEnumerable<Cyberek>>>();
+            okResult!.Value.Should().BeOfType<ApiResponse<IEnumerable<CyberekResponse>>>();
             
-            var apiResponse = okResult.Value as ApiResponse<IEnumerable<Cyberek>>;
+            var apiResponse = okResult.Value as ApiResponse<IEnumerable<CyberekResponse>>;
             apiResponse!.IsSuccess.Should().BeTrue();
-            apiResponse.Data.Should().BeEquivalentTo(expectedCyberki);
+            // Subject is CyberekResponse (no GiftedCyberekId/BannedCyberki) — compare shared fields only.
+            apiResponse.Data.Should().BeEquivalentTo(expectedCyberki, options => options.ExcludingMissingMembers());
             apiResponse.Message.Should().NotBeNull();
             apiResponse.Errors.Should().NotBeNull();
         }
@@ -81,9 +83,9 @@ namespace CyberLosowanie.Test
             // Assert
             result.Should().BeOfType<OkObjectResult>();
             var okResult = result as OkObjectResult;
-            okResult!.Value.Should().BeOfType<ApiResponse<IEnumerable<Cyberek>>>();
+            okResult!.Value.Should().BeOfType<ApiResponse<IEnumerable<CyberekResponse>>>();
             
-            var apiResponse = okResult.Value as ApiResponse<IEnumerable<Cyberek>>;
+            var apiResponse = okResult.Value as ApiResponse<IEnumerable<CyberekResponse>>;
             apiResponse!.IsSuccess.Should().BeTrue();
             apiResponse.Data.Should().BeEmpty();
         }
@@ -104,10 +106,10 @@ namespace CyberLosowanie.Test
             // Assert
             result.Should().BeOfType<OkObjectResult>();
             var okResult = result as OkObjectResult;
-            var apiResponse = okResult!.Value as ApiResponse<IEnumerable<Cyberek>>;
+            var apiResponse = okResult!.Value as ApiResponse<IEnumerable<CyberekResponse>>;
             
             apiResponse!.Data.Should().HaveCount(2);
-            apiResponse.Data.Should().BeEquivalentTo(availableCyberki);
+            apiResponse.Data.Should().BeEquivalentTo(availableCyberki, options => options.ExcludingMissingMembers());
         }
 
         [Fact]
@@ -172,7 +174,7 @@ namespace CyberLosowanie.Test
             // Assert
             result.Should().BeOfType<OkObjectResult>();
             var okResult = result as OkObjectResult;
-            var apiResponse = okResult!.Value as ApiResponse<IEnumerable<Cyberek>>;
+            var apiResponse = okResult!.Value as ApiResponse<IEnumerable<CyberekResponse>>;
             
             apiResponse!.IsSuccess.Should().BeTrue();
             apiResponse.Data.Should().HaveCount(2);
@@ -219,11 +221,11 @@ namespace CyberLosowanie.Test
             // Assert
             result.Should().BeOfType<OkObjectResult>();
             var okResult = result as OkObjectResult;
-            var apiResponse = okResult!.Value as ApiResponse<IEnumerable<Cyberek>>;
+            var apiResponse = okResult!.Value as ApiResponse<IEnumerable<CyberekResponse>>;
             
             apiResponse!.IsSuccess.Should().BeTrue();
             apiResponse.Data.Should().HaveCount(5);
-            apiResponse.Data.Should().BeEquivalentTo(expectedCyberki);
+            apiResponse.Data.Should().BeEquivalentTo(expectedCyberki, options => options.ExcludingMissingMembers());
         }
 
         #endregion
@@ -247,8 +249,8 @@ namespace CyberLosowanie.Test
             var availableResult = await _controller.GetAvailableToPickCyberki();
 
             // Assert
-            var allResponse = (allResult as OkObjectResult)!.Value as ApiResponse<IEnumerable<Cyberek>>;
-            var availableResponse = (availableResult as OkObjectResult)!.Value as ApiResponse<IEnumerable<Cyberek>>;
+            var allResponse = (allResult as OkObjectResult)!.Value as ApiResponse<IEnumerable<CyberekResponse>>;
+            var availableResponse = (availableResult as OkObjectResult)!.Value as ApiResponse<IEnumerable<CyberekResponse>>;
 
             allResponse!.Data.Should().HaveCount(5);
             availableResponse!.Data.Should().HaveCount(3);
@@ -269,7 +271,7 @@ namespace CyberLosowanie.Test
             // Assert
             result.Should().BeOfType<OkObjectResult>();
             var okResult = result as OkObjectResult;
-            var apiResponse = okResult!.Value as ApiResponse<IEnumerable<Cyberek>>;
+            var apiResponse = okResult!.Value as ApiResponse<IEnumerable<CyberekResponse>>;
             
             apiResponse!.Data.Should().HaveCount(100);
             apiResponse.IsSuccess.Should().BeTrue();
@@ -288,9 +290,9 @@ namespace CyberLosowanie.Test
             // Assert - contract: a collection endpoint returns 200 with an empty list
             result.Should().BeOfType<OkObjectResult>();
             var okResult = result as OkObjectResult;
-            okResult!.Value.Should().BeOfType<ApiResponse<IEnumerable<Cyberek>>>();
+            okResult!.Value.Should().BeOfType<ApiResponse<IEnumerable<CyberekResponse>>>();
 
-            var apiResponse = okResult.Value as ApiResponse<IEnumerable<Cyberek>>;
+            var apiResponse = okResult.Value as ApiResponse<IEnumerable<CyberekResponse>>;
             apiResponse!.IsSuccess.Should().BeTrue();
             apiResponse.Data.Should().BeEmpty();
         }

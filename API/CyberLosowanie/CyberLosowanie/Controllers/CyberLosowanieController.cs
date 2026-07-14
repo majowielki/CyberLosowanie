@@ -1,6 +1,7 @@
 ﻿using CyberLosowanie.Interfaces.Services;
 using CyberLosowanie.Models;
 using CyberLosowanie.Models.Dto;
+using CyberLosowanie.Models.Dto.Responses;
 using CyberLosowanie.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,33 +22,34 @@ namespace CyberLosowanie.Controllers
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<Cyberek>>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<CyberekResponse>>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<IActionResult> GetCyberki()
         {
             var cyberki = await _cyberekService.GetAllCyberkiAsync();
-            return Ok(ApiResponse<IEnumerable<Cyberek>>.Success(cyberki));
+            return Ok(ApiResponse<IEnumerable<CyberekResponse>>.Success(cyberki.ToResponse()));
         }
 
         [HttpGet("available-to-pick")]
-        [ProducesResponseType(typeof(ApiResponse<IEnumerable<Cyberek>>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<CyberekResponse>>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<IActionResult> GetAvailableToPickCyberki()
         {
             var availableCyberki = await _cyberekService.GetAvailableToPickCyberkiAsync();
             // Collection endpoints always return 200 with a (possibly empty) list
-            return Ok(ApiResponse<IEnumerable<Cyberek>>.Success(availableCyberki ?? Enumerable.Empty<Cyberek>()));
+            return Ok(ApiResponse<IEnumerable<CyberekResponse>>.Success(
+                (availableCyberki ?? Enumerable.Empty<Cyberek>()).ToResponse()));
         }
 
         [HttpGet("{id:int}", Name = "GetCyberek")]
-        [ProducesResponseType(typeof(ApiResponse<Cyberek>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<CyberekResponse>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<IActionResult> GetCyberek([Range(1, int.MaxValue)] int id)
         {
             var cyberek = await _cyberekService.GetCyberekByIdAsync(id);
-            return Ok(ApiResponse<Cyberek>.Success(cyberek));
+            return Ok(ApiResponse<CyberekResponse>.Success(cyberek.ToResponse()));
         }
 
         [HttpGet("available-targets/{id:int}")]
@@ -72,7 +74,7 @@ namespace CyberLosowanie.Controllers
         }
 
         [HttpGet("my-gifted-cyberek")]
-        [ProducesResponseType(typeof(ApiResponse<Cyberek>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<CyberekResponse>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 409)]
@@ -84,8 +86,10 @@ namespace CyberLosowanie.Controllers
                 return BadRequest(ApiResponse<object>.Error("Username is required."));
             }
 
+            // The owner is allowed to see WHO they gift (name + photo), but not that
+            // target's own draw result — ToResponse() strips GiftedCyberekId/BannedCyberki.
             var cyberek = await _cyberekService.GetGiftedCyberekForUserAsync(userName);
-            return Ok(ApiResponse<Cyberek>.Success(cyberek));
+            return Ok(ApiResponse<CyberekResponse>.Success(cyberek.ToResponse()));
         }
 
         [HttpPost("assign-cyberek")]
