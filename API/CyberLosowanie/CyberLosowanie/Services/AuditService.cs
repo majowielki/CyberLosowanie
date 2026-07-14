@@ -26,13 +26,31 @@ namespace CyberLosowanie.Services
                 auditLog.StackTrace = exception.StackTrace;
 
                 await SaveAuditLogAsync(auditLog);
-                
+
                 // Also log to standard logger for immediate visibility
                 _logger.LogError(exception, "Error logged to audit table: {Message}", exception.Message);
             }
             catch (Exception ex)
             {
                 // Fallback to standard logging if audit logging fails
+                _logger.LogError(ex, "Failed to save audit log for exception: {OriginalException}", exception.Message);
+            }
+        }
+
+        public async Task LogErrorAsync(Exception exception, AuditContext auditContext)
+        {
+            try
+            {
+                var auditLog = CreateBaseAuditLog("Error", auditContext);
+                auditLog.Message = exception.Message;
+                auditLog.ExceptionDetails = exception.ToString();
+                auditLog.StackTrace = exception.StackTrace;
+
+                await SaveAuditLogAsync(auditLog);
+                _logger.LogError(exception, "Error logged to audit table: {Message}", exception.Message);
+            }
+            catch (Exception ex)
+            {
                 _logger.LogError(ex, "Failed to save audit log for exception: {OriginalException}", exception.Message);
             }
         }
@@ -123,14 +141,30 @@ namespace CyberLosowanie.Services
                 auditLog.RequestPath = context.Request.Path + context.Request.QueryString;
                 auditLog.ResponseStatusCode = context.Response.StatusCode;
 
-                // Capture request body for POST/PUT requests (be careful with sensitive data)
-                if (context.Request.Method == "POST" || context.Request.Method == "PUT")
-                {
-                    auditLog.RequestBody = GetRequestBody(context);
-                }
+                // Request body (if any) is captured by the caller within the request
+                // lifetime and passed via AuditContext — see the AuditContext overload.
             }
 
             return auditLog;
+        }
+
+        private static AuditLog CreateBaseAuditLog(string logLevel, AuditContext ctx)
+        {
+            return new AuditLog
+            {
+                CorrelationId = ctx.CorrelationId ?? Guid.NewGuid().ToString(),
+                Timestamp = DateTime.UtcNow,
+                LogLevel = logLevel,
+                Source = "CyberLosowanie.API",
+                UserId = ctx.UserId,
+                UserName = ctx.UserName,
+                IpAddress = ctx.IpAddress,
+                UserAgent = ctx.UserAgent,
+                HttpMethod = ctx.HttpMethod,
+                RequestPath = ctx.RequestPath,
+                ResponseStatusCode = ctx.ResponseStatusCode ?? 0,
+                RequestBody = ctx.RequestBody
+            };
         }
 
         private async Task SaveAuditLogAsync(AuditLog auditLog)
@@ -155,29 +189,6 @@ namespace CyberLosowanie.Services
             }
 
             return context.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-        }
-
-        private static string? GetRequestBody(HttpContext context)
-        {
-            try
-            {
-                context.Request.EnableBuffering();
-                using var reader = new StreamReader(context.Request.Body, leaveOpen: true);
-                var body = reader.ReadToEndAsync().Result;
-                context.Request.Body.Position = 0;
-                
-                // Don't log passwords or sensitive data
-                if (body.Contains("password", StringComparison.OrdinalIgnoreCase))
-                {
-                    return "[CONTAINS_SENSITIVE_DATA]";
-                }
-                
-                return body.Length > 1000 ? body.Substring(0, 1000) + "..." : body;
-            }
-            catch
-            {
-                return "[UNABLE_TO_READ]";
-            }
         }
     }
 }
