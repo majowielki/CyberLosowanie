@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: API/CyberLosowanie
+        working-directory: API
     steps:
       - uses: actions/checkout@v4
 
@@ -52,9 +52,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Lint is intentionally non-blocking for now: the remaining errors are
-      # `any`/typing debt scheduled for Faza 3 (H2/H4/H6/E3). Once that lands,
-      # remove `continue-on-error` to make lint a hard gate.
-      - name: Lint (non-blocking until Faza 3)
+      - name: Lint
         run: npm run lint
-        continue-on-error: true
