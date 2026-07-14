@@ -93,7 +93,7 @@ namespace CyberLosowanie.Services
                 throw new InvalidOperationException("JWT secret key is not configured");
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(secretKey);
+            var key = Encoding.UTF8.GetBytes(secretKey);
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {

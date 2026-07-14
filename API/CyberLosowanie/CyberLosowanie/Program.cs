@@ -32,13 +32,13 @@ builder.Services.AddScoped<IValidationService, ValidationService>();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    // Improve password security
-    options.Password.RequireDigit = false;
-    options.Password.RequiredLength = 1;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    
+    var passwordConfig = builder.Configuration.GetSection("Identity:Password");
+    options.Password.RequiredLength = passwordConfig.GetValue("RequiredLength", 6);
+    options.Password.RequireDigit = passwordConfig.GetValue("RequireDigit", false);
+    options.Password.RequireLowercase = passwordConfig.GetValue("RequireLowercase", false);
+    options.Password.RequireUppercase = passwordConfig.GetValue("RequireUppercase", false);
+    options.Password.RequireNonAlphanumeric = passwordConfig.GetValue("RequireNonAlphanumeric", false);
+
     // Account lockout settings
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     options.Lockout.MaxFailedAccessAttempts = 5;
@@ -92,8 +92,13 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // In production, specify allowed origins
-            policy.WithOrigins("https://yourdomain.com")
+            // Allowed origins come from configuration ("Cors:AllowedOrigins").
+            // Set them per environment (env var / appsettings.Production.json) before deploy.
+            var allowedOrigins = builder.Configuration
+                .GetSection("Cors:AllowedOrigins")
+                .Get<string[]>() ?? Array.Empty<string>();
+
+            policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
