@@ -7,41 +7,22 @@ import { setCyberekItem } from "@/features/redux/cyberekSlice";
 import { RootState } from "@/features/redux/store";
 import { useNavigate } from "react-router-dom";
 
+// Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function FinalPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const userId = useSelector((state: RootState) => state.userAuthStore.id);
   const userName = useSelector((state: RootState) => state.userAuthStore.fullName);
   // FinalPage always asks backend for the final gifted cyberek using the
   // current user context. Backend is the single source of truth.
   const { data, isLoading, error } = useGetMyGiftedCyberekQuery(userName, {
-    skip: !userId || !userName,
+    skip: !userName,
   });
-  
 
   useEffect(() => {
-    // If user is not logged in, redirect to login
-    if (!userId) {
-      navigate("/login");
-      return;
+    if (!isLoading && data?.data) {
+      dispatch(setCyberekItem(data.data));
     }
-
-    const typedData = data as {data?: {name: string; imageUrl: string}};
-    if (!isLoading && typedData?.data) {
-      dispatch(setCyberekItem(typedData.data));
-    }
-  }, [isLoading, data, dispatch, userId, navigate]);
-
-  if (!userId) {
-    return (
-      <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">Please log in to view your results.</div>
-        <Button onClick={() => navigate("/login")} className="mt-4">
-          Go to Login
-        </Button>
-      </div>
-    );
-  }
+  }, [isLoading, data, dispatch]);
 
   // If we are still loading results from backend, show a loading state
   if (isLoading) {
@@ -64,8 +45,7 @@ function FinalPage() {
   }
 
   // Use fresh API data; if unavailable, show an error state
-  const typedData = data as {data?: {name: string; imageUrl: string}};
-  const currentCyberek = typedData?.data;
+  const currentCyberek = data?.data;
 
   if (!currentCyberek) {
     return (

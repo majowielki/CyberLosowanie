@@ -4,6 +4,7 @@ import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { inputHelper} from "../helpers";
+import { apiResponseBody } from "../interfaces";
 import { useRegisterUserMutation } from "../apis/authApi";
 import { toast } from '@/hooks/use-toast';
 import React from "react";
@@ -51,7 +52,7 @@ function Register() {
 
         // Handle FetchBaseQueryError (has status and data)
         if ('status' in response.error && response.error.data) {
-          const errorData = response.error.data as {errors?: string[]; message?: string};
+          const errorData = response.error.data as Partial<apiResponseBody>;
           errorMessage = errorData?.errors?.[0] || errorData?.message || errorMessage;
         }
         // Handle SerializedError (has message)

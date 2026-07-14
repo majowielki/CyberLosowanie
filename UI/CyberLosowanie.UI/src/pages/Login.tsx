@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLoginUserMutation } from "../apis/authApi";
 import { inputHelper } from "../helpers";
-import { userModel } from "../interfaces";
+import { apiResponseBody, userModel } from "../interfaces";
 import { jwtDecode } from "jwt-decode";
 import { useDispatch } from "react-redux";
 import { useNavigate } from 'react-router-dom';
@@ -72,7 +72,7 @@ function Login() {
 
         // Handle FetchBaseQueryError (has status and data)
         if ('status' in response.error && response.error.data) {
-          const errorData = response.error.data as {errors?: string[]; message?: string};
+          const errorData = response.error.data as Partial<apiResponseBody>;
           errorMessage = errorData?.errors?.[0] || errorData?.message || errorMessage;
         }
         // Handle SerializedError (has message)

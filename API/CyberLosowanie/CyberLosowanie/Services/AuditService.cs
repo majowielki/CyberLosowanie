@@ -97,28 +97,6 @@ namespace CyberLosowanie.Services
             }
         }
 
-        public async Task LogCriticalAsync(string message, Exception? exception = null, HttpContext? context = null, string? userId = null, string? userName = null)
-        {
-            try
-            {
-                var auditLog = CreateBaseAuditLog("Critical", context, userId, userName);
-                auditLog.Message = message;
-                
-                if (exception != null)
-                {
-                    auditLog.ExceptionDetails = exception.ToString();
-                    auditLog.StackTrace = exception.StackTrace;
-                }
-
-                await SaveAuditLogAsync(auditLog);
-                _logger.LogCritical(exception, "Critical audit log saved: {Message}", message);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to save critical audit log: {Message}", message);
-            }
-        }
-
         private AuditLog CreateBaseAuditLog(string logLevel, HttpContext? context, string? userId, string? userName)
         {
             var correlationId = context?.TraceIdentifier ?? Guid.NewGuid().ToString();

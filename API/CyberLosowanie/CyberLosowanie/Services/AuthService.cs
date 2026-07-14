@@ -105,7 +105,7 @@ namespace CyberLosowanie.Services
                     new Claim("cyberekId", user.CyberekId.ToString()),
                     new Claim("giftedCyberekId", user.GiftedCyberekId.ToString())
                 }),
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddDays(CyberLosowanieConstants.DEFAULT_TOKEN_EXPIRATION_DAYS),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 

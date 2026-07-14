@@ -4,7 +4,7 @@ import CyberLosowanieClosed from "@/assets/CyberLosowanieClosed.svg";
 import CyberLosowanieOpen from "@/assets/CyberLosowanieOpen.svg";
 import { useDispatch } from "react-redux";
 import { useGetAvailableGiftTargetsQuery, useAssignGiftedCyberekMutation } from "@/apis/cyberLosowanieApi";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RootState } from "@/features/redux/store";
 import { useSelector } from "react-redux";
@@ -12,6 +12,7 @@ import { resetCyberek } from "@/features/redux/cyberekSlice";
 import { setGiftedCyberekId } from "@/features/redux/userSlice";
 import { toast } from "@/hooks/use-toast";
 
+// Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function ChooseToBeGiftedCyberek() {
   const navigate = useNavigate();
   const userName = useSelector((state: RootState) => state.userAuthStore.fullName);
@@ -23,14 +24,6 @@ function ChooseToBeGiftedCyberek() {
   const { data, isLoading } = useGetAvailableGiftTargetsQuery(parsedCyberekId, { skip: parsedCyberekId === -1 });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const typedData = data as {data?: number[]};
-    if (!isLoading && typedData?.data) {
-      // Note: We don't dispatch setCyberkiList here anymore since this endpoint 
-      // returns available target IDs, not cyberek objects
-    }
-  }, [isLoading, data, dispatch]);
-
   // NOTE: For gifting simulation we intentionally use the visual box index (1..12)
   // as the giftedCyberekId parameter, not the real cyberek.id. Backend interprets
   // this value according to its own simulation logic.
@@ -38,17 +31,16 @@ function ChooseToBeGiftedCyberek() {
     setLoading(true);
 
     try {
-      const response = await assignGiftedCyberek({ 
-        giftedCyberekId: parseInt(index, 10), 
-        userName: userName 
+      const response = await assignGiftedCyberek({
+        giftedCyberekId: parseInt(index, 10),
+        userName: userName
       }).unwrap();
 
       console.log("assignGiftedCyberek response for selected box", index, response);
 
       // If API returns assigned giftedCyberekId, update user store immediately
-      const typed = response as { data?: number };
-      if (typed?.data && !isNaN(typed.data)) {
-        dispatch(setGiftedCyberekId(String(typed.data)));
+      if (response.data && !isNaN(response.data)) {
+        dispatch(setGiftedCyberekId(String(response.data)));
       }
 
       // Clear the cyberek item store to ensure fresh data on FinalPage
@@ -56,7 +48,7 @@ function ChooseToBeGiftedCyberek() {
       navigate("/final-page");
     } catch (error) {
       console.error("Failed to assign gifted cyberek:", error);
-      toast({ 
+      toast({
         description: "Failed to select cyberek. Please try again.",
         variant: "destructive"
       });
@@ -88,7 +80,7 @@ function ChooseToBeGiftedCyberek() {
         {cards.map((_, index) => (
           <Card key={index} className="bg-transparent border-2 border-white">
             <CardContent className="p-4 flex flex-col items-center">
-              {(data as {data?: number[]})?.data?.includes(index + 1) ? (
+              {data?.data?.includes(index + 1) ? (
                 <>
                   <img src={CyberLosowanieClosed} alt={`Cyber Losowanie Closed ${index + 1}`} className="w-full h-64 md:h-48 rounded-md object-cover mb-4" />
                   <Button className="text-xl font-semibold capitalize" onClick={() => handleSelect(`${index + 1}`)}>

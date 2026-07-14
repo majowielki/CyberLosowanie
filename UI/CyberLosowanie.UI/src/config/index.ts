@@ -24,7 +24,7 @@ export const config = {
   // Feature flags
   ENABLE_DEBUG_LOGS: getBooleanEnvironmentVariable('VITE_ENABLE_DEBUG_LOGS', false),
   
-  // API endpoints
+  // API endpoints — the only place URL paths are defined (E3)
   ENDPOINTS: {
     AUTH: {
       LOGIN: 'auth/login',
@@ -32,9 +32,11 @@ export const config = {
     },
     CYBER_LOSOWANIE: {
       BASE: 'CyberLosowanie',
-      VALIDATE: 'CyberLosowanie/available-targets',
-      CYBEREK_ASSIGNMENT: 'CyberLosowanie/assign-cyberek',
-      GIFTED_CYBEREK_ASSIGNMENT: 'CyberLosowanie/assign-gift',
+      AVAILABLE_TO_PICK: 'CyberLosowanie/available-to-pick',
+      AVAILABLE_TARGETS: 'CyberLosowanie/available-targets',
+      MY_GIFTED_CYBEREK: 'CyberLosowanie/my-gifted-cyberek',
+      ASSIGN_CYBEREK: 'CyberLosowanie/assign-cyberek',
+      ASSIGN_GIFT: 'CyberLosowanie/assign-gift',
     }
   },
   

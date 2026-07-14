@@ -10,6 +10,5 @@ namespace CyberLosowanie.Interfaces.Services
         Task LogErrorAsync(Exception exception, AuditContext auditContext);
         Task LogInformationAsync(string message, HttpContext? context = null, string? userId = null, string? userName = null, object? additionalData = null);
         Task LogWarningAsync(string message, HttpContext? context = null, string? userId = null, string? userName = null, object? additionalData = null);
-        Task LogCriticalAsync(string message, Exception? exception = null, HttpContext? context = null, string? userId = null, string? userName = null);
     }
 }

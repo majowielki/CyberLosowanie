@@ -11,55 +11,44 @@ import {
 import { setCyberkiList } from "@/features/redux/cyberkiSlice";
 import { RootState } from "@/features/redux/store";
 import { setCyberekId } from "@/features/redux/userSlice";
-import { cyberekModel } from "@/interfaces";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 
+// Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function SelectYourCyberek() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const userName = useSelector((state: RootState) => state.userAuthStore.fullName);
-  const userId = useSelector((state: RootState) => state.userAuthStore.id);
   const userHasGiftedCyberekId = useSelector((state: RootState) => state.userAuthStore.giftedCyberekId);
-  
-  // Skip API call if user is not authenticated
-  const { data, isLoading, error } = useGetAvailableToPickQuery(null, {
-    skip: !userId || !userName
-  });
-  
+
+  const { data, isLoading, error } = useGetAvailableToPickQuery();
+
   const [assignCyberek] = useAssignCyberekMutation();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if user is authenticated
-    if (!userId || !userName) {
-      navigate("/login");
-      return;
+    if (!isLoading && data?.data) {
+      dispatch(setCyberkiList(data.data));
     }
-
-    const typedData = data as {data?: cyberekModel[]};
-    if (!isLoading && typedData?.data) {
-      dispatch(setCyberkiList(typedData.data));
-    }
-  }, [isLoading, data, dispatch, userId, userName, navigate]);
+  }, [isLoading, data, dispatch]);
 
   const handleSelect = async (cyberekId: number) => {
     setLoading(true);
 
     try {
-      await assignCyberek({ 
-        cyberekId, 
-        userName: userName 
+      await assignCyberek({
+        cyberekId,
+        userName: userName
       }).unwrap();
-      
+
       dispatch(setCyberekId(`${cyberekId}`));
       toast({ description: "Cyberek selected successfully!" });
     } catch (error) {
       console.error("Failed to assign cyberek:", error);
-      toast({ 
+      toast({
         description: "Failed to select cyberek. Please try again.",
         variant: "destructive"
       });
@@ -67,18 +56,6 @@ function SelectYourCyberek() {
       setLoading(false);
     }
   };
-
-  // Authentication check
-  if (!userId || !userName) {
-    return (
-      <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">Please log in to select your cyberek.</div>
-        <Button onClick={() => navigate("/login")} className="mt-4">
-          Go to Login
-        </Button>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
@@ -107,7 +84,7 @@ function SelectYourCyberek() {
     );
   }
 
-  if (!(data as {data?: cyberekModel[]})?.data?.length) {
+  if (!data?.data?.length) {
     return (
       <div className="flex flex-col items-center justify-center mt-20">
         <div className="text-white text-lg">No cybereks available to pick at this time.</div>
@@ -125,14 +102,14 @@ function SelectYourCyberek() {
       <p className="text-white text-center mb-6">Wybierz spośród dostępnych opcji w karuzeli poniżej</p>
       <Carousel className="w-full max-w-xs">
         <CarouselContent>
-          {((data as {data?: cyberekModel[]})?.data || []).map((cyberek: cyberekModel, index: number) => (
+          {(data.data || []).map((cyberek, index) => (
             <CarouselItem key={index}>
                 <Card>
                 <CardContent className="p-2 flex flex-col items-center">
                   <span className="text-black text-lg font-semibold mb-2">{cyberek.name}</span>
                   <img src={cyberek.imageUrl} alt="cyberki" className="w-full h-[24rem] rounded-md object-cover mb-4" />
-                  <Button 
-                    className="px-4 py-2 mb-2" 
+                  <Button
+                    className="px-4 py-2 mb-2"
                     onClick={async () => {
                       await handleSelect(cyberek.id);
                       navigate(userHasGiftedCyberekId !== "0" ? "/final-page" : "/choose-to-be-gifted-cyberek");

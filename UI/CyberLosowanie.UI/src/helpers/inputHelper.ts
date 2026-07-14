@@ -1,14 +1,12 @@
 import React from "react";
 
-const inputHelper = (
+const inputHelper = <T extends Record<string, string>>(
   e: React.ChangeEvent<
     HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
   >,
-  data: any
-) => {
-  const tempData: any = { ...data };
-  tempData[e.target.name] = e.target.value;
-  return tempData;
+  data: T
+): T => {
+  return { ...data, [e.target.name]: e.target.value };
 };
 
 export default inputHelper;

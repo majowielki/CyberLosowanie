@@ -1,3 +1,4 @@
+using Azure.Identity;
 using CyberLosowanie.Data;
 using CyberLosowanie.Interfaces.Repositories;
 using CyberLosowanie.Interfaces.Services;
@@ -12,6 +13,15 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Production secrets (JWT secret, connection string) come from Azure Key Vault.
+// Activated only when "KeyVault:Uri" is configured (App Service setting), so local
+// dev keeps using User Secrets and CI needs no Azure access.
+var keyVaultUri = builder.Configuration.GetValue<string>("KeyVault:Uri");
+if (!string.IsNullOrWhiteSpace(keyVaultUri))
+{
+    builder.Configuration.AddAzureKeyVault(new Uri(keyVaultUri), new DefaultAzureCredential());
+}
 
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -108,9 +118,6 @@ builder.Services.AddCors(options =>
 
 // Add memory cache for performance
 builder.Services.AddMemoryCache();
-
-// Add API versioning
-builder.Services.AddApiVersioning();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

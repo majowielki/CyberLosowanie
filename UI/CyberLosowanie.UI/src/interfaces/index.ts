@@ -1,12 +1,15 @@
 import userModel from "./userModel";
 import cyberekModel from "./cyberekModel";
-import apiResponse from "./apiResponse";
+import apiResponse, { apiResponseBody } from "./apiResponse";
+import loginResponseModel from "./loginResponseModel";
 import CyberekAssignment from "./cyberekAssignment";
 import GiftedCyberekAssignment from "./giftedCyberekAssignment";
-export type { 
-  userModel, 
-  cyberekModel, 
+export type {
+  userModel,
+  cyberekModel,
   apiResponse,
-  CyberekAssignment, 
-  GiftedCyberekAssignment 
+  apiResponseBody,
+  loginResponseModel,
+  CyberekAssignment,
+  GiftedCyberekAssignment
 };

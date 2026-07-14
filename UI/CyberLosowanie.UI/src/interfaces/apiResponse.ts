@@ -1,22 +1,19 @@
+// Body returned by every backend endpoint — mirrors C# ApiResponse<T>.
+export interface apiResponseBody<T = unknown> {
+  isSuccess: boolean;
+  data?: T;
+  message: string;
+  errors: string[];
+  statusCode: number;
+}
+
+// Envelope returned by a non-unwrapped RTK Query mutation call:
+// either `data` (HTTP 2xx body) or `error` is present.
 export default interface apiResponse<T = unknown> {
-    // RTK Query success response - contains your C# ApiResponse structure
-    data?: {
-      isSuccess: boolean;
-      data?: T;
-      message: string;
-      errors: string[];
-      statusCode: number;
-    };
-    // RTK Query error response - can be various formats
-    error?: {
-      status?: number;
-      data?: {
-        isSuccess?: boolean;
-        message?: string;
-        errors?: string[];
-        statusCode?: number;
-      };
-      message?: string;
-    };
-  }
-  
+  data?: apiResponseBody<T>;
+  error?: {
+    status?: number;
+    data?: Partial<apiResponseBody<T>>;
+    message?: string;
+  };
+}
