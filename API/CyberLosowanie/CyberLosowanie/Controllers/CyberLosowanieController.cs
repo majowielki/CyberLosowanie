@@ -35,7 +35,8 @@ namespace CyberLosowanie.Controllers
         public async Task<IActionResult> GetAvailableToPickCyberki()
         {
             var availableCyberki = await _cyberekService.GetAvailableToPickCyberkiAsync();
-            return Ok(ApiResponse<IEnumerable<Cyberek>>.Success(availableCyberki));
+            // Collection endpoints always return 200 with a (possibly empty) list
+            return Ok(ApiResponse<IEnumerable<Cyberek>>.Success(availableCyberki ?? Enumerable.Empty<Cyberek>()));
         }
 
         [HttpGet("{id:int}", Name = "GetCyberek")]

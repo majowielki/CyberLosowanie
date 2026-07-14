@@ -146,7 +146,7 @@ namespace CyberLosowanie.Test
                 new Cyberek
                 {
                     Id = 1,
-                    Name = "Micha≥",
+                    Name = "Micha≈Ç",
                     Surname = "Majewski",
                     ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
                     GiftedCyberekId = 0,
@@ -156,7 +156,7 @@ namespace CyberLosowanie.Test
                 {
                     Id = 5,
                     Name = "Asia",
-                    Surname = "Ma≥ek",
+                    Surname = "Ma≈Çek",
                     ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
                     GiftedCyberekId = 0,
                     BannedCyberki = new List<int> { 5, 7, 8 }
@@ -178,10 +178,10 @@ namespace CyberLosowanie.Test
             apiResponse.Data.Should().HaveCount(2);
             
             var dataList = apiResponse.Data.ToList();
-            dataList[0].Name.Should().Be("Micha≥");
+            dataList[0].Name.Should().Be("Micha≈Ç");
             dataList[0].Surname.Should().Be("Majewski");
             dataList[1].Name.Should().Be("Asia");
-            dataList[1].Surname.Should().Be("Ma≥ek");
+            dataList[1].Surname.Should().Be("Ma≈Çek");
         }
 
         [Fact]
@@ -276,7 +276,7 @@ namespace CyberLosowanie.Test
         }
 
         [Fact]
-        public async Task GetAvailableToPickCyberki_WithNullFromService_ReturnsNotFound()
+        public async Task GetAvailableToPickCyberki_WithNullFromService_ReturnsOkWithEmptyList()
         {
             // Arrange
             _cyberekServiceMock.Setup(x => x.GetAvailableToPickCyberkiAsync())
@@ -285,8 +285,14 @@ namespace CyberLosowanie.Test
             // Act
             var result = await _controller.GetAvailableToPickCyberki();
 
-            // Assert
-            result.Should().BeOfType<NotFoundResult>();
+            // Assert - contract: a collection endpoint returns 200 with an empty list
+            result.Should().BeOfType<OkObjectResult>();
+            var okResult = result as OkObjectResult;
+            okResult!.Value.Should().BeOfType<ApiResponse<IEnumerable<Cyberek>>>();
+
+            var apiResponse = okResult.Value as ApiResponse<IEnumerable<Cyberek>>;
+            apiResponse!.IsSuccess.Should().BeTrue();
+            apiResponse.Data.Should().BeEmpty();
         }
 
         #endregion

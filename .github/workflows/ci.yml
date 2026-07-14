@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (build + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: API/CyberLosowanie
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore CyberLosowanie.sln
+
+      - name: Build
+        run: dotnet build CyberLosowanie.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test CyberLosowanie.sln --configuration Release --no-build --verbosity normal
+
+  frontend:
+    name: Frontend (build + lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: UI/CyberLosowanie.UI
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: UI/CyberLosowanie.UI/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Lint is intentionally non-blocking for now: the remaining errors are
+      # `any`/typing debt scheduled for Faza 3 (H2/H4/H6/E3). Once that lands,
+      # remove `continue-on-error` to make lint a hard gate.
+      - name: Lint (non-blocking until Faza 3)
+        run: npm run lint
+        continue-on-error: true

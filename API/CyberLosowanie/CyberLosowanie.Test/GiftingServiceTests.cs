@@ -329,12 +329,12 @@ namespace CyberLosowanie.Test
         {
             // Arrange - Use realistic database data
             var cyberki = CreateRealisticDatabaseCyberki();
-            var michal = cyberki.First(c => c.Id == 1); // Micha≥ Majewski
+            var michal = cyberki.First(c => c.Id == 1); // Micha≈Ç Majewski
 
-            // Act - Try to assign Micha≥ to gift to Ola (ID: 3)
+            // Act - Try to assign Micha≈Ç to gift to Ola (ID: 3)
             var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, michal, 3);
 
-            // Assert - Should return 3 since it's not in Micha≥'s banned list [1, 2, 6]
+            // Assert - Should return 3 since it's not in Micha≈Ç's banned list [1, 2, 6]
             result.Should().Be(3);
         }
 
@@ -343,9 +343,9 @@ namespace CyberLosowanie.Test
         {
             // Arrange - Use realistic database data
             var cyberki = CreateRealisticDatabaseCyberki();
-            var michal = cyberki.First(c => c.Id == 1); // Micha≥ Majewski
+            var michal = cyberki.First(c => c.Id == 1); // Micha≈Ç Majewski
 
-            // Act - Try to assign Micha≥ to gift to Kornelia (ID: 2) - which is banned
+            // Act - Try to assign Micha≈Ç to gift to Kornelia (ID: 2) - which is banned
             var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, michal, 2);
 
             // Assert - Should not return 2 (banned), should not return 1 (self) or 6 (also banned)
@@ -362,7 +362,7 @@ namespace CyberLosowanie.Test
             var cyberki = CreateRealisticDatabaseCyberki();
             
             // Set some assignments to test exclusion
-            cyberki.First(c => c.Id == 1).GiftedCyberekId = 3; // Micha≥ -> Ola
+            cyberki.First(c => c.Id == 1).GiftedCyberekId = 3; // Micha≈Ç -> Ola
             cyberki.First(c => c.Id == 2).GiftedCyberekId = 4; // Kornelia -> Daria
             
             var asiasBannedList = cyberki.First(c => c.Id == 5).BannedCyberki; // Asia's banned: [5, 7, 8]
@@ -417,7 +417,7 @@ namespace CyberLosowanie.Test
                 new Cyberek
                 {
                     Id = 1,
-                    Name = "Micha≥",
+                    Name = "Micha≈Ç",
                     Surname = "Majewski",
                     ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
                     GiftedCyberekId = 0,
@@ -436,7 +436,7 @@ namespace CyberLosowanie.Test
                 {
                     Id = 3,
                     Name = "Ola",
-                    Surname = "Sudo≥",
+                    Surname = "Sudo≈Ç",
                     ImageUrl = "https://randomuser.me/api/portraits/women/3.jpg",
                     GiftedCyberekId = 0,
                     BannedCyberki = new List<int> { 3, 9, 11 }
@@ -454,7 +454,7 @@ namespace CyberLosowanie.Test
                 {
                     Id = 5,
                     Name = "Asia",
-                    Surname = "Ma≥ek",
+                    Surname = "Ma≈Çek",
                     ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
                     GiftedCyberekId = 0,
                     BannedCyberki = new List<int> { 5, 7, 8 }
@@ -463,7 +463,7 @@ namespace CyberLosowanie.Test
                 {
                     Id = 6,
                     Name = "Filip",
-                    Surname = "WilczyÒski",
+                    Surname = "Wilczy≈Ñski",
                     ImageUrl = "https://randomuser.me/api/portraits/men/6.jpg",
                     GiftedCyberekId = 0,
                     BannedCyberki = new List<int> { 5, 6, 12 }
@@ -480,7 +480,7 @@ namespace CyberLosowanie.Test
                 new Cyberek
                 {
                     Id = 8,
-                    Name = "Micha≥",
+                    Name = "Micha≈Ç",
                     Surname = "Karbowiak",
                     ImageUrl = "https://randomuser.me/api/portraits/men/8.jpg",
                     GiftedCyberekId = 0,
@@ -490,7 +490,7 @@ namespace CyberLosowanie.Test
                 {
                     Id = 9,
                     Name = "Karol",
-                    Surname = "Jagie≥≥o",
+                    Surname = "Jagie≈Ç≈Ço",
                     ImageUrl = "https://randomuser.me/api/portraits/men/9.jpg",
                     GiftedCyberekId = 0,
                     BannedCyberki = new List<int> { 3, 4, 9 }
@@ -507,7 +507,7 @@ namespace CyberLosowanie.Test
                 new Cyberek
                 {
                     Id = 11,
-                    Name = "Pawe≥",
+                    Name = "Pawe≈Ç",
                     Surname = "Kurowski",
                     ImageUrl = "https://randomuser.me/api/portraits/men/11.jpg",
                     GiftedCyberekId = 0,
@@ -517,7 +517,7 @@ namespace CyberLosowanie.Test
                 {
                     Id = 12,
                     Name = "Wiktoria",
-                    Surname = "WilczyÒska",
+                    Surname = "Wilczy≈Ñska",
                     ImageUrl = "https://randomuser.me/api/portraits/women/12.jpg",
                     GiftedCyberekId = 0,
                     BannedCyberki = new List<int> { 6, 9, 12 }
