@@ -38,6 +38,9 @@ builder.Services.AddScoped<ICyberekService, CyberekService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGiftingService, GiftingService>();
+
+// Randomness source for the gifting algorithm — singleton over Random.Shared (I7).
+builder.Services.AddSingleton<IRandomProvider, RandomProvider>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>

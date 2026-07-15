@@ -6,11 +6,16 @@ namespace CyberLosowanie.Services
 {
     public class GiftingService : IGiftingService
     {
-        private readonly Random _random;
+        private readonly IRandomProvider _random;
 
-        public GiftingService()
+        public GiftingService(IRandomProvider random)
         {
-            _random = new Random();
+            _random = random ?? throw new ArgumentNullException(nameof(random));
+        }
+
+        // Convenience for callers/tests that don't need a seeded sequence.
+        public GiftingService() : this(new RandomProvider())
+        {
         }
 
         public List<int> GetAvailableToBeGiftedCyberki(List<Cyberek> cyberki, List<int> bannedCyberki)

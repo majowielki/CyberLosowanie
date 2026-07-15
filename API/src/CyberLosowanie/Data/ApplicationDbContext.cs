@@ -27,13 +27,18 @@ namespace CyberLosowanie.Data
                 entity.HasIndex(e => e.Timestamp);
                 entity.HasIndex(e => e.LogLevel);
                 entity.HasIndex(e => e.UserId);
-                
-                // Configure text fields for SQL Server
-                entity.Property(e => e.Message).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.ExceptionDetails).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.StackTrace).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.RequestBody).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.AdditionalData).HasColumnType("nvarchar(max)");
+
+                // Unbounded text fields. The nvarchar(max) column type is SQL Server
+                // specific; other providers (e.g. SQLite in tests) map string to their
+                // own unbounded text type, so only apply it for SQL Server.
+                if (Database.IsSqlServer())
+                {
+                    entity.Property(e => e.Message).HasColumnType("nvarchar(max)");
+                    entity.Property(e => e.ExceptionDetails).HasColumnType("nvarchar(max)");
+                    entity.Property(e => e.StackTrace).HasColumnType("nvarchar(max)");
+                    entity.Property(e => e.RequestBody).HasColumnType("nvarchar(max)");
+                    entity.Property(e => e.AdditionalData).HasColumnType("nvarchar(max)");
+                }
             });
 
             // Configure Cyberek entity
