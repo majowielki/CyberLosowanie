@@ -21,7 +21,6 @@ import { debugLog } from "@/shared/config";
 function SelectYourCyberek() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const userName = useSelector((state: RootState) => state.userAuthStore.fullName);
   const userHasGiftedCyberekId = useSelector((state: RootState) => state.userAuthStore.giftedCyberekId);
 
   const { data, isLoading, error } = useGetAvailableToPickQuery();
@@ -33,10 +32,8 @@ function SelectYourCyberek() {
     setLoading(true);
 
     try {
-      await assignCyberek({
-        cyberekId,
-        userName: userName
-      }).unwrap();
+      // Identity comes from the JWT on the request — no userName in the payload.
+      await assignCyberek({ cyberekId }).unwrap();
 
       dispatch(setCyberekId(cyberekId));
       toast({ description: "Cyberek selected successfully!" });

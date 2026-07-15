@@ -1,19 +1,14 @@
 import { useGetMyGiftedCyberekQuery } from "@/features/cyberki/cyberLosowanieApi";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
-import { useSelector } from "react-redux";
-import { RootState } from "@/app/store";
 import { useNavigate } from "react-router-dom";
 
 // Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function FinalPage() {
   const navigate = useNavigate();
-  const userName = useSelector((state: RootState) => state.userAuthStore.fullName);
-  // FinalPage always asks backend for the final gifted cyberek using the
-  // current user context. Backend is the single source of truth.
-  const { data, isLoading, error } = useGetMyGiftedCyberekQuery(userName, {
-    skip: !userName,
-  });
+  // FinalPage always asks backend for the final gifted cyberek; identity comes
+  // from the JWT on the request. Backend is the single source of truth.
+  const { data, isLoading, error } = useGetMyGiftedCyberekQuery();
 
   // If we are still loading results from backend, show a loading state
   if (isLoading) {

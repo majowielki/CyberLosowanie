@@ -147,6 +147,9 @@ namespace CyberLosowanie.Middleware
             {
                 CyberekNotFoundException ex => (HttpStatusCode.NotFound, ex.Message, null as List<string>),
                 UserNotFoundException ex => (HttpStatusCode.NotFound, ex.Message, null as List<string>),
+                // Race outcome, not a client error: the box was valid when displayed but is
+                // gone now — the client should refresh the list and let the user pick again.
+                GiftTargetUnavailableException ex => (HttpStatusCode.Conflict, ex.Message, null as List<string>),
                 InvalidGiftAssignmentException ex => (HttpStatusCode.BadRequest, ex.Message, null as List<string>),
                 BusinessValidationException ex => (HttpStatusCode.BadRequest, "Validation failed", ex.ValidationErrors),
                 ArgumentNullException ex => (HttpStatusCode.BadRequest, $"Required parameter is missing: {ex.ParamName}", null as List<string>),

@@ -79,6 +79,14 @@ namespace CyberLosowanie.Test
         }
 
         [Fact]
+        public async Task GiftTargetUnavailableException_MapsTo409()
+        {
+            // Race outcome (box taken / would strand someone) — client refreshes and retries.
+            var (status, _, _) = await InvokeWithException(new GiftTargetUnavailableException(1, 5, "box taken"));
+            status.Should().Be(409);
+        }
+
+        [Fact]
         public async Task BusinessValidationException_MapsTo400WithErrors()
         {
             var errors = new List<string> { "field a invalid", "field b invalid" };

@@ -46,5 +46,21 @@ namespace CyberLosowanie.Repositories
         {
             await _context.SaveChangesAsync();
         }
+
+        // Two users can validate different targets against the same snapshot and each
+        // choice alone is safe, while both together strand a third person — no unique
+        // index catches that (targets differ). An exclusive, transaction-scoped applock
+        // makes validate+commit sections run one at a time (released automatically at
+        // commit/rollback). On SQLite (tests) writes are serialized by the engine's
+        // single-writer model, so this is a no-op — same pattern as the AuditLog column
+        // types guarded by IsSqlServer().
+        public async Task AcquireDrawLockAsync()
+        {
+            if (_context.Database.IsSqlServer())
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_getapplock @Resource = N'CyberLosowanie.GiftDraw', @LockMode = 'Exclusive', @LockOwner = 'Transaction';");
+            }
+        }
     }
 }

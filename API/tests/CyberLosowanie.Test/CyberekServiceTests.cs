@@ -161,16 +161,6 @@ namespace CyberLosowanie.Test
         [Theory]
         [InlineData(0)]
         [InlineData(CyberLosowanieConstants.MAX_CYBEREK_ID + 1)]
-        public async Task GetAvailableGiftTargetsAsync_WithIdOutsideSeedRange_ThrowsBusinessValidationException(int invalidId)
-        {
-            var service = CreateService();
-
-            await Assert.ThrowsAsync<BusinessValidationException>(() => service.GetAvailableGiftTargetsAsync(invalidId));
-        }
-
-        [Theory]
-        [InlineData(0)]
-        [InlineData(CyberLosowanieConstants.MAX_CYBEREK_ID + 1)]
         public async Task AssignCyberekToUserAsync_WithIdOutsideSeedRange_ThrowsBusinessValidationException(int invalidId)
         {
             var service = CreateService();
@@ -200,41 +190,79 @@ namespace CyberLosowanie.Test
 
         #endregion
 
-        #region GetAvailableGiftTargetsAsync
+        #region GetAvailableGiftTargetsForUserAsync
 
         [Fact]
-        public async Task GetAvailableGiftTargetsAsync_WhenAlreadyGifted_ReturnsSingleAssignedTarget()
+        public async Task GetAvailableGiftTargetsForUserAsync_WithEmptyUsername_ThrowsBusinessValidationException()
         {
-            _cyberekRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(Cyberek(1, gifted: 4));
             var service = CreateService();
 
-            var result = await service.GetAvailableGiftTargetsAsync(1);
-
-            result.Should().Equal(4);
-            _gifting.Verify(g => g.GetAvailableToBeGiftedCyberki(It.IsAny<List<Cyberek>>(), It.IsAny<List<int>>()), Times.Never);
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => service.GetAvailableGiftTargetsForUserAsync("  "));
         }
 
         [Fact]
-        public async Task GetAvailableGiftTargetsAsync_WhenNotGifted_DelegatesToGiftingService()
+        public async Task GetAvailableGiftTargetsForUserAsync_WhenUserNotFound_ThrowsUserNotFoundException()
         {
-            _cyberekRepo.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(Cyberek(1, banned: new List<int> { 2 }));
-            _cyberekRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(2), Cyberek(3) });
-            _gifting.Setup(g => g.GetAvailableToBeGiftedCyberki(It.IsAny<List<Cyberek>>(), It.IsAny<List<int>>()))
+            _userRepo.Setup(r => r.GetByUsernameAsync("ghost")).ReturnsAsync((ApplicationUser)null!);
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<UserNotFoundException>(
+                () => service.GetAvailableGiftTargetsForUserAsync("ghost"));
+        }
+
+        [Fact]
+        public async Task GetAvailableGiftTargetsForUserAsync_WhenUserHasNoCyberek_ThrowsInvalidGiftAssignmentException()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 0 });
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<InvalidGiftAssignmentException>(
+                () => service.GetAvailableGiftTargetsForUserAsync("john"));
+        }
+
+        [Fact]
+        public async Task GetAvailableGiftTargetsForUserAsync_WhenUserAlreadyDrew_ReturnsOnlyTheirOwnTarget()
+        {
+            // The owner sees their single (already drawn) target; nobody else's results
+            // are reachable through this path.
+            _userRepo.Setup(r => r.GetByUsernameAsync("john"))
+                .ReturnsAsync(new ApplicationUser { CyberekId = 1, GiftedCyberekId = 4 });
+            var service = CreateService();
+
+            var result = await service.GetAvailableGiftTargetsForUserAsync("john");
+
+            result.Should().Equal(4);
+            _gifting.Verify(g => g.GetSafeTargets(It.IsAny<IReadOnlyList<Cyberek>>(), It.IsAny<Cyberek>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetAvailableGiftTargetsForUserAsync_WhenNotDrawnYet_ReturnsSafeTargets()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("john"))
+                .ReturnsAsync(new ApplicationUser { CyberekId = 1, GiftedCyberekId = 0 });
+            _cyberekRepo.Setup(r => r.GetAllAsync())
+                .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(2), Cyberek(3) });
+            _gifting.Setup(g => g.GetSafeTargets(It.IsAny<IReadOnlyList<Cyberek>>(), It.Is<Cyberek>(c => c.Id == 1)))
                 .Returns(new List<int> { 3 });
             var service = CreateService();
 
-            var result = await service.GetAvailableGiftTargetsAsync(1);
+            var result = await service.GetAvailableGiftTargetsForUserAsync("john");
 
             result.Should().Equal(3);
         }
 
         [Fact]
-        public async Task GetAvailableGiftTargetsAsync_WhenCyberekNotFound_ThrowsCyberekNotFoundException()
+        public async Task GetAvailableGiftTargetsForUserAsync_WhenUsersCyberekMissing_ThrowsCyberekNotFoundException()
         {
-            _cyberekRepo.Setup(r => r.GetByIdAsync(7)).ReturnsAsync((Cyberek)null!);
+            _userRepo.Setup(r => r.GetByUsernameAsync("john"))
+                .ReturnsAsync(new ApplicationUser { CyberekId = 7, GiftedCyberekId = 0 });
+            _cyberekRepo.Setup(r => r.GetAllAsync())
+                .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(2) });
             var service = CreateService();
 
-            await Assert.ThrowsAsync<CyberekNotFoundException>(() => service.GetAvailableGiftTargetsAsync(7));
+            await Assert.ThrowsAsync<CyberekNotFoundException>(
+                () => service.GetAvailableGiftTargetsForUserAsync("john"));
         }
 
         #endregion
@@ -349,20 +377,29 @@ namespace CyberLosowanie.Test
 
         #region AssignGiftAsync
 
+        [Theory]
+        [InlineData(0)]
+        [InlineData(CyberLosowanieConstants.MAX_CYBEREK_ID + 1)]
+        public async Task AssignGiftAsync_WithTargetOutsideSeedRange_ThrowsBusinessValidationException(int invalidTarget)
+        {
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<BusinessValidationException>(() => service.AssignGiftAsync("john", invalidTarget));
+        }
+
         [Fact]
         public async Task AssignGiftAsync_WhenUserHasNoCyberek_ThrowsInvalidGiftAssignmentException()
         {
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 0 });
             var service = CreateService();
 
-            await Assert.ThrowsAsync<InvalidGiftAssignmentException>(() => service.AssignGiftAsync("john"));
+            await Assert.ThrowsAsync<InvalidGiftAssignmentException>(() => service.AssignGiftAsync("john", 5));
         }
 
         [Fact]
         public async Task AssignGiftAsync_WhenGiftAlreadyAssigned_ThrowsInvalidGiftAssignmentException()
         {
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 1, Id = "u1" });
-            _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
             // The giver (cyberek 1) already has a gift assigned in the transactional snapshot.
             _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1, gifted: 7), Cyberek(5) });
@@ -370,28 +407,88 @@ namespace CyberLosowanie.Test
             _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
             var service = CreateService();
 
-            await Assert.ThrowsAsync<InvalidGiftAssignmentException>(() => service.AssignGiftAsync("john"));
+            await Assert.ThrowsAsync<InvalidGiftAssignmentException>(() => service.AssignGiftAsync("john", 5));
         }
 
         [Fact]
-        public async Task AssignGiftAsync_OnSuccess_ReturnsAssignedTargetAndCommits()
+        public async Task AssignGiftAsync_WhenChoosingSelf_ThrowsBusinessValidationException()
         {
-            var user = new ApplicationUser { CyberekId = 1, Id = "u1" };
-            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
-            _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 1, Id = "u1" });
             _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(5) });
-            _gifting.Setup(g => g.GetAvailableToBeGiftedCyberek(It.IsAny<List<Cyberek>>(), It.IsAny<Cyberek>()))
-                .Returns(5);
             var tx = MockTransaction();
             _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
             var service = CreateService();
 
-            var result = await service.AssignGiftAsync("john");
+            await Assert.ThrowsAsync<BusinessValidationException>(() => service.AssignGiftAsync("john", 1));
+        }
 
+        [Fact]
+        public async Task AssignGiftAsync_WhenChoosingBannedTarget_ThrowsBusinessValidationException()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 1, Id = "u1" });
+            _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
+                .ReturnsAsync(new List<Cyberek> { Cyberek(1, banned: new List<int> { 5 }), Cyberek(5) });
+            var tx = MockTransaction();
+            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<BusinessValidationException>(() => service.AssignGiftAsync("john", 5));
+        }
+
+        [Fact]
+        public async Task AssignGiftAsync_WhenTargetAlreadyTaken_ThrowsGiftTargetUnavailableException()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 1, Id = "u1" });
+            // Cyberek 3 already gifts 5 — the chosen box is gone (concurrent draw).
+            _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
+                .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(3, gifted: 5), Cyberek(5) });
+            var tx = MockTransaction();
+            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<GiftTargetUnavailableException>(() => service.AssignGiftAsync("john", 5));
+        }
+
+        [Fact]
+        public async Task AssignGiftAsync_WhenChoiceWouldStrandSomeone_ThrowsGiftTargetUnavailableException()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 1, Id = "u1" });
+            _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
+                .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(5) });
+            _gifting.Setup(g => g.IsChoiceSafe(It.IsAny<IReadOnlyList<Cyberek>>(), It.Is<Cyberek>(c => c.Id == 1), 5))
+                .Returns(false);
+            var tx = MockTransaction();
+            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<GiftTargetUnavailableException>(() => service.AssignGiftAsync("john", 5));
+            tx.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task AssignGiftAsync_OnSuccess_CommitsChosenTargetUnderDrawLock()
+        {
+            var user = new ApplicationUser { CyberekId = 1, Id = "u1" };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            var giver = Cyberek(1);
+            _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
+                .ReturnsAsync(new List<Cyberek> { giver, Cyberek(5) });
+            _gifting.Setup(g => g.IsChoiceSafe(It.IsAny<IReadOnlyList<Cyberek>>(), It.Is<Cyberek>(c => c.Id == 1), 5))
+                .Returns(true);
+            var tx = MockTransaction();
+            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var service = CreateService();
+
+            var result = await service.AssignGiftAsync("john", 5);
+
+            // The user's choice is committed verbatim — the server never substitutes it.
             result.Should().Be(5);
+            giver.GiftedCyberekId.Should().Be(5);
             user.GiftedCyberekId.Should().Be(5);
             tx.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+            // The validate+commit section must run under the serialized draw lock.
+            _cyberekRepo.Verify(r => r.AcquireDrawLockAsync(), Times.Once);
         }
 
         [Fact]
@@ -399,17 +496,16 @@ namespace CyberLosowanie.Test
         {
             var user = new ApplicationUser { CyberekId = 1, Id = "u1" };
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
-            _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
             _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(5) });
-            _gifting.Setup(g => g.GetAvailableToBeGiftedCyberek(It.IsAny<List<Cyberek>>(), It.IsAny<Cyberek>()))
-                .Returns(5);
+            _gifting.Setup(g => g.IsChoiceSafe(It.IsAny<IReadOnlyList<Cyberek>>(), It.IsAny<Cyberek>(), 5))
+                .Returns(true);
             _cyberekRepo.Setup(r => r.SaveChangesAsync()).ThrowsAsync(new Exception("save failed"));
             var tx = MockTransaction();
             _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
             var service = CreateService();
 
-            await Assert.ThrowsAsync<DataAccessException>(() => service.AssignGiftAsync("john"));
+            await Assert.ThrowsAsync<DataAccessException>(() => service.AssignGiftAsync("john", 5));
             tx.Verify(t => t.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 

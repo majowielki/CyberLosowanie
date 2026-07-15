@@ -1,163 +1,160 @@
-﻿using CyberLosowanie.Interfaces.Services;
+using CyberLosowanie.Interfaces.Services;
 using CyberLosowanie.Models;
-using CyberLosowanie.Exceptions;
 
 namespace CyberLosowanie.Services
 {
+    /// <summary>
+    /// Matching-based implementation of the draw rules. The feasibility question
+    /// ("can everyone still complete the draw?") is answered with a maximum bipartite
+    /// matching (Kuhn's augmenting paths, O(V·E), deterministic) instead of the previous
+    /// exponential backtracking. Givers are cyberki with GiftedCyberekId == 0; targets
+    /// are cyberki nobody gifts yet; an edge exists when target != giver and the target
+    /// is not on the giver's ban list.
+    /// </summary>
     public class GiftingService : IGiftingService
     {
-        private readonly IRandomProvider _random;
-
-        public GiftingService(IRandomProvider random)
+        public bool HasCompleteAssignment(IReadOnlyList<Cyberek> cyberki)
         {
-            _random = random ?? throw new ArgumentNullException(nameof(random));
+            ArgumentNullException.ThrowIfNull(cyberki);
+
+            return RemainderHasCompleteAssignment(cyberki, pickedGiverId: null, pickedTargetId: null);
         }
 
-        // Convenience for callers/tests that don't need a seeded sequence.
-        public GiftingService() : this(new RandomProvider())
+        public List<int> GetSafeTargets(IReadOnlyList<Cyberek> cyberki, Cyberek giver)
         {
-        }
+            ArgumentNullException.ThrowIfNull(cyberki);
+            ArgumentNullException.ThrowIfNull(giver);
 
-        public List<int> GetAvailableToBeGiftedCyberki(List<Cyberek> cyberki, List<int> bannedCyberki)
-        {
-            if (cyberki == null)
-                return new List<int>();
-
-            var availableTargets = cyberki.Select(c => c.Id).ToHashSet();
-
-            // Remove targets already taken (those already gifted by someone)
-            foreach (var cyberek in cyberki.Where(c => c.GiftedCyberekId != 0))
+            if (giver.GiftedCyberekId != 0)
             {
-                availableTargets.Remove(cyberek.GiftedCyberekId);
+                return new List<int>(); // already drew — no further choices
             }
 
-            // Remove banned
-            if (bannedCyberki != null)
-            {
-                foreach (var bannedId in bannedCyberki)
-                {
-                    availableTargets.Remove(bannedId);
-                }
-            }
+            var takenTargets = GetTakenTargets(cyberki);
 
-            return availableTargets.ToList();
+            return cyberki
+                .Select(c => c.Id)
+                .Where(id => IsEdgeAllowed(giver, id) && !takenTargets.Contains(id))
+                .Where(id => RemainderHasCompleteAssignment(cyberki, giver.Id, id))
+                .ToList();
         }
 
-        public int GetAvailableToBeGiftedCyberek(List<Cyberek> cyberki, Cyberek cyberek)
+        public bool IsChoiceSafe(IReadOnlyList<Cyberek> cyberki, Cyberek giver, int targetId)
         {
-            if (cyberki == null || !cyberki.Any())
-                throw new ArgumentException("Cyberki list cannot be null or empty", nameof(cyberki));
-            if (cyberek == null)
-                throw new ArgumentNullException(nameof(cyberek));
+            ArgumentNullException.ThrowIfNull(cyberki);
+            ArgumentNullException.ThrowIfNull(giver);
 
-            // Compute currently used targets from existing assignments
-            var currentlyUsedTargets = cyberki
+            if (giver.GiftedCyberekId != 0) return false;
+            if (!IsEdgeAllowed(giver, targetId)) return false;
+            if (cyberki.All(c => c.Id != targetId)) return false;
+            if (GetTakenTargets(cyberki).Contains(targetId)) return false;
+
+            return RemainderHasCompleteAssignment(cyberki, giver.Id, targetId);
+        }
+
+        private static bool IsEdgeAllowed(Cyberek giver, int targetId)
+        {
+            return targetId != giver.Id
+                   && giver.BannedCyberki?.Contains(targetId) != true;
+        }
+
+        private static HashSet<int> GetTakenTargets(IReadOnlyList<Cyberek> cyberki)
+        {
+            return cyberki
                 .Where(c => c.GiftedCyberekId != 0)
                 .Select(c => c.GiftedCyberekId)
                 .ToHashSet();
-
-            // Build candidate targets for the gift giver (exclude self, banned and already used targets)
-            var candidateTargets = cyberki
-                .Where(c => c.Id != cyberek.Id)
-                .Where(c => cyberek.BannedCyberki?.Contains(c.Id) != true)
-                .Where(c => !currentlyUsedTargets.Contains(c.Id))
-                .Select(c => c.Id)
-                .ToList();
-
-            // Server-side draw (C2): the client never picks the target. Shuffle the
-            // candidates and take the first one that still allows a complete assignment
-            // for everyone else (backtracking).
-            var shuffledCandidates = candidateTargets.OrderBy(_ => _random.Next()).ToList();
-            foreach (var candidate in shuffledCandidates)
-            {
-                if (IsAssignmentGloballyValid(cyberek, candidate, cyberki))
-                {
-                    return candidate;
-                }
-            }
-
-            throw new InvalidGiftAssignmentException(cyberek.Id, 0,
-                $"No valid gift targets available for cyberek {cyberek.Id}. Backtracking exhausted all {shuffledCandidates.Count} candidates.");
         }
 
         /// <summary>
-        /// Validates that choosing targetId for giftGiver still allows a complete assignment for all remaining unassigned cyberki.
-        /// Also ensures the chosen target isn't already taken in existing assignments.
+        /// Does a perfect matching exist for all still-unassigned givers, optionally
+        /// treating (pickedGiverId → pickedTargetId) as already committed?
         /// </summary>
-        private bool IsAssignmentGloballyValid(Cyberek giftGiver, int targetId, List<Cyberek> allCyberki)
+        private static bool RemainderHasCompleteAssignment(
+            IReadOnlyList<Cyberek> cyberki, int? pickedGiverId, int? pickedTargetId)
         {
-            // Basic checks
-            if (targetId == giftGiver.Id) return false; // cannot gift to self
-            if (giftGiver.BannedCyberki?.Contains(targetId) == true) return false;
-            if (!allCyberki.Any(c => c.Id == targetId)) return false;
-
-            // Prevent using a target already taken in existing assignments
-            var existingUsed = allCyberki
-                .Where(c => c.GiftedCyberekId != 0 && c.Id != giftGiver.Id)
-                .Select(c => c.GiftedCyberekId)
-                .ToHashSet();
-            if (existingUsed.Contains(targetId))
-                return false;
-
-            // Build current assignments map (gift giver proposed target overrides any existing value)
-            var currentAssignments = new Dictionary<int, int>();
-            foreach (var c in allCyberki.Where(c => c.GiftedCyberekId != 0 && c.Id != giftGiver.Id))
-            {
-                currentAssignments[c.Id] = c.GiftedCyberekId;
-            }
-            currentAssignments[giftGiver.Id] = targetId;
-
-            var usedTargets = currentAssignments.Values.ToHashSet();
-
-            // Remaining givers needing assignment
-            var remaining = allCyberki
-                .Where(c => c.GiftedCyberekId == 0 && c.Id != giftGiver.Id)
+            var givers = cyberki
+                .Where(c => c.GiftedCyberekId == 0 && c.Id != pickedGiverId)
                 .ToList();
+            if (givers.Count == 0)
+            {
+                return true;
+            }
 
-            return BacktrackRemaining(allCyberki, remaining, currentAssignments, usedTargets);
+            var takenTargets = GetTakenTargets(cyberki);
+            if (pickedTargetId.HasValue)
+            {
+                takenTargets.Add(pickedTargetId.Value);
+            }
+
+            var freeTargets = cyberki
+                .Select(c => c.Id)
+                .Where(id => !takenTargets.Contains(id))
+                .ToList();
+            if (freeTargets.Count < givers.Count)
+            {
+                return false;
+            }
+
+            var targetIndexById = new Dictionary<int, int>(freeTargets.Count);
+            for (var i = 0; i < freeTargets.Count; i++)
+            {
+                targetIndexById[freeTargets[i]] = i;
+            }
+
+            var adjacency = new List<int>[givers.Count];
+            for (var g = 0; g < givers.Count; g++)
+            {
+                adjacency[g] = new List<int>();
+                foreach (var targetId in freeTargets)
+                {
+                    if (IsEdgeAllowed(givers[g], targetId))
+                    {
+                        adjacency[g].Add(targetIndexById[targetId]);
+                    }
+                }
+
+                if (adjacency[g].Count == 0)
+                {
+                    return false; // someone already has no candidate at all
+                }
+            }
+
+            // Kuhn's maximum matching: every giver must admit an augmenting path.
+            var giverMatchedToTarget = new int[freeTargets.Count];
+            Array.Fill(giverMatchedToTarget, -1);
+            for (var g = 0; g < givers.Count; g++)
+            {
+                var visitedTargets = new bool[freeTargets.Count];
+                if (!TryAugment(g, adjacency, visitedTargets, giverMatchedToTarget))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
-        private bool BacktrackRemaining(List<Cyberek> allCyberki, List<Cyberek> remaining, Dictionary<int, int> assignments, HashSet<int> usedTargets)
+        private static bool TryAugment(
+            int giver, List<int>[] adjacency, bool[] visitedTargets, int[] giverMatchedToTarget)
         {
-            if (!remaining.Any())
-                return true; // all assigned successfully
-
-            // Heuristic: choose cyberek with fewest available targets to reduce branching
-            var next = remaining
-                .Select(c => new { Cyberek = c, Targets = GetValidTargetsForCyberek(allCyberki, c, usedTargets) })
-                .OrderBy(x => x.Targets.Count)
-                .First();
-
-            if (!next.Targets.Any())
-                return false; // dead end
-
-            // Prepare remaining list for recursion
-            var newRemaining = remaining.Where(r => r.Id != next.Cyberek.Id).ToList();
-
-            foreach (var t in next.Targets)
+            foreach (var target in adjacency[giver])
             {
-                assignments[next.Cyberek.Id] = t;
-                usedTargets.Add(t);
+                if (visitedTargets[target])
+                {
+                    continue;
+                }
+                visitedTargets[target] = true;
 
-                if (BacktrackRemaining(allCyberki, newRemaining, assignments, usedTargets))
+                if (giverMatchedToTarget[target] == -1
+                    || TryAugment(giverMatchedToTarget[target], adjacency, visitedTargets, giverMatchedToTarget))
+                {
+                    giverMatchedToTarget[target] = giver;
                     return true;
-
-                // backtrack
-                usedTargets.Remove(t);
-                assignments.Remove(next.Cyberek.Id);
+                }
             }
 
             return false;
-        }
-
-        private List<int> GetValidTargetsForCyberek(List<Cyberek> cyberki, Cyberek cyberek, HashSet<int> usedTargets)
-        {
-            return cyberki
-                .Where(c => c.Id != cyberek.Id)
-                .Where(c => cyberek.BannedCyberki?.Contains(c.Id) != true)
-                .Where(c => !usedTargets.Contains(c.Id))
-                .Select(c => c.Id)
-                .ToList();
         }
     }
 }

@@ -59,10 +59,12 @@ const cyberLosowanieApi = createApi({
       },
     }),
 
-    // GET /api/CyberLosowanie/available-targets/{id} - Get available gift targets
-    getAvailableGiftTargets: builder.query<apiResponseBody<number[]>, number>({
-      query: (id) => ({
-        url: `${ENDPOINTS.AVAILABLE_TARGETS}/${id}`,
+    // GET /api/CyberLosowanie/my-available-targets - boxes the current user may still
+    // safely open. Identity comes from the JWT; the server returns only choices that
+    // keep the draw completable for everyone else.
+    getAvailableGiftTargets: builder.query<apiResponseBody<number[]>, void>({
+      query: () => ({
+        url: ENDPOINTS.MY_AVAILABLE_TARGETS,
       }),
       providesTags: ["Cyberki"],
       transformResponse: (response: apiResponseBody<number[]>) => {
@@ -71,10 +73,11 @@ const cyberLosowanieApi = createApi({
       },
     }),
 
-    // GET /api/CyberLosowanie/my-gifted-cyberek - Get the cyberek the current user will gift to
-    getMyGiftedCyberek: builder.query<apiResponseBody<cyberekModel>, string>({
-      query: (userName) => ({
-        url: `${ENDPOINTS.MY_GIFTED_CYBEREK}?userName=${encodeURIComponent(userName)}`,
+    // GET /api/CyberLosowanie/my-gifted-cyberek - Get the cyberek the current user will
+    // gift to. Identity comes from the JWT — no userName parameter.
+    getMyGiftedCyberek: builder.query<apiResponseBody<cyberekModel>, void>({
+      query: () => ({
+        url: ENDPOINTS.MY_GIFTED_CYBEREK,
       }),
       providesTags: ["Cyberki"],
       transformResponse: (response: apiResponseBody<cyberekModel>) => {
@@ -83,10 +86,10 @@ const cyberLosowanieApi = createApi({
       },
     }),
 
-    // POST /api/CyberLosowanie/assign-cyberek - Assign cyberek to user
-    assignCyberek: builder.mutation<apiResponseBody<null>, { cyberekId: number; userName: string }>({
-      query: ({ cyberekId, userName }) => ({
-        url: `${ENDPOINTS.ASSIGN_CYBEREK}?userName=${encodeURIComponent(userName)}`,
+    // POST /api/CyberLosowanie/assign-cyberek - Assign cyberek to the current user (JWT identity)
+    assignCyberek: builder.mutation<apiResponseBody<null>, { cyberekId: number }>({
+      query: ({ cyberekId }) => ({
+        url: ENDPOINTS.ASSIGN_CYBEREK,
         method: "POST",
         body: { cyberekId },
       }),
@@ -97,13 +100,14 @@ const cyberLosowanieApi = createApi({
       },
     }),
 
-    // PUT /api/CyberLosowanie/assign-gift - Run the server-side draw for the user.
-    // The client does not pick a target (C2); the server draws it and returns
-    // ApiResponse<int> where data is the assigned giftedCyberekId.
-    assignGiftedCyberek: builder.mutation<apiResponseBody<number>, { userName: string }>({
-      query: ({ userName }) => ({
-        url: `${ENDPOINTS.ASSIGN_GIFT}?userName=${encodeURIComponent(userName)}`,
+    // PUT /api/CyberLosowanie/assign-gift - Commit the box the user chose (C2-rev:
+    // the user picks, the server validates). Returns ApiResponse<int> echoing the
+    // accepted giftedCyberekId; 409 means the box was just taken — refresh and repick.
+    assignGiftedCyberek: builder.mutation<apiResponseBody<number>, { giftedCyberekId: number }>({
+      query: ({ giftedCyberekId }) => ({
+        url: ENDPOINTS.ASSIGN_GIFT,
         method: "PUT",
+        body: { giftedCyberekId },
       }),
       invalidatesTags: ["Cyberki"],
       transformResponse: (response: apiResponseBody<number>) => {

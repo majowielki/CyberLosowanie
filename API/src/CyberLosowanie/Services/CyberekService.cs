@@ -3,7 +3,6 @@ using CyberLosowanie.Exceptions;
 using CyberLosowanie.Interfaces.Repositories;
 using CyberLosowanie.Interfaces.Services;
 using CyberLosowanie.Models;
-using CyberLosowanie.Models.Dto;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore; // added for DbUpdateException
 using Microsoft.Data.SqlClient; // SqlException for unique-constraint detection
@@ -54,6 +53,27 @@ namespace CyberLosowanie.Services
                 userName: userName,
                 additionalData: new { CyberekId = cyberekId, Error = CyberLosowanieConstants.INVALID_CYBEREK_ID });
             throw new BusinessValidationException(CyberLosowanieConstants.INVALID_CYBEREK_ID);
+        }
+
+        // Shared guard for every user-scoped operation: non-empty username + existing user.
+        private async Task<ApplicationUser> GetRequiredUserAsync(string userName, string operation)
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                await _auditService.LogWarningAsync(
+                    $"Validation failed for {operation} - empty username");
+                throw new BusinessValidationException(CyberLosowanieConstants.INVALID_USERNAME);
+            }
+
+            var applicationUser = await _userRepository.GetByUsernameAsync(userName);
+            if (applicationUser == null)
+            {
+                var ex = new UserNotFoundException(userName);
+                await _auditService.LogErrorAsync(ex, null, null, userName);
+                throw ex;
+            }
+
+            return applicationUser;
         }
 
         public async Task<IEnumerable<Cyberek>> GetAllCyberkiAsync()
@@ -126,32 +146,46 @@ namespace CyberLosowanie.Services
             return cyberek;
         }
 
-        public async Task<List<int>> GetAvailableGiftTargetsAsync(int cyberekId)
+        public async Task<List<int>> GetAvailableGiftTargetsForUserAsync(string userName)
         {
-            await EnsureValidCyberekIdAsync(cyberekId, nameof(GetAvailableGiftTargetsAsync));
+            var applicationUser = await GetRequiredUserAsync(userName, nameof(GetAvailableGiftTargetsForUserAsync));
 
-            var cyberek = await _cyberekRepository.GetByIdAsync(cyberekId);
-            if (cyberek == null)
+            if (applicationUser.CyberekId == 0)
             {
-                var ex = new CyberekNotFoundException(cyberekId);
-                await _auditService.LogErrorAsync(ex, context: null);
+                var ex = new InvalidGiftAssignmentException(0, 0,
+                    "User must have a cyberek assigned before they can see gift targets. Use the assign-cyberek endpoint first.");
+                await _auditService.LogWarningAsync(
+                    "GetAvailableGiftTargetsForUserAsync called but user has no cyberek assigned.",
+                    userId: applicationUser.Id,
+                    userName: userName);
                 throw ex;
             }
 
-            if (cyberek.GiftedCyberekId != 0)
-                return new List<int> { cyberek.GiftedCyberekId };
+            // Owner may see their own (already drawn) target — and only their own.
+            // Other users' assignments are never exposed through this endpoint.
+            if (applicationUser.GiftedCyberekId != 0)
+                return new List<int> { applicationUser.GiftedCyberekId };
+
+            var allCyberki = (await GetAllCyberkiAsync()).ToList(); // Use cached version
+            var giver = allCyberki.FirstOrDefault(c => c.Id == applicationUser.CyberekId);
+            if (giver == null)
+            {
+                var ex = new CyberekNotFoundException(applicationUser.CyberekId);
+                await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
+                throw ex;
+            }
 
             try
             {
-                var allCyberki = await GetAllCyberkiAsync(); // Use cached version
-                return _giftingService.GetAvailableToBeGiftedCyberki(
-                    allCyberki.ToList(),
-                    cyberek.BannedCyberki);
+                // Only choices that keep the draw completable for everyone else are shown,
+                // so an honest client can never pick a dead-end box. While the state is
+                // feasible this list is provably non-empty for a giver who has not drawn.
+                return _giftingService.GetSafeTargets(allCyberki, giver);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not DomainException)
             {
-                _logger.LogError(ex, "Failed to calculate available gift targets for cyberek {CyberekId}", cyberekId);
-                await _auditService.LogErrorAsync(ex, context: null);
+                _logger.LogError(ex, "Failed to calculate safe gift targets for user {UserName}", userName);
+                await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
                 throw new DataAccessException("Failed to calculate available gift targets", ex);
             }
         }
@@ -163,21 +197,7 @@ namespace CyberLosowanie.Services
         /// <returns>The cyberek that will receive a gift from this user</returns>
         public async Task<Cyberek> GetGiftedCyberekForUserAsync(string userName)
         {
-            if (string.IsNullOrWhiteSpace(userName))
-            {
-                await _auditService.LogWarningAsync(
-                    "Validation failed for GetGiftedCyberekForUserAsync - empty username",
-                    userName: userName);
-                throw new BusinessValidationException(CyberLosowanieConstants.INVALID_USERNAME);
-            }
-
-            var applicationUser = await _userRepository.GetByUsernameAsync(userName);
-            if (applicationUser == null)
-            {
-                var ex = new UserNotFoundException(userName);
-                await _auditService.LogErrorAsync(ex, null, null, userName);
-                throw ex;
-            }
+            var applicationUser = await GetRequiredUserAsync(userName, nameof(GetGiftedCyberekForUserAsync));
 
             if (applicationUser.GiftedCyberekId == 0)
             {
@@ -210,22 +230,7 @@ namespace CyberLosowanie.Services
         {
             // Validate inputs
             await EnsureValidCyberekIdAsync(cyberekId, nameof(AssignCyberekToUserAsync), userName);
-
-            if (string.IsNullOrWhiteSpace(userName))
-            {
-                await _auditService.LogWarningAsync(
-                    "Validation failed for AssignCyberekToUserAsync - empty username",
-                    additionalData: new { CyberekId = cyberekId });
-                throw new BusinessValidationException(CyberLosowanieConstants.INVALID_USERNAME);
-            }
-
-            var applicationUser = await _userRepository.GetByUsernameAsync(userName);
-            if (applicationUser == null)
-            {
-                var ex = new UserNotFoundException(userName);
-                await _auditService.LogErrorAsync(ex, null, null, userName);
-                throw ex;
-            }
+            var applicationUser = await GetRequiredUserAsync(userName, nameof(AssignCyberekToUserAsync));
 
             // Check if user already has a cyberek assigned
             if (applicationUser.CyberekId != 0)
@@ -280,33 +285,24 @@ namespace CyberLosowanie.Services
         }
 
         /// <summary>
-        /// Assigns a gift target for a user's cyberek (requires user to already have a cyberek)
+        /// Commits the user's chosen gift target (the box they opened). The choice is
+        /// validated from scratch inside a serialized transaction — see AcquireDrawLockAsync
+        /// for why serialization is required beyond the unique index.
         /// </summary>
-        /// <param name="userName">Username whose cyberek will give the gift</param>
-        /// <returns>ID of the cyberek that was assigned as the gift target by the server-side draw</returns>
-        public async Task<int> AssignGiftAsync(string userName)
+        /// <param name="userName">Username whose cyberek gives the gift</param>
+        /// <param name="chosenTargetId">The box (cyberek id) the user chose</param>
+        /// <returns>ID of the committed gift target (echoes the accepted choice)</returns>
+        public async Task<int> AssignGiftAsync(string userName, int chosenTargetId)
         {
-            if (string.IsNullOrWhiteSpace(userName))
-            {
-                await _auditService.LogWarningAsync(
-                    "Validation failed for AssignGiftAsync - empty username");
-                throw new BusinessValidationException(CyberLosowanieConstants.INVALID_USERNAME);
-            }
-
-            var applicationUser = await _userRepository.GetByUsernameAsync(userName);
-            if (applicationUser == null)
-            {
-                var ex = new UserNotFoundException(userName);
-                await _auditService.LogErrorAsync(ex, null, null, userName);
-                throw ex;
-            }
+            await EnsureValidCyberekIdAsync(chosenTargetId, nameof(AssignGiftAsync), userName);
+            var applicationUser = await GetRequiredUserAsync(userName, nameof(AssignGiftAsync));
 
             // Check if user has a cyberek assigned
             if (applicationUser.CyberekId == 0)
             {
                 var ex = new InvalidGiftAssignmentException(
                     0,
-                    0,
+                    chosenTargetId,
                     "User must have a cyberek assigned before they can assign gifts. Use the assign-cyberek endpoint first.");
                 await _auditService.LogWarningAsync(
                     "AssignGiftAsync called but user has no cyberek assigned.",
@@ -315,97 +311,111 @@ namespace CyberLosowanie.Services
                 throw ex;
             }
 
-            const int maxRetries = 3;
-
-            for (var attempt = 1; attempt <= maxRetries; attempt++)
+            using var transaction = await _userRepository.BeginTransactionAsync();
+            try
             {
-                // Use database transaction for data consistency 
-                using var transaction = await _userRepository.BeginTransactionAsync();
-                try
+                // One draw commit at a time: two users validating different targets against
+                // the same snapshot can each pass alone yet jointly strand a third person.
+                await _cyberekRepository.AcquireDrawLockAsync();
+
+                // Tracked read (F4): entities are change-tracked so the mutation below
+                // is saved directly, not via a detached AsNoTracking instance.
+                var cyberkiList = await _cyberekRepository.GetAllForUpdateAsync();
+
+                var giver = cyberkiList.FirstOrDefault(c => c.Id == applicationUser.CyberekId);
+                if (giver == null)
                 {
-                    // Tracked read (F4): entities are change-tracked so the mutation below
-                    // is saved directly, not via a detached AsNoTracking instance.
-                    var cyberkiList = await _cyberekRepository.GetAllForUpdateAsync();
-
-                    var cyberek = cyberkiList.FirstOrDefault(c => c.Id == applicationUser.CyberekId);
-                    if (cyberek == null)
-                    {
-                        var ex = new CyberekNotFoundException(applicationUser.CyberekId);
-                        await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
-                        throw ex;
-                    }
-
-                    if (cyberek.GiftedCyberekId != 0)
-                    {
-                        var ex = new InvalidGiftAssignmentException(
-                            cyberek.Id, 
-                            cyberek.GiftedCyberekId, 
-                            CyberLosowanieConstants.GIFT_ALREADY_ASSIGNED);
-                        await _auditService.LogWarningAsync(
-                            "AssignGiftAsync called but gift already assigned for cyberek.",
-                            userId: applicationUser.Id,
-                            userName: userName);
-                        throw ex;
-                    }
-
-                    cyberek.GiftedCyberekId = _giftingService.GetAvailableToBeGiftedCyberek(
-                        cyberkiList,
-                        cyberek);
-                    
-                    applicationUser.GiftedCyberekId = cyberek.GiftedCyberekId;
-
-                    await _cyberekRepository.UpdateAsync(cyberek);
-                    await _userRepository.UpdateAsync(applicationUser);
-                    await _cyberekRepository.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    
-                    // Invalidate cache after successful data changes
-                    _cache.Remove(ALL_CYBERKI_CACHE_KEY);
-                    _logger.LogInformation("Successfully assigned gift for user {UserName} on attempt {Attempt}", userName, attempt);
-                    
-                    // Log successful gift assignment
-                    await _auditService.LogInformationAsync(
-                        $"Gift assignment completed: {userName} -> Cyberek {cyberek.GiftedCyberekId}");
-                    
-                    return cyberek.GiftedCyberekId;
+                    var ex = new CyberekNotFoundException(applicationUser.CyberekId);
+                    await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
+                    throw ex;
                 }
-                catch (DbUpdateException dbEx) when (IsUniqueGiftConflict(dbEx))
+
+                if (giver.GiftedCyberekId != 0)
                 {
-                    await transaction.RollbackAsync();
-
-                    _logger.LogWarning(dbEx,
-                        "Concurrency conflict while assigning gift for user {UserName}, attempt {Attempt}/{MaxAttempts}",
-                        userName, attempt, maxRetries);
-
+                    var ex = new InvalidGiftAssignmentException(
+                        giver.Id,
+                        giver.GiftedCyberekId,
+                        CyberLosowanieConstants.GIFT_ALREADY_ASSIGNED);
                     await _auditService.LogWarningAsync(
-                        "Concurrency conflict while assigning gift (unique GiftedCyberekId violated)",
+                        "AssignGiftAsync called but gift already assigned for cyberek.",
                         userId: applicationUser.Id,
                         userName: userName);
-
-                    if (attempt == maxRetries)
-                    {
-                        await _auditService.LogErrorAsync(dbEx, null, applicationUser.Id, userName);
-
-                        throw new InvalidGiftAssignmentException(
-                            applicationUser.CyberekId,
-                            0,
-                            "Unable to assign a unique gift target due to concurrent assignments. Please try again.",
-                            dbEx);
-                    }
-
+                    throw ex;
                 }
-                catch (Exception ex) when (ex is not DomainException)
+
+                // Self/banned targets are never shown as available — an honest client
+                // cannot send them. Treat as a bad request, not a race.
+                if (chosenTargetId == giver.Id || giver.BannedCyberki?.Contains(chosenTargetId) == true)
                 {
-                    await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Failed to assign gift for user {UserName}", userName);
-
-                    await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
-
-                    throw new DataAccessException("Failed to assign gift", ex);
+                    await _auditService.LogWarningAsync(
+                        "AssignGiftAsync called with a target that is never allowed for this giver (self or banned).",
+                        userId: applicationUser.Id,
+                        userName: userName,
+                        additionalData: new { GiverCyberekId = giver.Id, ChosenTargetId = chosenTargetId });
+                    throw new BusinessValidationException("The chosen target is not allowed for this user.");
                 }
-            }
 
-            throw new DataAccessException("Failed to assign gift due to unexpected concurrency behaviour.");
+                // Race outcomes → 409: the box was available when displayed but is not anymore.
+                if (cyberkiList.Any(c => c.GiftedCyberekId == chosenTargetId))
+                {
+                    await _auditService.LogWarningAsync(
+                        "AssignGiftAsync race: chosen target already taken.",
+                        userId: applicationUser.Id,
+                        userName: userName,
+                        additionalData: new { GiverCyberekId = giver.Id, ChosenTargetId = chosenTargetId });
+                    throw new GiftTargetUnavailableException(giver.Id, chosenTargetId,
+                        "This box has just been taken by another participant. Refresh the list and choose a different one.");
+                }
+
+                if (!_giftingService.IsChoiceSafe(cyberkiList, giver, chosenTargetId))
+                {
+                    await _auditService.LogWarningAsync(
+                        "AssignGiftAsync race: chosen target would strand another participant.",
+                        userId: applicationUser.Id,
+                        userName: userName,
+                        additionalData: new { GiverCyberekId = giver.Id, ChosenTargetId = chosenTargetId });
+                    throw new GiftTargetUnavailableException(giver.Id, chosenTargetId,
+                        "Choosing this box would leave another participant without any valid option. Refresh the list and choose a different one.");
+                }
+
+                giver.GiftedCyberekId = chosenTargetId;
+                applicationUser.GiftedCyberekId = chosenTargetId;
+
+                await _cyberekRepository.UpdateAsync(giver);
+                await _userRepository.UpdateAsync(applicationUser);
+                await _cyberekRepository.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Invalidate cache after successful data changes
+                _cache.Remove(ALL_CYBERKI_CACHE_KEY);
+                _logger.LogInformation("Gift assignment committed for user {UserName}", userName);
+
+                // Log successful gift assignment
+                await _auditService.LogInformationAsync(
+                    $"Gift assignment completed: {userName} -> Cyberek {chosenTargetId}");
+
+                return chosenTargetId;
+            }
+            catch (DbUpdateException dbEx) when (IsUniqueGiftConflict(dbEx))
+            {
+                // Last line of defense — with the draw lock in place this should not happen.
+                await transaction.RollbackAsync();
+                _logger.LogWarning(dbEx, "Unique-index conflict while committing gift for user {UserName}", userName);
+                await _auditService.LogErrorAsync(dbEx, null, applicationUser.Id, userName);
+
+                throw new GiftTargetUnavailableException(applicationUser.CyberekId, chosenTargetId,
+                    "This box has just been taken by another participant. Refresh the list and choose a different one.",
+                    dbEx);
+            }
+            catch (Exception ex) when (ex is not DomainException)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Failed to assign gift for user {UserName}", userName);
+
+                await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
+
+                throw new DataAccessException("Failed to assign gift", ex);
+            }
         }
 
         private static bool IsUniqueGiftConflict(DbUpdateException ex)

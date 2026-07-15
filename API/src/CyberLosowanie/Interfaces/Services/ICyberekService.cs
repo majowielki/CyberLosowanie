@@ -8,8 +8,15 @@ namespace CyberLosowanie.Interfaces.Services
         Task<IEnumerable<Cyberek>> GetAllCyberkiAsync();
         Task<IEnumerable<Cyberek>> GetAvailableToPickCyberkiAsync();
         Task<Cyberek> GetCyberekByIdAsync(int id);
-        Task<List<int>> GetAvailableGiftTargetsAsync(int cyberekId);
-        
+
+        /// <summary>
+        /// Boxes the user's cyberek may still safely open: free, not self, not banned,
+        /// and guaranteed not to strand any other participant. If the user already drew,
+        /// returns a single element — their own target.
+        /// </summary>
+        /// <param name="userName">Authenticated user the targets are computed for</param>
+        Task<List<int>> GetAvailableGiftTargetsForUserAsync(string userName);
+
         /// <summary>
         /// Assigns a cyberek to a user (one-time setup operation)
         /// </summary>
@@ -17,14 +24,17 @@ namespace CyberLosowanie.Interfaces.Services
         /// <param name="cyberekId">ID of the cyberek to assign</param>
         /// <returns>True if assignment was successful, False if user already has a cyberek</returns>
         Task<bool> AssignCyberekToUserAsync(string userName, int cyberekId);
-        
+
         /// <summary>
-        /// Runs the server-side draw for a user's cyberek (requires user to already have a cyberek).
-        /// The target is chosen by the algorithm — the client does not pick it.
+        /// Commits the user's chosen gift target (the box they opened). Validated under
+        /// a serialized transaction: target free, not self, not banned, and committing it
+        /// keeps the draw completable for everyone who has not drawn yet. A no-longer-available
+        /// target raises <see cref="Exceptions.GiftTargetUnavailableException"/> (409).
         /// </summary>
-        /// <param name="userName">Username whose cyberek will give the gift</param>
-        /// <returns>ID of the cyberek that was assigned as the gift target</returns>
-        Task<int> AssignGiftAsync(string userName);
+        /// <param name="userName">Username whose cyberek gives the gift</param>
+        /// <param name="chosenTargetId">The box (cyberek id) the user chose</param>
+        /// <returns>ID of the committed gift target (echoes the accepted choice)</returns>
+        Task<int> AssignGiftAsync(string userName, int chosenTargetId);
 
         /// <summary>
         /// Gets the cyberek that the specified user will give a gift to.

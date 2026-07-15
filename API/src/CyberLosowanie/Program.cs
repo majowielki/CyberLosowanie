@@ -40,9 +40,6 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGiftingService, GiftingService>();
 
-// Randomness source for the gifting algorithm — singleton over Random.Shared (I7).
-builder.Services.AddSingleton<IRandomProvider, RandomProvider>();
-
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     var passwordConfig = builder.Configuration.GetSection("Identity:Password");
@@ -198,11 +195,42 @@ app.MapControllers();
 // migrations run as an explicit deployment step (idempotent script or
 // `dotnet ef database update`), never on startup — parallel App Service
 // instances migrating concurrently is unsafe (J2).
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    context.Database.Migrate();
+    if (app.Environment.IsDevelopment())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        context.Database.Migrate();
+    }
+
+    // Draw feasibility check: an unsolvable ban configuration would only surface at the
+    // party, when someone ends up with no valid box. Fail fast at startup instead.
+    // DB connectivity problems are NOT fatal here (they surface on the first request);
+    // an infeasible configuration IS.
+    List<CyberLosowanie.Models.Cyberek>? cyberki = null;
+    try
+    {
+        var cyberekRepository = scope.ServiceProvider.GetRequiredService<ICyberekRepository>();
+        cyberki = (await cyberekRepository.GetAllAsync()).ToList();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogWarning(ex,
+            "Could not run the draw feasibility check at startup (database unreachable?). " +
+            "The same rule is enforced on every draw commit.");
+    }
+
+    if (cyberki is { Count: > 0 })
+    {
+        var giftingService = scope.ServiceProvider.GetRequiredService<IGiftingService>();
+        if (!giftingService.HasCompleteAssignment(cyberki))
+        {
+            throw new InvalidOperationException(
+                "Draw configuration is unsolvable: with the current ban lists and assignments " +
+                "there is no way for every participant to complete the draw. Fix the ban lists before starting.");
+        }
+        app.Logger.LogInformation("Draw feasibility check passed for {Count} participants.", cyberki.Count);
+    }
 }
 
 app.Run();

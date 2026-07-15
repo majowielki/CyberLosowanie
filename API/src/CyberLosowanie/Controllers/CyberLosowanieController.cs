@@ -6,6 +6,7 @@ using CyberLosowanie.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
 namespace CyberLosowanie.Controllers
 {
@@ -20,6 +21,11 @@ namespace CyberLosowanie.Controllers
         {
             _cyberekService = cyberekService ?? throw new ArgumentNullException(nameof(cyberekService));
         }
+
+        // Identity comes from the JWT, never from query parameters — otherwise any
+        // authenticated user could read or mutate another user's draw by passing their
+        // username. The "fullName" claim is set at login (AuthService.GenerateJwtToken).
+        private string? GetAuthenticatedUserName() => User.FindFirstValue("fullName");
 
         [HttpGet]
         [ProducesResponseType(typeof(ApiResponse<IEnumerable<CyberekResponse>>), 200)]
@@ -53,36 +59,54 @@ namespace CyberLosowanie.Controllers
             return Ok(ApiResponse<CyberekResponse>.Success(cyberek.ToResponse()));
         }
 
-        [HttpGet("available-targets/{id:int}")]
+        [HttpGet("my-available-targets")]
         [ProducesResponseType(typeof(ApiResponse<List<int>>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - no targets available
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
-        public async Task<IActionResult> GetAvailableGiftTargets(
-            [Range(CyberLosowanieConstants.MIN_CYBEREK_ID, CyberLosowanieConstants.MAX_CYBEREK_ID)] int id)
+        public async Task<IActionResult> GetMyAvailableGiftTargets()
         {
-            var availableTargets = await _cyberekService.GetAvailableGiftTargetsAsync(id);
-            
-            // Handle case where no targets are available - FIXED TODO
+            var userName = GetAuthenticatedUserName();
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                return Unauthorized(ApiResponse<object>.Error(
+                    "Authenticated token carries no user identity.", System.Net.HttpStatusCode.Unauthorized));
+            }
+
+            // Only choices that keep the draw completable are returned. Unavailable boxes
+            // are indistinguishable on purpose (taken / banned / would strand someone) —
+            // the reason would leak draw results or ban lists.
+            var availableTargets = await _cyberekService.GetAvailableGiftTargetsForUserAsync(userName);
+
+            // Safety net: with a feasible configuration this cannot happen (a giver who
+            // has not drawn always has at least one safe choice).
             if (!availableTargets.Any())
             {
                 return Conflict(ApiResponse<object>.Error(
-                    "No gift targets are currently available for this cyberek. " +
-                    "This may occur when all other cyberki have been assigned as gifts or due to banned list restrictions."));
+                    "No gift targets are currently available. Contact the organizer — the draw configuration may need fixing."));
             }
-            
+
             return Ok(ApiResponse<List<int>>.Success(availableTargets));
         }
 
         [HttpGet("my-gifted-cyberek")]
         [ProducesResponseType(typeof(ApiResponse<CyberekResponse>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 409)]
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
-        public async Task<IActionResult> GetMyGiftedCyberek([Required][FromQuery] string userName)
+        public async Task<IActionResult> GetMyGiftedCyberek()
         {
+            var userName = GetAuthenticatedUserName();
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                return Unauthorized(ApiResponse<object>.Error(
+                    "Authenticated token carries no user identity.", System.Net.HttpStatusCode.Unauthorized));
+            }
+
             // The owner is allowed to see WHO they gift (name + photo), but not that
             // target's own draw result — ToResponse() strips GiftedCyberekId/BannedCyberki.
             var cyberek = await _cyberekService.GetGiftedCyberekForUserAsync(userName);
@@ -92,13 +116,19 @@ namespace CyberLosowanie.Controllers
         [HttpPost("assign-cyberek")]
         [ProducesResponseType(typeof(ApiResponse<object>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - user already has cyberek
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
-        public async Task<IActionResult> AssignCyberekToUser(
-            [Required][FromQuery] string userName,
-            [FromBody] CyberekAssignmentDTO assignmentDto)
+        public async Task<IActionResult> AssignCyberekToUser([FromBody] CyberekAssignmentDTO assignmentDto)
         {
+            var userName = GetAuthenticatedUserName();
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                return Unauthorized(ApiResponse<object>.Error(
+                    "Authenticated token carries no user identity.", System.Net.HttpStatusCode.Unauthorized));
+            }
+
             // Input shape is enforced at the boundary: [ApiController] auto-400s invalid
             // models (formatted as ApiResponse via InvalidModelStateResponseFactory).
             // Domain errors (validation, user/cyberek not found) propagate to the
@@ -116,16 +146,25 @@ namespace CyberLosowanie.Controllers
         [HttpPut("assign-gift")]
         [ProducesResponseType(typeof(ApiResponse<int>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - no cyberek assigned or gift already assigned
+        [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - box taken/unsafe, no cyberek, or gift already assigned
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
-        public async Task<IActionResult> AssignGift([Required][FromQuery] string userName)
+        public async Task<IActionResult> AssignGift([FromBody] GiftChoiceDTO choice)
         {
-            // Server-side draw (C2): the client does not choose the target. Domain errors
-            // (e.g. user has no cyberek yet, gift already assigned) are raised as domain
-            // exceptions and handled by the global exception handler. The service returns
-            // the gifted cyberek ID chosen by the algorithm.
-            var assignedId = await _cyberekService.AssignGiftAsync(userName);
+            var userName = GetAuthenticatedUserName();
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                return Unauthorized(ApiResponse<object>.Error(
+                    "Authenticated token carries no user identity.", System.Net.HttpStatusCode.Unauthorized));
+            }
+
+            // The user picks the box (product decision C2-rev): the server validates the
+            // choice — free, not self, not banned, and the rest of the draw must remain
+            // completable — inside a serialized transaction. A box lost to a concurrent
+            // draw surfaces as GiftTargetUnavailableException → 409; the client refreshes
+            // the list and the user picks again.
+            var assignedId = await _cyberekService.AssignGiftAsync(userName, choice.GiftedCyberekId);
             return Ok(ApiResponse<int>.Success(assignedId, "Gift assignment completed successfully"));
         }
     }
