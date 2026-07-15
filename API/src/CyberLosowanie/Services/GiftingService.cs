@@ -43,7 +43,7 @@ namespace CyberLosowanie.Services
             return availableTargets.ToList();
         }
 
-        public int GetAvailableToBeGiftedCyberek(List<Cyberek> cyberki, Cyberek cyberek, int toBeGiftedCyberkId)
+        public int GetAvailableToBeGiftedCyberek(List<Cyberek> cyberki, Cyberek cyberek)
         {
             if (cyberki == null || !cyberki.Any())
                 throw new ArgumentException("Cyberki list cannot be null or empty", nameof(cyberki));
@@ -64,16 +64,9 @@ namespace CyberLosowanie.Services
                 .Select(c => c.Id)
                 .ToList();
 
-            // If caller provided a preferred target, try it first if still in candidates
-            if (candidateTargets.Contains(toBeGiftedCyberkId))
-            {
-                if (IsAssignmentGloballyValid(cyberek, toBeGiftedCyberkId, cyberki))
-                {
-                    return toBeGiftedCyberkId;
-                }
-            }
-
-            // Deterministic backtracking over candidates (shuffle for fairness)
+            // Server-side draw (C2): the client never picks the target. Shuffle the
+            // candidates and take the first one that still allows a complete assignment
+            // for everyone else (backtracking).
             var shuffledCandidates = candidateTargets.OrderBy(_ => _random.Next()).ToList();
             foreach (var candidate in shuffledCandidates)
             {
@@ -83,7 +76,7 @@ namespace CyberLosowanie.Services
                 }
             }
 
-            throw new InvalidGiftAssignmentException(cyberek.Id, toBeGiftedCyberkId,
+            throw new InvalidGiftAssignmentException(cyberek.Id, 0,
                 $"No valid gift targets available for cyberek {cyberek.Id}. Backtracking exhausted all {shuffledCandidates.Count} candidates.");
         }
 

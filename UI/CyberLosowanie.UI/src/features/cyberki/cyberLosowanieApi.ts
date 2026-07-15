@@ -97,13 +97,13 @@ const cyberLosowanieApi = createApi({
       },
     }),
 
-    // PUT /api/CyberLosowanie/assign-gift - Assign gift to user
-    // Returns ApiResponse<int> where data is the assigned giftedCyberekId
-    assignGiftedCyberek: builder.mutation<apiResponseBody<number>, { giftedCyberekId: number; userName: string }>({
-      query: ({ giftedCyberekId, userName }) => ({
+    // PUT /api/CyberLosowanie/assign-gift - Run the server-side draw for the user.
+    // The client does not pick a target (C2); the server draws it and returns
+    // ApiResponse<int> where data is the assigned giftedCyberekId.
+    assignGiftedCyberek: builder.mutation<apiResponseBody<number>, { userName: string }>({
+      query: ({ userName }) => ({
         url: `${ENDPOINTS.ASSIGN_GIFT}?userName=${encodeURIComponent(userName)}`,
         method: "PUT",
-        body: { giftedCyberekId },
       }),
       invalidatesTags: ["Cyberki"],
       transformResponse: (response: apiResponseBody<number>) => {

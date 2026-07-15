@@ -98,7 +98,10 @@ namespace CyberLosowanie.Test
             var service = CreateService();
 
             await Assert.ThrowsAsync<DataAccessException>(() => service.GetAllCyberkiAsync());
-            _audit.Verify(a => a.LogErrorAsync(It.IsAny<Exception>(), It.IsAny<AuditContext>()), Times.Once);
+            // Service-layer errors log through the HttpContext overload (context: null),
+            // not the AuditContext one used by the middleware.
+            _audit.Verify(a => a.LogErrorAsync(
+                It.IsAny<Exception>(), (Microsoft.AspNetCore.Http.HttpContext?)null, null, null), Times.Once);
         }
 
         #endregion
@@ -319,17 +322,7 @@ namespace CyberLosowanie.Test
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 0 });
             var service = CreateService();
 
-            await Assert.ThrowsAsync<InvalidGiftAssignmentException>(() => service.AssignGiftAsync("john", 5));
-        }
-
-        [Fact]
-        public async Task AssignGiftAsync_WhenTargetCyberekNotFound_ThrowsCyberekNotFoundException()
-        {
-            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 1 });
-            _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync((Cyberek)null!);
-            var service = CreateService();
-
-            await Assert.ThrowsAsync<CyberekNotFoundException>(() => service.AssignGiftAsync("john", 5));
+            await Assert.ThrowsAsync<InvalidGiftAssignmentException>(() => service.AssignGiftAsync("john"));
         }
 
         [Fact]
@@ -338,13 +331,13 @@ namespace CyberLosowanie.Test
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 1, Id = "u1" });
             _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
             // The giver (cyberek 1) already has a gift assigned in the transactional snapshot.
-            _cyberekRepo.Setup(r => r.GetAllAsync())
+            _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1, gifted: 7), Cyberek(5) });
             var tx = MockTransaction();
             _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
             var service = CreateService();
 
-            await Assert.ThrowsAsync<InvalidGiftAssignmentException>(() => service.AssignGiftAsync("john", 5));
+            await Assert.ThrowsAsync<InvalidGiftAssignmentException>(() => service.AssignGiftAsync("john"));
         }
 
         [Fact]
@@ -353,15 +346,15 @@ namespace CyberLosowanie.Test
             var user = new ApplicationUser { CyberekId = 1, Id = "u1" };
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
             _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
-            _cyberekRepo.Setup(r => r.GetAllAsync())
+            _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(5) });
-            _gifting.Setup(g => g.GetAvailableToBeGiftedCyberek(It.IsAny<List<Cyberek>>(), It.IsAny<Cyberek>(), 5))
+            _gifting.Setup(g => g.GetAvailableToBeGiftedCyberek(It.IsAny<List<Cyberek>>(), It.IsAny<Cyberek>()))
                 .Returns(5);
             var tx = MockTransaction();
             _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
             var service = CreateService();
 
-            var result = await service.AssignGiftAsync("john", 5);
+            var result = await service.AssignGiftAsync("john");
 
             result.Should().Be(5);
             user.GiftedCyberekId.Should().Be(5);
@@ -374,16 +367,16 @@ namespace CyberLosowanie.Test
             var user = new ApplicationUser { CyberekId = 1, Id = "u1" };
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
             _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
-            _cyberekRepo.Setup(r => r.GetAllAsync())
+            _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(5) });
-            _gifting.Setup(g => g.GetAvailableToBeGiftedCyberek(It.IsAny<List<Cyberek>>(), It.IsAny<Cyberek>(), 5))
+            _gifting.Setup(g => g.GetAvailableToBeGiftedCyberek(It.IsAny<List<Cyberek>>(), It.IsAny<Cyberek>()))
                 .Returns(5);
             _cyberekRepo.Setup(r => r.SaveChangesAsync()).ThrowsAsync(new Exception("save failed"));
             var tx = MockTransaction();
             _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
             var service = CreateService();
 
-            await Assert.ThrowsAsync<DataAccessException>(() => service.AssignGiftAsync("john", 5));
+            await Assert.ThrowsAsync<DataAccessException>(() => service.AssignGiftAsync("john"));
             tx.Verify(t => t.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 

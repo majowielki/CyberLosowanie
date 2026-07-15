@@ -51,7 +51,7 @@ namespace CyberLosowanie.Services
 
             return new LoginResponseDTO
             {
-                UserName = user.UserName,
+                UserName = user.UserName ?? string.Empty,
                 Token = token
             };
         }

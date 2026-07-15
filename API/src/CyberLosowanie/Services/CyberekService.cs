@@ -61,7 +61,7 @@ namespace CyberLosowanie.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to retrieve cyberki");
-                await _auditService.LogErrorAsync(ex, null);
+                await _auditService.LogErrorAsync(ex, context: null);
                 throw new DataAccessException("Failed to retrieve cyberki", ex);
             }
         }
@@ -91,7 +91,7 @@ namespace CyberLosowanie.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to retrieve available cyberki to pick");
-                await _auditService.LogErrorAsync(ex, null);
+                await _auditService.LogErrorAsync(ex, context: null);
                 throw new DataAccessException("Failed to retrieve available cyberki to pick", ex);
             }
         }
@@ -111,7 +111,7 @@ namespace CyberLosowanie.Services
             if (cyberek == null)
             {
                 var ex = new CyberekNotFoundException(id);
-                await _auditService.LogErrorAsync(ex, null);
+                await _auditService.LogErrorAsync(ex, context: null);
                 throw ex;
             }
 
@@ -133,7 +133,7 @@ namespace CyberLosowanie.Services
             if (cyberek == null)
             {
                 var ex = new CyberekNotFoundException(cyberekId);
-                await _auditService.LogErrorAsync(ex, null);
+                await _auditService.LogErrorAsync(ex, context: null);
                 throw ex;
             }
 
@@ -150,7 +150,7 @@ namespace CyberLosowanie.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to calculate available gift targets for cyberek {CyberekId}", cyberekId);
-                await _auditService.LogErrorAsync(ex, null);
+                await _auditService.LogErrorAsync(ex, context: null);
                 throw new DataAccessException("Failed to calculate available gift targets", ex);
             }
         }
@@ -290,26 +290,13 @@ namespace CyberLosowanie.Services
         /// Assigns a gift target for a user's cyberek (requires user to already have a cyberek)
         /// </summary>
         /// <param name="userName">Username whose cyberek will give the gift</param>
-        /// <param name="giftedCyberekId">Preferred ID of the cyberek to receive the gift (may be adjusted by algorithm)</param>
-        /// <returns>ID of the cyberek that was actually assigned as the gift target</returns>
-        public async Task<int> AssignGiftAsync(string userName, int giftedCyberekId)
+        /// <returns>ID of the cyberek that was assigned as the gift target by the server-side draw</returns>
+        public async Task<int> AssignGiftAsync(string userName)
         {
-            // Validate inputs
-            var validationErrors = _validationService.ValidateCyberekId(giftedCyberekId);
-            if (validationErrors.Any())
-            {
-                await _auditService.LogWarningAsync(
-                    "Validation failed for AssignGiftAsync",
-                    userName: userName,
-                    additionalData: new { GiftedCyberekId = giftedCyberekId, Errors = validationErrors });
-                throw new BusinessValidationException(validationErrors);
-            }
-
             if (string.IsNullOrWhiteSpace(userName))
             {
                 await _auditService.LogWarningAsync(
-                    "Validation failed for AssignGiftAsync - empty username",
-                    additionalData: new { GiftedCyberekId = giftedCyberekId });
+                    "Validation failed for AssignGiftAsync - empty username");
                 throw new BusinessValidationException(CyberLosowanieConstants.INVALID_USERNAME);
             }
 
@@ -325,20 +312,13 @@ namespace CyberLosowanie.Services
             if (applicationUser.CyberekId == 0)
             {
                 var ex = new InvalidGiftAssignmentException(
-                    0, 
-                    giftedCyberekId, 
+                    0,
+                    0,
                     "User must have a cyberek assigned before they can assign gifts. Use the assign-cyberek endpoint first.");
                 await _auditService.LogWarningAsync(
                     "AssignGiftAsync called but user has no cyberek assigned.",
                     userId: applicationUser.Id,
                     userName: userName);
-                throw ex;
-            }
-            var targetCyberek = await _cyberekRepository.GetByIdAsync(giftedCyberekId);
-            if (targetCyberek == null)
-            {
-                var ex = new CyberekNotFoundException(giftedCyberekId);
-                await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
                 throw ex;
             }
 
@@ -350,8 +330,9 @@ namespace CyberLosowanie.Services
                 using var transaction = await _userRepository.BeginTransactionAsync();
                 try
                 {
-                    var allCyberki = await _cyberekRepository.GetAllAsync(); // Don't use cache for transactions
-                    var cyberkiList = allCyberki.ToList();
+                    // Tracked read (F4): entities are change-tracked so the mutation below
+                    // is saved directly, not via a detached AsNoTracking instance.
+                    var cyberkiList = await _cyberekRepository.GetAllForUpdateAsync();
 
                     var cyberek = cyberkiList.FirstOrDefault(c => c.Id == applicationUser.CyberekId);
                     if (cyberek == null)
@@ -375,9 +356,8 @@ namespace CyberLosowanie.Services
                     }
 
                     cyberek.GiftedCyberekId = _giftingService.GetAvailableToBeGiftedCyberek(
-                        cyberkiList, 
-                        cyberek, 
-                        giftedCyberekId);
+                        cyberkiList,
+                        cyberek);
                     
                     applicationUser.GiftedCyberekId = cyberek.GiftedCyberekId;
 
@@ -411,11 +391,11 @@ namespace CyberLosowanie.Services
 
                     if (attempt == maxRetries)
                     {
-                        await _auditService.LogErrorAsync(dbEx, null, applicationUser?.Id, userName);
+                        await _auditService.LogErrorAsync(dbEx, null, applicationUser.Id, userName);
 
                         throw new InvalidGiftAssignmentException(
                             applicationUser.CyberekId,
-                            giftedCyberekId,
+                            0,
                             "Unable to assign a unique gift target due to concurrent assignments. Please try again.",
                             dbEx);
                     }
@@ -426,7 +406,7 @@ namespace CyberLosowanie.Services
                     await transaction.RollbackAsync();
                     _logger.LogError(ex, "Failed to assign gift for user {UserName}", userName);
 
-                    await _auditService.LogErrorAsync(ex, null, applicationUser?.Id, userName);
+                    await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
 
                     throw new DataAccessException("Failed to assign gift", ex);
                 }

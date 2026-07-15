@@ -21,15 +21,25 @@ namespace CyberLosowanie.Repositories
                 .ToListAsync();
         }
 
-        public async Task<Cyberek> GetByIdAsync(int id)
+        // Tracked read for the write path (F4): entities returned here are change-tracked,
+        // so they can be mutated and saved inside a transaction without re-attaching a
+        // detached AsNoTracking instance.
+        public async Task<List<Cyberek>> GetAllForUpdateAsync()
+        {
+            return await _context.Cyberki.ToListAsync();
+        }
+
+        public async Task<Cyberek?> GetByIdAsync(int id)
         {
             return await _context.Cyberki
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
-        public async Task UpdateAsync(Cyberek cyberek)
+        public Task UpdateAsync(Cyberek cyberek)
         {
+            // EF Core's Update is synchronous; there is no I/O until SaveChangesAsync (F5).
             _context.Cyberki.Update(cyberek);
+            return Task.CompletedTask;
         }
 
         public async Task SaveChangesAsync()

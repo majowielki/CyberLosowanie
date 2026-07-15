@@ -23,19 +23,21 @@ namespace CyberLosowanie.Repositories
             return await _context.ApplicationUsers.ToListAsync();
         }
 
-        public async Task<ApplicationUser> GetByIdAsync(string id)
+        public async Task<ApplicationUser?> GetByIdAsync(string id)
         {
             return await _userManager.FindByIdAsync(id);
         }
 
-        public async Task<ApplicationUser> GetByUsernameAsync(string username)
+        public async Task<ApplicationUser?> GetByUsernameAsync(string username)
         {
             return await _userManager.FindByNameAsync(username);
         }
 
-        public async Task UpdateAsync(ApplicationUser user)
+        public Task UpdateAsync(ApplicationUser user)
         {
+            // EF Core's Update is synchronous; there is no I/O until SaveChangesAsync (F5).
             _context.ApplicationUsers.Update(user);
+            return Task.CompletedTask;
         }
 
         public async Task SaveChangesAsync()

@@ -129,9 +129,7 @@ namespace CyberLosowanie.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - no cyberek assigned or gift already assigned
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
-        public async Task<IActionResult> AssignGift(
-            [Required][FromQuery] string userName, 
-            [FromBody] GiftedCyberekAssignmentDTO giftDto)
+        public async Task<IActionResult> AssignGift([Required][FromQuery] string userName)
         {
             if (!ModelState.IsValid)
             {
@@ -142,10 +140,11 @@ namespace CyberLosowanie.Controllers
                 return BadRequest(ApiResponse<object>.ValidationError(errors));
             }
 
-            // Domain errors (e.g. user has no cyberek yet, gift already assigned)
-            // are raised as domain exceptions and handled by the global exception
-            // handler. Service returns the actual gifted cyberek ID chosen by the algorithm.
-            var assignedId = await _cyberekService.AssignGiftAsync(userName, giftDto.GiftedCyberekId);
+            // Server-side draw (C2): the client does not choose the target. Domain errors
+            // (e.g. user has no cyberek yet, gift already assigned) are raised as domain
+            // exceptions and handled by the global exception handler. The service returns
+            // the gifted cyberek ID chosen by the algorithm.
+            var assignedId = await _cyberekService.AssignGiftAsync(userName);
             return Ok(ApiResponse<int>.Success(assignedId, "Gift assignment completed successfully"));
         }
     }

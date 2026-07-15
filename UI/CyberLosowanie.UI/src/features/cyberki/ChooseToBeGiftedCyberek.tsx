@@ -23,21 +23,18 @@ function ChooseToBeGiftedCyberek() {
   const { data, isLoading } = useGetAvailableGiftTargetsQuery(cyberekId ?? 0, { skip: cyberekId == null });
   const [loading, setLoading] = useState(false);
 
-  // NOTE: For gifting simulation we intentionally use the visual box index (1..12)
-  // as the giftedCyberekId parameter, not the real cyberek.id. Backend interprets
-  // this value according to its own simulation logic.
-  const handleSelect = async (boxNumber: number) => {
+  // The boxes are purely visual (C2): clicking any available box triggers a
+  // server-side draw. The chosen box number is not sent — the server decides the
+  // target and returns it.
+  const handleSelect = async () => {
     setLoading(true);
 
     try {
-      const response = await assignGiftedCyberek({
-        giftedCyberekId: boxNumber,
-        userName: userName
-      }).unwrap();
+      const response = await assignGiftedCyberek({ userName }).unwrap();
 
-      debugLog("assignGiftedCyberek response for selected box", boxNumber, response);
+      debugLog("assignGiftedCyberek draw response", response);
 
-      // If API returns assigned giftedCyberekId, update user store immediately
+      // The server returns the assigned giftedCyberekId — reflect it in the store.
       if (response.data) {
         dispatch(setGiftedCyberekId(response.data));
       }
@@ -75,12 +72,12 @@ function ChooseToBeGiftedCyberek() {
       <h1 className="text-4xl font-extrabold text-white mb-10 mt-10">Wybierz dostępne pudełko aby wylosować</h1>
       <div className="grid grid-cols-1 mb-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {cards.map((_, index) => (
-          <Card key={index} className="bg-transparent border-2 border-white">
+          <Card key={`gift-box-${index + 1}`} className="bg-transparent border-2 border-white">
             <CardContent className="p-4 flex flex-col items-center">
               {data?.data?.includes(index + 1) ? (
                 <>
                   <img src={CyberLosowanieClosed} alt={`Cyber Losowanie Closed ${index + 1}`} className="w-full h-64 md:h-48 rounded-md object-cover mb-4" />
-                  <Button className="text-xl font-semibold capitalize" onClick={() => handleSelect(index + 1)}>
+                  <Button className="text-xl font-semibold capitalize" onClick={() => handleSelect()}>
                     Select
                   </Button>
                 </>

@@ -5,6 +5,6 @@ namespace CyberLosowanie.Interfaces.Services
     public interface IGiftingService
     {
         List<int> GetAvailableToBeGiftedCyberki(List<Cyberek> cyberki, List<int> bannedCyberki);
-        int GetAvailableToBeGiftedCyberek(List<Cyberek> cyberki, Cyberek cyberek, int toBeGiftedCyberkId);
+        int GetAvailableToBeGiftedCyberek(List<Cyberek> cyberki, Cyberek cyberek);
     }
 }

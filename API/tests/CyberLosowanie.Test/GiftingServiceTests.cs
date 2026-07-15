@@ -149,7 +149,7 @@ namespace CyberLosowanie.Test
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentException>(() =>
-                _giftingService.GetAvailableToBeGiftedCyberek(null!, cyberek, 2));
+                _giftingService.GetAvailableToBeGiftedCyberek(null!, cyberek));
             
             exception.ParamName.Should().Be("cyberki");
             exception.Message.Should().Contain("cannot be null or empty");
@@ -164,7 +164,7 @@ namespace CyberLosowanie.Test
 
             // Act & Assert  
             var exception = Assert.Throws<ArgumentException>(() =>
-                _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2));
+                _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek));
             
             exception.ParamName.Should().Be("cyberki");
         }
@@ -177,23 +177,23 @@ namespace CyberLosowanie.Test
 
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                _giftingService.GetAvailableToBeGiftedCyberek(cyberki, null!, 2));
+                _giftingService.GetAvailableToBeGiftedCyberek(cyberki, null!));
             
             exception.ParamName.Should().Be("cyberek");
         }
 
         [Fact]
-        public void GetAvailableToBeGiftedCyberek_WithValidRequestedTarget_ReturnsRequestedTarget()
+        public void GetAvailableToBeGiftedCyberek_WithNoConstraints_ReturnsValidTarget()
         {
             // Arrange
             var cyberki = CreateTestCyberki(4);
             var cyberek = cyberki[0]; // Cyberek 1
 
-            // Act
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 3);
+            // Act — server-side draw picks any valid target (not self)
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek);
 
             // Assert
-            result.Should().Be(3);
+            result.Should().BeOneOf(2, 3, 4);
         }
 
         [Fact]
@@ -204,7 +204,7 @@ namespace CyberLosowanie.Test
             var cyberek = cyberki[0]; // Cyberek 1
 
             // Act
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 999); // Non-existent
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek); // Non-existent
 
             // Assert
             result.Should().BeOneOf(2, 3); // Should return a valid alternative
@@ -219,7 +219,7 @@ namespace CyberLosowanie.Test
             cyberek.BannedCyberki = new List<int> { 2 };
 
             // Act
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2); // Banned target
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek); // Banned target
 
             // Assert
             result.Should().BeOneOf(3, 4); // Should return a valid alternative (not 1 - self, not 2 - banned)
@@ -233,7 +233,7 @@ namespace CyberLosowanie.Test
             var cyberek = cyberki[0]; // Cyberek 1
 
             // Act
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 1); // Self
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek); // Self
 
             // Assert
             result.Should().BeOneOf(2, 3); // Cannot gift to self
@@ -257,7 +257,7 @@ namespace CyberLosowanie.Test
             cyberki[5].BannedCyberki = new List<int> { 1 }; // Cyberek 6 cannot gift to Cyberek 1
 
             // Act
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 6);
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek);
 
             // Assert - Should return 6 if it ensures all other cyberki can still find valid targets
             result.Should().BeInRange(1, 6);
@@ -279,12 +279,12 @@ namespace CyberLosowanie.Test
 
             // Act & Assert
             var exception = Assert.Throws<InvalidGiftAssignmentException>(() =>
-                _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2));
+                _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek));
             
             exception.Message.Should().Contain("No valid gift targets available");
             exception.Message.Should().Contain("cyberek 1");
             exception.CyberekId.Should().Be(1);
-            exception.TargetId.Should().Be(2);
+            exception.TargetId.Should().Be(0); // server-side draw: no client-picked target
         }
 
         [Fact]
@@ -295,7 +295,7 @@ namespace CyberLosowanie.Test
             var cyberek = cyberki[0]; // Cyberek 1
 
             // Act
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2);
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek);
 
             // Assert
             result.Should().Be(2);
@@ -313,7 +313,7 @@ namespace CyberLosowanie.Test
             var cyberek = cyberki[giftGiverId - 1]; // Convert to 0-based index
 
             // Act
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, requestedTargetId);
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek);
 
             // Assert
             result.Should().BeInRange(1, totalCyberki);
@@ -331,11 +331,14 @@ namespace CyberLosowanie.Test
             var cyberki = CreateRealisticDatabaseCyberki();
             var michal = cyberki.First(c => c.Id == 1); // Michał Majewski
 
-            // Act - Try to assign Michał to gift to Ola (ID: 3)
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, michal, 3);
+            // Act - server-side draw for Michał
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, michal);
 
-            // Assert - Should return 3 since it's not in Michał's banned list [1, 2, 6]
-            result.Should().Be(3);
+            // Assert - never self (1) nor a banned target [1, 2, 6]; a valid cyberek id
+            result.Should().NotBe(1);
+            result.Should().NotBe(2);
+            result.Should().NotBe(6);
+            result.Should().BeInRange(1, 12);
         }
 
         [Fact]
@@ -346,7 +349,7 @@ namespace CyberLosowanie.Test
             var michal = cyberki.First(c => c.Id == 1); // Michał Majewski
 
             // Act - Try to assign Michał to gift to Kornelia (ID: 2) - which is banned
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, michal, 2);
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, michal);
 
             // Assert - Should not return 2 (banned), should not return 1 (self) or 6 (also banned)
             result.Should().NotBe(1); // Not self
@@ -538,7 +541,7 @@ namespace CyberLosowanie.Test
             cyberek.BannedCyberki = new List<int> { 2, 3, 4, 5, 6, 7, 8 }; // Ban most options
 
             // Act
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 9);
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek);
 
             // Assert
             result.Should().BeOneOf(9, 10); // Only 9 and 10 are not banned
@@ -559,7 +562,7 @@ namespace CyberLosowanie.Test
             var cyberek = cyberki[0]; // Cyberek 1
 
             // Act
-            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 2);
+            var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek);
 
             // Assert
             result.Should().Be(2); // Should maintain the circular chain
@@ -576,7 +579,7 @@ namespace CyberLosowanie.Test
             var results = new HashSet<int>();
             for (int i = 0; i < 10; i++)
             {
-                var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek, 999); // Invalid target
+                var result = _giftingService.GetAvailableToBeGiftedCyberek(cyberki, cyberek); // Invalid target
                 results.Add(result);
             }
 

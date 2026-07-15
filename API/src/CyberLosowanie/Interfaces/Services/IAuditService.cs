@@ -4,7 +4,7 @@ namespace CyberLosowanie.Interfaces.Services
 {
     public interface IAuditService
     {
-        Task LogErrorAsync(Exception exception, HttpContext context, string? userId = null, string? userName = null);
+        Task LogErrorAsync(Exception exception, HttpContext? context, string? userId = null, string? userName = null);
         // Persists an error from a pre-captured request snapshot (used by the global
         // exception handler so auditing can run on its own background DI scope).
         Task LogErrorAsync(Exception exception, AuditContext auditContext);

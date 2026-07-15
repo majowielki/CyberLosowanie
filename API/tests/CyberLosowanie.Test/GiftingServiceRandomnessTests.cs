@@ -17,7 +17,7 @@ namespace CyberLosowanie.Test
         {
             var service = new GiftingService();
 
-            var result = service.GetAvailableToBeGiftedCyberek(CreateCyberki(4), CreateCyberki(4)[0], 999);
+            var result = service.GetAvailableToBeGiftedCyberek(CreateCyberki(4), CreateCyberki(4)[0]);
 
             result.Should().BeInRange(2, 4); // any valid, non-self target
         }
@@ -61,7 +61,7 @@ namespace CyberLosowanie.Test
             for (var i = 0; i < 25; i++)
             {
                 // Invalid requested target forces the shuffle/backtracking path.
-                results.Add(service.GetAvailableToBeGiftedCyberek(CreateCyberki(5), CreateCyberki(5)[0], 999));
+                results.Add(service.GetAvailableToBeGiftedCyberek(CreateCyberki(5), CreateCyberki(5)[0]));
             }
             return results;
         }

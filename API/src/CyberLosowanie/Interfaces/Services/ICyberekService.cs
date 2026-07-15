@@ -19,12 +19,12 @@ namespace CyberLosowanie.Interfaces.Services
         Task<bool> AssignCyberekToUserAsync(string userName, int cyberekId);
         
         /// <summary>
-        /// Assigns a gift target for a user's cyberek (requires user to already have a cyberek)
+        /// Runs the server-side draw for a user's cyberek (requires user to already have a cyberek).
+        /// The target is chosen by the algorithm — the client does not pick it.
         /// </summary>
         /// <param name="userName">Username whose cyberek will give the gift</param>
-        /// <param name="giftedCyberekId">Preferred ID of the cyberek to receive the gift (may be adjusted by algorithm)</param>
-        /// <returns>ID of the cyberek that was actually assigned as the gift target</returns>
-        Task<int> AssignGiftAsync(string userName, int giftedCyberekId);
+        /// <returns>ID of the cyberek that was assigned as the gift target</returns>
+        Task<int> AssignGiftAsync(string userName);
 
         /// <summary>
         /// Gets the cyberek that the specified user will give a gift to.

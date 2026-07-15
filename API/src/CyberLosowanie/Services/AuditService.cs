@@ -16,7 +16,7 @@ namespace CyberLosowanie.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task LogErrorAsync(Exception exception, HttpContext context, string? userId = null, string? userName = null)
+        public async Task LogErrorAsync(Exception exception, HttpContext? context, string? userId = null, string? userName = null)
         {
             try
             {

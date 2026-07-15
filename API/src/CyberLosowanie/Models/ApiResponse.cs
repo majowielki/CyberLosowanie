@@ -10,7 +10,7 @@ namespace CyberLosowanie.Models
         public List<string> Errors { get; set; } = new List<string>();
         public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
 
-        public static ApiResponse<T> Success(T data, string message = "")
+        public static ApiResponse<T> Success(T? data, string message = "")
         {
             return new ApiResponse<T>
             {

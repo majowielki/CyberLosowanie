@@ -8,6 +8,7 @@ import { apiResponseBody } from "@/types";
 import { useRegisterUserMutation } from "@/features/auth/authApi";
 import { toast } from '@/shared/hooks/use-toast';
 import { debugLog } from '@/shared/config';
+import { cn } from '@/shared/lib/utils';
 import React from "react";
 
 
@@ -113,8 +114,7 @@ function Register() {
         <div className="mt-2 w-full flex flex-col items-center">
           {error && <p className="text-danger">{error}</p>}
           <Button
-            className="mt-5"
-            style={{ width: "200px", backgroundColor: loading ? '#991b1b' : undefined }}
+            className={cn("mt-5 w-48", loading && "bg-red-800")}
             type="submit"
             disabled={loading}
           >
@@ -133,10 +133,10 @@ function Register() {
         </div>
       </form>
           <div className="mt-4 w-full flex justify-between">
-            <Button variant="link" style={{ width: "45%" }} onClick={() => navigate("/")}>
+            <Button variant="link" className="w-5/12" onClick={() => navigate("/")}>
               Home
             </Button>
-            <Button variant="link" style={{ width: "45%" }} onClick={() => navigate("/login")}>
+            <Button variant="link" className="w-5/12" onClick={() => navigate("/login")}>
               Login
             </Button>
           </div>
