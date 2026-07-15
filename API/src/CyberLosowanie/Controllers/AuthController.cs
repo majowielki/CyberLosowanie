@@ -25,12 +25,6 @@ namespace CyberLosowanie.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO model)
         {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-                return BadRequest(ApiResponse<object>.ValidationError(errors));
-            }
-            
             var loginResponse = await _authService.LoginAsync(model);
             
             // Log successful login to audit table
@@ -49,12 +43,6 @@ namespace CyberLosowanie.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDTO model)
         {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
-                return BadRequest(ApiResponse<object>.ValidationError(errors));
-            }
-            
             await _authService.RegisterAsync(model);
             
             // Log successful registration to audit table

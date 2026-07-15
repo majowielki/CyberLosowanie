@@ -46,7 +46,8 @@ namespace CyberLosowanie.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
-        public async Task<IActionResult> GetCyberek([Range(1, int.MaxValue)] int id)
+        public async Task<IActionResult> GetCyberek(
+            [Range(CyberLosowanieConstants.MIN_CYBEREK_ID, CyberLosowanieConstants.MAX_CYBEREK_ID)] int id)
         {
             var cyberek = await _cyberekService.GetCyberekByIdAsync(id);
             return Ok(ApiResponse<CyberekResponse>.Success(cyberek.ToResponse()));
@@ -58,7 +59,8 @@ namespace CyberLosowanie.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - no targets available
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
-        public async Task<IActionResult> GetAvailableGiftTargets([Range(1, int.MaxValue)] int id)
+        public async Task<IActionResult> GetAvailableGiftTargets(
+            [Range(CyberLosowanieConstants.MIN_CYBEREK_ID, CyberLosowanieConstants.MAX_CYBEREK_ID)] int id)
         {
             var availableTargets = await _cyberekService.GetAvailableGiftTargetsAsync(id);
             
@@ -79,13 +81,8 @@ namespace CyberLosowanie.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
         [ProducesResponseType(typeof(ApiResponse<object>), 409)]
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
-        public async Task<IActionResult> GetMyGiftedCyberek([FromQuery] string userName)
+        public async Task<IActionResult> GetMyGiftedCyberek([Required][FromQuery] string userName)
         {
-            if (string.IsNullOrWhiteSpace(userName))
-            {
-                return BadRequest(ApiResponse<object>.Error("Username is required."));
-            }
-
             // The owner is allowed to see WHO they gift (name + photo), but not that
             // target's own draw result — ToResponse() strips GiftedCyberekId/BannedCyberki.
             var cyberek = await _cyberekService.GetGiftedCyberekForUserAsync(userName);
@@ -102,15 +99,8 @@ namespace CyberLosowanie.Controllers
             [Required][FromQuery] string userName,
             [FromBody] CyberekAssignmentDTO assignmentDto)
         {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage)
-                    .ToList();
-                return BadRequest(ApiResponse<object>.ValidationError(errors));
-            }
-
+            // Input shape is enforced at the boundary: [ApiController] auto-400s invalid
+            // models (formatted as ApiResponse via InvalidModelStateResponseFactory).
             // Domain errors (validation, user/cyberek not found) propagate to the
             // global exception handler. "Already has a cyberek" is signalled by a
             // false result, not an exception.
@@ -131,15 +121,6 @@ namespace CyberLosowanie.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<IActionResult> AssignGift([Required][FromQuery] string userName)
         {
-            if (!ModelState.IsValid)
-            {
-                var errors = ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage)
-                    .ToList();
-                return BadRequest(ApiResponse<object>.ValidationError(errors));
-            }
-
             // Server-side draw (C2): the client does not choose the target. Domain errors
             // (e.g. user has no cyberek yet, gift already assigned) are raised as domain
             // exceptions and handled by the global exception handler. The service returns

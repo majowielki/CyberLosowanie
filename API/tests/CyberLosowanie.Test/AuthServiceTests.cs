@@ -57,11 +57,11 @@ namespace CyberLosowanie.Test
         [Theory]
         [InlineData("", "pw")]
         [InlineData("user", "")]
-        public async Task LoginAsync_WithMissingCredentials_ThrowsArgumentException(string userName, string password)
+        public async Task LoginAsync_WithMissingCredentials_ThrowsBusinessValidationException(string userName, string password)
         {
             var request = new LoginRequestDTO { UserName = userName, Password = password };
 
-            await Assert.ThrowsAsync<ArgumentException>(() => CreateService().LoginAsync(request));
+            await Assert.ThrowsAsync<BusinessValidationException>(() => CreateService().LoginAsync(request));
         }
 
         [Fact]

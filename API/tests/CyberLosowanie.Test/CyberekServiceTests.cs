@@ -1,3 +1,4 @@
+using CyberLosowanie.Constants;
 using CyberLosowanie.Exceptions;
 using CyberLosowanie.Interfaces.Repositories;
 using CyberLosowanie.Interfaces.Services;
@@ -20,19 +21,15 @@ namespace CyberLosowanie.Test
         private readonly Mock<ICyberekRepository> _cyberekRepo = new();
         private readonly Mock<IApplicationUserRepository> _userRepo = new();
         private readonly Mock<IGiftingService> _gifting = new();
-        private readonly Mock<IValidationService> _validation = new();
         private readonly Mock<IAuditService> _audit = new();
         private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
         private CyberekService CreateService()
         {
-            // Default: every id passes validation. Individual tests override this.
-            _validation.Setup(v => v.ValidateCyberekId(It.IsAny<int>())).Returns(new List<string>());
             return new CyberekService(
                 _cyberekRepo.Object,
                 _userRepo.Object,
                 _gifting.Object,
-                _validation.Object,
                 _cache,
                 NullLogger<CyberekService>.Instance,
                 _audit.Object);
@@ -58,17 +55,15 @@ namespace CyberLosowanie.Test
             var repo = _cyberekRepo.Object;
             var users = _userRepo.Object;
             var gifting = _gifting.Object;
-            var validation = _validation.Object;
             var audit = _audit.Object;
             var logger = NullLogger<CyberekService>.Instance;
 
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(null!, users, gifting, validation, _cache, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, null!, gifting, validation, _cache, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, null!, validation, _cache, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, null!, _cache, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, validation, null!, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, validation, _cache, null!, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, validation, _cache, logger, null!));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(null!, users, gifting, _cache, logger, audit));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, null!, gifting, _cache, logger, audit));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, null!, _cache, logger, audit));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, null!, logger, audit));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, null!, audit));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, logger, null!));
         }
 
         #endregion
@@ -136,13 +131,51 @@ namespace CyberLosowanie.Test
 
         #region GetCyberekByIdAsync
 
-        [Fact]
-        public async Task GetCyberekByIdAsync_WithInvalidId_ThrowsBusinessValidationException()
+        [Theory]
+        [InlineData(CyberLosowanieConstants.MIN_CYBEREK_ID - 1)]
+        [InlineData(CyberLosowanieConstants.MAX_CYBEREK_ID + 1)]
+        [InlineData(-1)]
+        [InlineData(99)]
+        public async Task GetCyberekByIdAsync_WithIdOutsideSeedRange_ThrowsBusinessValidationException(int invalidId)
         {
             var service = CreateService();
-            _validation.Setup(v => v.ValidateCyberekId(It.IsAny<int>())).Returns(new List<string> { "invalid" });
 
-            await Assert.ThrowsAsync<BusinessValidationException>(() => service.GetCyberekByIdAsync(99));
+            await Assert.ThrowsAsync<BusinessValidationException>(() => service.GetCyberekByIdAsync(invalidId));
+            // The repository must never be hit for an out-of-range id.
+            _cyberekRepo.Verify(r => r.GetByIdAsync(It.IsAny<int>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(CyberLosowanieConstants.MIN_CYBEREK_ID)]
+        [InlineData(CyberLosowanieConstants.MAX_CYBEREK_ID)]
+        public async Task GetCyberekByIdAsync_WithBoundaryIds_PassesValidation(int validId)
+        {
+            _cyberekRepo.Setup(r => r.GetByIdAsync(validId)).ReturnsAsync(Cyberek(validId));
+            var service = CreateService();
+
+            var result = await service.GetCyberekByIdAsync(validId);
+
+            result.Id.Should().Be(validId);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(CyberLosowanieConstants.MAX_CYBEREK_ID + 1)]
+        public async Task GetAvailableGiftTargetsAsync_WithIdOutsideSeedRange_ThrowsBusinessValidationException(int invalidId)
+        {
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<BusinessValidationException>(() => service.GetAvailableGiftTargetsAsync(invalidId));
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(CyberLosowanieConstants.MAX_CYBEREK_ID + 1)]
+        public async Task AssignCyberekToUserAsync_WithIdOutsideSeedRange_ThrowsBusinessValidationException(int invalidId)
+        {
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<BusinessValidationException>(() => service.AssignCyberekToUserAsync("john", invalidId));
         }
 
         [Fact]

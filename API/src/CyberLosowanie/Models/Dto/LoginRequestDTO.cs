@@ -9,7 +9,7 @@ namespace CyberLosowanie.Models.Dto
         public string UserName { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Password is required")]
-        [StringLength(100, MinimumLength = 1, ErrorMessage = "Password must be at least 1 character long")]
+        [StringLength(100, ErrorMessage = "Password cannot exceed 100 characters")]
         public string Password { get; set; } = string.Empty;
     }
 }

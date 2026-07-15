@@ -36,8 +36,10 @@ namespace CyberLosowanie.Services
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
 
+            // Defence in depth: the API boundary (DataAnnotations) already rejects
+            // empty credentials; this guards direct service callers.
             if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.Password))
-                throw new ArgumentException("Username and password are required");
+                throw new BusinessValidationException("Username and password are required");
 
             var user = await _userRepository.GetByUsernameAsync(request.UserName);
             if (user == null)
@@ -62,7 +64,7 @@ namespace CyberLosowanie.Services
                 throw new ArgumentNullException(nameof(request));
 
             if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.Password))
-                throw new ArgumentException("Username and password are required");
+                throw new BusinessValidationException("Username and password are required");
 
             var existingUser = await _userRepository.GetByUsernameAsync(request.UserName);
             if (existingUser != null)

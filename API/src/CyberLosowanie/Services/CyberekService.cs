@@ -15,11 +15,10 @@ namespace CyberLosowanie.Services
         private readonly ICyberekRepository _cyberekRepository;
         private readonly IApplicationUserRepository _userRepository;
         private readonly IGiftingService _giftingService;
-        private readonly IValidationService _validationService;
         private readonly IMemoryCache _cache;
         private readonly ILogger<CyberekService> _logger;
         private readonly IAuditService _auditService;
-        
+
         private const string ALL_CYBERKI_CACHE_KEY = "all_cyberki";
         private const int CACHE_EXPIRATION_MINUTES = 30;
 
@@ -27,7 +26,6 @@ namespace CyberLosowanie.Services
             ICyberekRepository cyberekRepository,
             IApplicationUserRepository userRepository,
             IGiftingService giftingService,
-            IValidationService validationService,
             IMemoryCache cache,
             ILogger<CyberekService> logger,
             IAuditService auditService)
@@ -35,10 +33,27 @@ namespace CyberLosowanie.Services
             _cyberekRepository = cyberekRepository ?? throw new ArgumentNullException(nameof(cyberekRepository));
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
             _giftingService = giftingService ?? throw new ArgumentNullException(nameof(giftingService));
-            _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
+        }
+
+        // Domain guard: cyberek ids form a closed range defined by the seed (MIN..MAX).
+        // Kept in the service (not the boundary) so every caller of the domain layer
+        // gets the same rule regardless of the entry point.
+        private async Task EnsureValidCyberekIdAsync(int cyberekId, string operation, string? userName = null)
+        {
+            if (cyberekId is >= CyberLosowanieConstants.MIN_CYBEREK_ID
+                          and <= CyberLosowanieConstants.MAX_CYBEREK_ID)
+            {
+                return;
+            }
+
+            await _auditService.LogWarningAsync(
+                $"Validation failed for {operation} with cyberekId {cyberekId}",
+                userName: userName,
+                additionalData: new { CyberekId = cyberekId, Error = CyberLosowanieConstants.INVALID_CYBEREK_ID });
+            throw new BusinessValidationException(CyberLosowanieConstants.INVALID_CYBEREK_ID);
         }
 
         public async Task<IEnumerable<Cyberek>> GetAllCyberkiAsync()
@@ -98,14 +113,7 @@ namespace CyberLosowanie.Services
 
         public async Task<Cyberek> GetCyberekByIdAsync(int id)
         {
-            var validationErrors = _validationService.ValidateCyberekId(id);
-            if (validationErrors.Any())
-            {
-                await _auditService.LogWarningAsync(
-                    $"Validation failed for GetCyberekByIdAsync with id {id}",
-                    additionalData: new { Id = id, Errors = validationErrors });
-                throw new BusinessValidationException(validationErrors);
-            }
+            await EnsureValidCyberekIdAsync(id, nameof(GetCyberekByIdAsync));
 
             var cyberek = await _cyberekRepository.GetByIdAsync(id);
             if (cyberek == null)
@@ -120,14 +128,7 @@ namespace CyberLosowanie.Services
 
         public async Task<List<int>> GetAvailableGiftTargetsAsync(int cyberekId)
         {
-            var validationErrors = _validationService.ValidateCyberekId(cyberekId);
-            if (validationErrors.Any())
-            {
-                await _auditService.LogWarningAsync(
-                    $"Validation failed for GetAvailableGiftTargetsAsync with cyberekId {cyberekId}",
-                    additionalData: new { CyberekId = cyberekId, Errors = validationErrors });
-                throw new BusinessValidationException(validationErrors);
-            }
+            await EnsureValidCyberekIdAsync(cyberekId, nameof(GetAvailableGiftTargetsAsync));
 
             var cyberek = await _cyberekRepository.GetByIdAsync(cyberekId);
             if (cyberek == null)
@@ -208,15 +209,7 @@ namespace CyberLosowanie.Services
         public async Task<bool> AssignCyberekToUserAsync(string userName, int cyberekId)
         {
             // Validate inputs
-            var validationErrors = _validationService.ValidateCyberekId(cyberekId);
-            if (validationErrors.Any())
-            {
-                await _auditService.LogWarningAsync(
-                    "Validation failed for AssignCyberekToUserAsync",
-                    userName: userName,
-                    additionalData: new { CyberekId = cyberekId, Errors = validationErrors });
-                throw new BusinessValidationException(validationErrors);
-            }
+            await EnsureValidCyberekIdAsync(cyberekId, nameof(AssignCyberekToUserAsync), userName);
 
             if (string.IsNullOrWhiteSpace(userName))
             {

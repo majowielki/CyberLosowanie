@@ -8,6 +8,7 @@ using CyberLosowanie.Repositories;
 using CyberLosowanie.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -41,7 +42,6 @@ builder.Services.AddScoped<IGiftingService, GiftingService>();
 
 // Randomness source for the gifting algorithm — singleton over Random.Shared (I7).
 builder.Services.AddSingleton<IRandomProvider, RandomProvider>();
-builder.Services.AddScoped<IValidationService, ValidationService>();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
@@ -122,7 +122,21 @@ builder.Services.AddCors(options =>
 // Add memory cache for performance
 builder.Services.AddMemoryCache();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // [ApiController] short-circuits invalid models before the action runs.
+        // Return the same ApiResponse envelope as every other endpoint instead of
+        // the default ProblemDetails, so the error contract is uniform end-to-end.
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+            return new BadRequestObjectResult(ApiResponse<object>.ValidationError(errors));
+        };
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
