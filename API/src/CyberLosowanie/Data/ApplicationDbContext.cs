@@ -14,6 +14,7 @@ namespace CyberLosowanie.Data
         public DbSet<ApplicationUser> ApplicationUsers { get; set; }
         public DbSet<Cyberek> Cyberki { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<Wishlist> Wishlists { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -38,6 +39,27 @@ namespace CyberLosowanie.Data
                     entity.Property(e => e.StackTrace).HasColumnType("nvarchar(max)");
                     entity.Property(e => e.RequestBody).HasColumnType("nvarchar(max)");
                     entity.Property(e => e.AdditionalData).HasColumnType("nvarchar(max)");
+                }
+            });
+
+            // Configure Wishlist entity — one canvas per participant. A separate table
+            // (not a column on Cyberki) keeps the large document away from draw data
+            // and does not touch the Cyberki seed below.
+            modelBuilder.Entity<Wishlist>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                // One wishlist per cyberek; saving again overwrites (upsert).
+                entity.HasIndex(e => e.CyberekId).IsUnique();
+
+                entity.HasOne<Cyberek>()
+                      .WithMany()
+                      .HasForeignKey(e => e.CyberekId);
+
+                // Same SQL Server-only column type guard as AuditLog above.
+                if (Database.IsSqlServer())
+                {
+                    entity.Property(e => e.CanvasJson).HasColumnType("nvarchar(max)");
                 }
             });
 

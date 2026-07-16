@@ -37,6 +37,12 @@ export const config = {
       MY_GIFTED_CYBEREK: 'CyberLosowanie/my-gifted-cyberek',
       ASSIGN_CYBEREK: 'CyberLosowanie/assign-cyberek',
       ASSIGN_GIFT: 'CyberLosowanie/assign-gift',
+    },
+    WISHLIST: {
+      MY: 'wishlist/my',
+      GIFTED: 'wishlist/gifted',
+      MY_IMAGES: 'wishlist/my/images',
+      IMAGES: 'wishlist/images',
     }
   },
   

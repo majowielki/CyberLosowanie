@@ -33,12 +33,41 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Register repositories
 builder.Services.AddScoped<ICyberekRepository, CyberekRepository>();
 builder.Services.AddScoped<IApplicationUserRepository, ApplicationUserRepository>();
+builder.Services.AddScoped<IWishlistRepository, WishlistRepository>();
 
 // Register services
 builder.Services.AddScoped<ICyberekService, CyberekService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGiftingService, GiftingService>();
+builder.Services.AddScoped<IWishlistService, WishlistService>();
+builder.Services.AddScoped<IWishlistImageStorage, WishlistImageStorage>();
+
+// Wishlist image storage (Azure Blob; Azurite locally). The client is created
+// lazily on first use, so environments that never touch wishlist images
+// (e.g. CI) do not need storage configured. Thread-safe per Azure SDK docs.
+builder.Services.AddSingleton(serviceProvider =>
+{
+    var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+
+    // Production without secrets: Managed Identity against the account URI.
+    var accountUri = configuration.GetValue<string>("Storage:AccountUri");
+    if (!string.IsNullOrWhiteSpace(accountUri))
+    {
+        return new Azure.Storage.Blobs.BlobServiceClient(new Uri(accountUri), new DefaultAzureCredential());
+    }
+
+    // Dev: Azurite via "UseDevelopmentStorage=true"; prod alternative: Key Vault secret.
+    var connectionString = configuration.GetValue<string>("Storage:ConnectionString");
+    if (!string.IsNullOrWhiteSpace(connectionString))
+    {
+        return new Azure.Storage.Blobs.BlobServiceClient(connectionString);
+    }
+
+    throw new InvalidOperationException(
+        "Wishlist image storage is not configured. Set 'Storage:ConnectionString' " +
+        "(local dev: 'UseDevelopmentStorage=true' with Azurite) or 'Storage:AccountUri' (Managed Identity).");
+});
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {

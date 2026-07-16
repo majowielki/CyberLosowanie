@@ -150,6 +150,10 @@ namespace CyberLosowanie.Middleware
                 // Race outcome, not a client error: the box was valid when displayed but is
                 // gone now — the client should refresh the list and let the user pick again.
                 GiftTargetUnavailableException ex => (HttpStatusCode.Conflict, ex.Message, null as List<string>),
+                // Wishlist operations require the corresponding draw step to be done
+                // (cyberek selected / draw completed) — a state conflict, not a client bug.
+                WishlistConflictException ex => (HttpStatusCode.Conflict, ex.Message, null as List<string>),
+                ForbiddenAccessException ex => (HttpStatusCode.Forbidden, ex.Message, null as List<string>),
                 InvalidGiftAssignmentException ex => (HttpStatusCode.BadRequest, ex.Message, null as List<string>),
                 BusinessValidationException ex => (HttpStatusCode.BadRequest, "Validation failed", ex.ValidationErrors),
                 ArgumentNullException ex => (HttpStatusCode.BadRequest, $"Required parameter is missing: {ex.ParamName}", null as List<string>),

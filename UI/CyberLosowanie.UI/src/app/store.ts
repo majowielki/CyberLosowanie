@@ -3,6 +3,7 @@ import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import authApi from "@/features/auth/authApi";
 import cyberLosowanieApi from "@/features/cyberki/cyberLosowanieApi";
+import wishlistApi from "@/features/wishlist/wishlistApi";
 import { userAuthReducer } from "@/features/auth/userSlice";
 
 // Persist only the user session runtime state — everything else is
@@ -20,7 +21,8 @@ const persistConfig = {
 const rootReducer = combineReducers({
   userAuthStore: userAuthReducer,
   [authApi.reducerPath]: authApi.reducer,
-  [cyberLosowanieApi.reducerPath]: cyberLosowanieApi.reducer
+  [cyberLosowanieApi.reducerPath]: cyberLosowanieApi.reducer,
+  [wishlistApi.reducerPath]: wishlistApi.reducer
 });
 
 // Create persisted reducer
@@ -43,6 +45,7 @@ const store = configureStore({
     })
       .concat(authApi.middleware)
       .concat(cyberLosowanieApi.middleware)
+      .concat(wishlistApi.middleware)
 });
 
 export const persistor = persistStore(store);

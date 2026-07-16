@@ -8,6 +8,8 @@ import Register from "@/features/auth/Register";
 import SelectYourCyberek from "@/features/cyberki/SelectYourCyberek";
 import ChooseToBeGiftedCyberek from "@/features/cyberki/ChooseToBeGiftedCyberek";
 import FinalPage from "@/features/cyberki/FinalPage";
+import MyWishlistPage from "@/features/wishlist/MyWishlistPage";
+import GiftedWishlistPage from "@/features/wishlist/GiftedWishlistPage";
 import { ErrorElement } from "@/shared/components";
 import ErrorBoundary from "@/shared/components/ErrorBoundary";
 import { useAuthPersistence } from "@/features/auth/useAuthPersistence";
@@ -49,6 +51,24 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <FinalPage />
+          </ProtectedRoute>
+        ),
+        errorElement: <ErrorElement />,
+      },
+      {
+        path: "wishlist",
+        element: (
+          <ProtectedRoute>
+            <MyWishlistPage />
+          </ProtectedRoute>
+        ),
+        errorElement: <ErrorElement />,
+      },
+      {
+        path: "wishlist/gifted",
+        element: (
+          <ProtectedRoute>
+            <GiftedWishlistPage />
           </ProtectedRoute>
         ),
         errorElement: <ErrorElement />,

@@ -62,6 +62,9 @@ function FinalPage() {
               )}
             </CardContent>
           </Card>
+          <Button className="mt-6" onClick={() => navigate("/wishlist/gifted")}>
+            Zobacz listę życzeń {cyberekName}
+          </Button>
     </div>
   );
 }
