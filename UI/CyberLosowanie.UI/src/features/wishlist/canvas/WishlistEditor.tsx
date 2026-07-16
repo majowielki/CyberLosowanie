@@ -5,6 +5,7 @@ import { RootState } from '@/app/store';
 import { Button } from '@/shared/ui/button';
 import { useToast } from '@/shared/hooks/use-toast';
 import { cn } from '@/shared/lib/utils';
+import { TranslatableError, useTranslation } from '@/shared/i18n';
 import {
   extractApiErrorMessage,
   useSaveMyWishlistMutation,
@@ -44,6 +45,7 @@ interface WishlistEditorProps {
  * useCanvasEngine, viewport in useStageViewport, rendering in WishlistCanvas.
  */
 function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProps) {
+  const { t } = useTranslation();
   const engine = useCanvasEngine(initialDocument);
   const [tool, setTool] = useState<EditorTool>('pen');
   const [color, setColor] = useState<string>(DEFAULT_PEN_COLOR);
@@ -149,7 +151,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       const response = await uploadWishlistImage(prepared.file).unwrap();
       const path = response.data?.path;
       if (!path) {
-        throw new Error(response.message || 'Serwer nie zwrócił ścieżki zdjęcia.');
+        throw new Error(response.message || t('wishlist.editor.noImagePath'));
       }
       // Insert at a comfortable size; exact placement is tuned with the transformer.
       const insertScale = Math.min(
@@ -164,11 +166,13 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       setTool('select');
     } catch (error) {
       toast({
-        title: 'Nie udało się dodać zdjęcia',
+        title: t('wishlist.editor.imageAddFailed'),
         description:
-          error instanceof Error
-            ? error.message
-            : extractApiErrorMessage(error, 'Spróbuj ponownie.'),
+          error instanceof TranslatableError
+            ? t(error.key, error.params)
+            : error instanceof Error
+              ? error.message
+              : extractApiErrorMessage(error, t('common.error.tryAgainShort')),
         variant: 'destructive',
       });
     }
@@ -182,8 +186,8 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     const validationErrors = validateCanvasDocument(document, cyberekId);
     if (validationErrors.length > 0) {
       toast({
-        title: 'Nie można zapisać listy',
-        description: validationErrors[0],
+        title: t('wishlist.editor.cannotSave'),
+        description: t(validationErrors[0].key, validationErrors[0].params),
         variant: 'destructive',
       });
       return;
@@ -192,12 +196,12 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     try {
       await saveMyWishlist({ canvasJson: serializeCanvasDocument(document) }).unwrap();
       engine.markSaved();
-      toast({ title: 'Lista życzeń zapisana' });
+      toast({ title: t('wishlist.editor.saved') });
       onSaved?.();
     } catch (error) {
       toast({
-        title: 'Zapis nie powiódł się',
-        description: extractApiErrorMessage(error, 'Spróbuj ponownie.'),
+        title: t('wishlist.editor.saveFailed'),
+        description: extractApiErrorMessage(error, t('common.error.tryAgainShort')),
         variant: 'destructive',
       });
     }
@@ -207,7 +211,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     if (!onExit) {
       return;
     }
-    if (!engine.isDirty || window.confirm('Masz niezapisane zmiany. Wyjść bez zapisywania?')) {
+    if (!engine.isDirty || window.confirm(t('wishlist.editor.unsavedConfirm'))) {
       onExit();
     }
   };
@@ -218,20 +222,20 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
         <div className="flex items-center gap-2">
           {onExit && (
             <Button type="button" variant="secondary" size="sm" onClick={handleExit}>
-              <ArrowLeft /> Wróć
+              <ArrowLeft /> {t('common.action.back')}
             </Button>
           )}
-          <h1 className="text-xl font-bold text-white">Moja lista życzeń</h1>
+          <h1 className="text-xl font-bold text-white">{t('wishlist.my.title')}</h1>
         </div>
         <div className="flex items-center gap-2">
           <ZoomControls viewport={viewport} />
           <Button type="button" onClick={handleSave} disabled={isSaving}>
             {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-            Zapisz
+            {t('common.action.save')}
             {engine.isDirty && !isSaving && (
               <span
                 className="ml-1 h-2 w-2 rounded-full bg-amber-400"
-                title="Niezapisane zmiany"
+                title={t('wishlist.editor.unsavedChanges')}
               />
             )}
           </Button>
@@ -253,7 +257,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           hasSelection={engine.selectedItemId !== null}
           onDeleteSelection={() => selectedItemId && removeItem(selectedItemId)}
           onClearAll={() => {
-            if (window.confirm('Wyczyścić całe płótno?')) {
+            if (window.confirm(t('wishlist.editor.clearConfirm'))) {
               engine.clearAll();
             }
           }}

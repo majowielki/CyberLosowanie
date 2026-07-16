@@ -12,6 +12,7 @@ import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { debugLog } from '@/shared/config';
 import { cn } from '@/shared/lib/utils';
+import { useTranslation } from '@/shared/i18n';
 import React from "react";
 
 
@@ -22,6 +23,7 @@ function Login() {
   const [loginUser] = useLoginUserMutation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [userInput, setUserInput] = useState({
     userName: "",
     password: "",
@@ -56,15 +58,15 @@ function Login() {
           dispatch(setLoggedInUser(userFromToken(decoded)));
           navigate("/");
         } else {
-          setError("Token not found in response. Please try again.");
+          setError(t('auth.login.tokenMissing'));
         }
       } else if (response.data && response.data.isSuccess === false) {
-        // Handle API error response (when isSuccess is false)
-        const errorMessage = response.data.errors?.[0] || response.data.message || "Login failed. Please try again.";
+        // Backend messages are shown untranslated until the error-code epic (doc §7).
+        const errorMessage = response.data.errors?.[0] || response.data.message || t('auth.login.failed');
         setError(errorMessage);
       } else if (response.error) {
         // Handle network or other errors (HTTP errors, network issues, etc.)
-        let errorMessage = "Login failed. Please try again.";
+        let errorMessage = t('auth.login.failed');
 
         // Handle FetchBaseQueryError (has status and data)
         if ('status' in response.error && response.error.data) {
@@ -78,16 +80,16 @@ function Login() {
 
         // Show a friendly message if transient failure detected
         if (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('transient failure')) {
-          setError('This site was idle for a while. Please reload the page and try again in a moment.');
+          setError(t('auth.error.siteIdle'));
         } else {
           setError(errorMessage);
         }
       } else {
-        setError("Unexpected response format. Please try again.");
+        setError(t('auth.error.unexpectedFormat'));
       }
     } catch (error) {
       debugLog("Login error:", error);
-      setError("An error occurred during login. Please try again.");
+      setError(t('auth.login.unexpectedError'));
     } finally {
       setLoading(false);
     }
@@ -97,7 +99,7 @@ function Login() {
     <section className="h-screen grid place-items-center bg-gradient-to-t from-green-900 via-green-700 to-green-500 min-h-screen w-full">
       <Card className="w-96 bg-muted flex flex-col items-center">
         <CardHeader>
-          <CardTitle className="text-center">Login</CardTitle>
+          <CardTitle className="text-center">{t('auth.login.title')}</CardTitle>
         </CardHeader>
         <CardContent className="w-full flex flex-col items-center">
           <form method="post" onSubmit={handleSubmit} className="w-3/5 flex flex-col items-center">
@@ -106,7 +108,7 @@ function Login() {
                 <Input
                   type="text"
                   className="w-full"
-                  placeholder="Enter Username"
+                  placeholder={t('auth.field.usernamePlaceholder')}
                   required
                   name="userName"
                   value={userInput.userName}
@@ -117,7 +119,7 @@ function Login() {
                 <Input
                   type="password"
                   className="w-full"
-                  placeholder="Enter Password"
+                  placeholder={t('auth.field.passwordPlaceholder')}
                   required
                   name="password"
                   value={userInput.password}
@@ -138,20 +140,20 @@ function Login() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                     </svg>
-                    Loading...
+                    {t('common.action.loading')}
                   </span>
                 ) : (
-                  'Login'
+                  t('auth.login.submit')
                 )}
               </Button>
             </div>
           </form>
           <div className="mt-4 w-full flex justify-between">
             <Button variant="link" className="w-5/12" onClick={() => navigate("/")}>
-              Home
+              {t('auth.nav.home')}
             </Button>
             <Button variant="link" className="w-5/12" onClick={() => navigate("/register")}>
-              Register
+              {t('auth.nav.register')}
             </Button>
           </div>
         </CardContent>

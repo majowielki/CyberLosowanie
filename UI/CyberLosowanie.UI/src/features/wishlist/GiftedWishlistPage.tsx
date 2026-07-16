@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Loading } from '@/shared/components';
+import { useTranslation } from '@/shared/i18n';
 import { useGetMyGiftedCyberekQuery } from '@/features/cyberki/cyberLosowanieApi';
 import { extractApiErrorMessage, useGetGiftedWishlistQuery } from './wishlistApi';
 import { parseCanvasDocument } from './canvas/canvasDocument';
@@ -18,6 +19,7 @@ const isConflictError = (error: unknown): boolean =>
  */
 function GiftedWishlistPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { data, isLoading, error } = useGetGiftedWishlistQuery();
   // Name and photo of the drawn person come from the existing draw endpoint.
   const { data: giftedCyberekData } = useGetMyGiftedCyberekQuery();
@@ -39,18 +41,18 @@ function GiftedWishlistPage() {
       return (
         <div className="mt-20 flex flex-col items-center gap-4">
           <p className="text-lg text-white">
-            Najpierw dokończ losowanie — potem zobaczysz listę życzeń wylosowanej osoby.
+            {t('wishlist.gifted.finishDrawFirst')}
           </p>
-          <Button onClick={() => navigate('/')}>Wróć na stronę główną</Button>
+          <Button onClick={() => navigate('/')}>{t('common.action.goHome')}</Button>
         </div>
       );
     }
     return (
       <div className="mt-20 flex flex-col items-center gap-4">
         <p className="text-lg text-white">
-          {extractApiErrorMessage(error, 'Nie udało się wczytać listy życzeń. Spróbuj ponownie.')}
+          {extractApiErrorMessage(error, t('wishlist.loadFailed'))}
         </p>
-        <Button onClick={() => navigate('/final-page')}>Wróć</Button>
+        <Button onClick={() => navigate('/final-page')}>{t('common.action.back')}</Button>
       </div>
     );
   }
@@ -59,10 +61,12 @@ function GiftedWishlistPage() {
     return (
       <div className="mt-20 flex flex-col items-center gap-4">
         <p className="text-lg text-white">
-          {giftedName ?? 'Ta osoba'} nie zapisał(a) jeszcze swojej listy życzeń.
+          {t('wishlist.gifted.notSavedYet', {
+            name: giftedName ?? t('wishlist.gifted.fallbackPerson'),
+          })}
         </p>
         <Button onClick={() => navigate('/final-page')}>
-          <ArrowLeft /> Wróć
+          <ArrowLeft /> {t('common.action.back')}
         </Button>
       </div>
     );
@@ -72,15 +76,17 @@ function GiftedWishlistPage() {
     <div className="flex w-full max-w-4xl flex-col gap-3 py-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold text-white">
-          Lista życzeń {giftedName ?? 'wylosowanej osoby'}
+          {giftedName
+            ? t('wishlist.gifted.titleNamed', { name: giftedName })
+            : t('wishlist.gifted.titleFallback')}
         </h1>
         <Button variant="secondary" onClick={() => navigate('/final-page')}>
-          <ArrowLeft /> Wróć
+          <ArrowLeft /> {t('common.action.back')}
         </Button>
       </div>
       {parsed && parsed.errors.length > 0 ? (
         <p className="rounded-md bg-red-100 p-3 text-sm text-red-800">
-          Nie udało się odczytać tej listy życzeń.
+          {t('wishlist.gifted.corrupt')}
         </p>
       ) : (
         parsed?.document && <WishlistViewer document={parsed.document} />

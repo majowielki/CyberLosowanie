@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pencil } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Loading } from '@/shared/components';
+import { useTranslation } from '@/shared/i18n';
 import { extractApiErrorMessage, useGetMyWishlistQuery } from './wishlistApi';
 import {
   createEmptyCanvasDocument,
@@ -21,6 +22,7 @@ const isConflictError = (error: unknown): boolean =>
  */
 function MyWishlistPage() {
   const navigate = useNavigate();
+  const { t, language } = useTranslation();
   const { data, isLoading, error } = useGetMyWishlistQuery();
   const [isEditing, setIsEditing] = useState(false);
 
@@ -40,18 +42,18 @@ function MyWishlistPage() {
       return (
         <div className="mt-20 flex flex-col items-center gap-4">
           <p className="text-lg text-white">
-            Najpierw wybierz swojego cyberka — wtedy założysz listę życzeń.
+            {t('wishlist.my.needCyberekFirst')}
           </p>
-          <Button onClick={() => navigate('/select-your-cyberek')}>Wybierz cyberka</Button>
+          <Button onClick={() => navigate('/select-your-cyberek')}>{t('wishlist.my.pickCyberek')}</Button>
         </div>
       );
     }
     return (
       <div className="mt-20 flex flex-col items-center gap-4">
         <p className="text-lg text-white">
-          {extractApiErrorMessage(error, 'Nie udało się wczytać listy życzeń. Spróbuj ponownie.')}
+          {extractApiErrorMessage(error, t('wishlist.loadFailed'))}
         </p>
-        <Button onClick={() => navigate('/')}>Wróć na stronę główną</Button>
+        <Button onClick={() => navigate('/')}>{t('common.action.goHome')}</Button>
       </div>
     );
   }
@@ -74,18 +76,22 @@ function MyWishlistPage() {
     <div className="flex w-full max-w-4xl flex-col gap-3 py-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-white">Moja lista życzeń</h1>
+          <h1 className="text-2xl font-bold text-white">{t('wishlist.my.title')}</h1>
           <p className="text-sm text-white/80">
-            Ostatni zapis: {new Date(saved.updatedAtUtc).toLocaleString('pl-PL')}
+            {t('wishlist.my.lastSaved', {
+              date: new Date(saved.updatedAtUtc).toLocaleString(
+                language === 'pl' ? 'pl-PL' : 'en-GB',
+              ),
+            })}
           </p>
         </div>
         <Button onClick={() => setIsEditing(true)}>
-          <Pencil /> Edytuj
+          <Pencil /> {t('common.action.edit')}
         </Button>
       </div>
       {parsed && parsed.errors.length > 0 && (
         <p className="rounded-md bg-red-100 p-3 text-sm text-red-800">
-          Nie udało się odczytać zapisanej listy — edycja rozpocznie się od pustego płótna.
+          {t('wishlist.my.corruptSaved')}
         </p>
       )}
       <WishlistViewer document={document} />

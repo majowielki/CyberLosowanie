@@ -1,3 +1,4 @@
+import { TranslatableError } from '@/shared/i18n';
 import {
   IMAGE_DOWNSCALE_JPEG_QUALITY,
   IMAGE_DOWNSCALE_MAX_EDGE,
@@ -24,11 +25,11 @@ export const IMAGE_FILE_ACCEPT = ACCEPTED_IMAGE_TYPES.join(',');
  */
 export async function prepareImageForUpload(file: File): Promise<PreparedImage> {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-    throw new Error('Wybierz zdjęcie w formacie JPEG, PNG lub WebP.');
+    throw new TranslatableError('wishlist.image.badType');
   }
 
   const bitmap = await createImageBitmap(file).catch(() => {
-    throw new Error('Nie udało się odczytać zdjęcia.');
+    throw new TranslatableError('wishlist.image.readFailed');
   });
 
   try {
@@ -48,7 +49,7 @@ export async function prepareImageForUpload(file: File): Promise<PreparedImage> 
     canvas.height = height;
     const context = canvas.getContext('2d');
     if (!context) {
-      throw new Error('Nie udało się przetworzyć zdjęcia.');
+      throw new TranslatableError('wishlist.image.processFailed');
     }
     // JPEG has no alpha channel — flatten transparency onto white, not black.
     context.fillStyle = '#ffffff';
@@ -59,10 +60,10 @@ export async function prepareImageForUpload(file: File): Promise<PreparedImage> 
       canvas.toBlob(resolve, 'image/jpeg', IMAGE_DOWNSCALE_JPEG_QUALITY),
     );
     if (!blob) {
-      throw new Error('Nie udało się przetworzyć zdjęcia.');
+      throw new TranslatableError('wishlist.image.processFailed');
     }
     if (blob.size > MAX_IMAGE_UPLOAD_BYTES) {
-      throw new Error('Zdjęcie jest zbyt duże nawet po zmniejszeniu (limit 5 MB).');
+      throw new TranslatableError('wishlist.image.tooLarge');
     }
 
     const baseName = file.name.replace(/\.[^.]+$/, '') || 'zdjecie';

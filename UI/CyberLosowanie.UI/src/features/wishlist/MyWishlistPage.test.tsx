@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { renderWithProviders } from '@/test/renderWithProviders';
+import type { Language } from '@/shared/i18n';
 import type { apiResponseBody, wishlistModel } from '@/types';
 import {
   createEmptyCanvasDocument,
@@ -36,12 +37,8 @@ type QueryState = {
 
 const setQueryState = (state: QueryState) => useGetMyWishlistQueryMock.mockReturnValue(state);
 
-const renderPage = () =>
-  render(
-    <MemoryRouter>
-      <MyWishlistPage />
-    </MemoryRouter>,
-  );
+const renderPage = (language: Language = 'pl') =>
+  renderWithProviders(<MyWishlistPage />, { language });
 
 const successBody = (data: wishlistModel | null): apiResponseBody<wishlistModel | null> => ({
   isSuccess: true,
@@ -89,5 +86,20 @@ describe('MyWishlistPage', () => {
 
     expect(screen.getByRole('button', { name: /wybierz cyberka/i })).toBeInTheDocument();
     expect(screen.queryByText('MOCK_EDITOR')).not.toBeInTheDocument();
+  });
+
+  it('renders the saved view in English when the language is en', () => {
+    setQueryState({
+      isLoading: false,
+      data: successBody({
+        canvasJson: serializeCanvasDocument(createEmptyCanvasDocument()),
+        updatedAtUtc: '2026-07-15T10:00:00Z',
+      }),
+    });
+
+    renderPage('en');
+
+    expect(screen.getByRole('heading', { name: 'My wishlist' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
   });
 });

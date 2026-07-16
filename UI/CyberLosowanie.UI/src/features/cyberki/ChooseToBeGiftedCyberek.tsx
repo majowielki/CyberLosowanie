@@ -13,11 +13,13 @@ import { useNavigate } from "react-router-dom";
 import { setGiftedCyberekId } from "@/features/auth/userSlice";
 import { toast } from "@/shared/hooks/use-toast";
 import { debugLog } from "@/shared/config";
+import { useTranslation } from "@/shared/i18n";
 
 // Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function ChooseToBeGiftedCyberek() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { t } = useTranslation();
   const [assignGiftedCyberek] = useAssignGiftedCyberekMutation();
 
   // Boxes = all cyberki (box k hides cyberek k); the count comes from the API, never
@@ -56,13 +58,13 @@ function ChooseToBeGiftedCyberek() {
       const status = (error as { status?: number })?.status;
       if (status === 409) {
         toast({
-          description: "To pudełko zostało właśnie zajęte. Wybierz inne.",
+          description: t('cyberki.choose.boxTaken'),
           variant: "destructive",
         });
         refetchTargets();
       } else {
         toast({
-          description: "Failed to select cyberek. Please try again.",
+          description: t('cyberki.select.fail'),
           variant: "destructive",
         });
       }
@@ -74,7 +76,7 @@ function ChooseToBeGiftedCyberek() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="text-white text-lg">Processing your selection...</div>
+        <div className="text-white text-lg">{t('cyberki.choose.processing')}</div>
       </div>
     );
   }
@@ -82,29 +84,29 @@ function ChooseToBeGiftedCyberek() {
   if (cyberkiLoading || targetsLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="text-white text-lg">Loading mystery boxes...</div>
+        <div className="text-white text-lg">{t('cyberki.choose.loading')}</div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-4xl font-extrabold text-white mb-10 mt-10">Wybierz dostępne pudełko aby wylosować</h1>
+      <h1 className="text-4xl font-extrabold text-white mb-10 mt-10">{t('cyberki.choose.title')}</h1>
       <div className="grid grid-cols-1 mb-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {boxIds.map((boxId) => (
           <Card key={`gift-box-${boxId}`} className="bg-transparent border-2 border-white">
             <CardContent className="p-4 flex flex-col items-center">
               {availableIds.has(boxId) ? (
                 <>
-                  <img src={CyberLosowanieClosed} alt={`Cyber Losowanie Closed ${boxId}`} className="w-full h-64 md:h-48 rounded-md object-cover mb-4" />
+                  <img src={CyberLosowanieClosed} alt={t('cyberki.choose.closedBoxAlt', { boxId })} className="w-full h-64 md:h-48 rounded-md object-cover mb-4" />
                   <Button className="text-xl font-semibold capitalize" onClick={() => handleSelect(boxId)}>
-                    Select
+                    {t('cyberki.choose.select')}
                   </Button>
                 </>
               ) : (
                 <>
-                  <img src={CyberLosowanieOpen} alt={`Cyber Losowanie Opened ${boxId}`} className="w-full h-64 md:h-48 rounded-md object-cover mb-4" />
-                  <Button className="text-xl font-semibold capitalize" disabled>Selected</Button>
+                  <img src={CyberLosowanieOpen} alt={t('cyberki.choose.openBoxAlt', { boxId })} className="w-full h-64 md:h-48 rounded-md object-cover mb-4" />
+                  <Button className="text-xl font-semibold capitalize" disabled>{t('cyberki.choose.selected')}</Button>
                 </>
               )}
             </CardContent>

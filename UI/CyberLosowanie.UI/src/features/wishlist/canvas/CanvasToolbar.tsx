@@ -1,6 +1,7 @@
 import { Eraser, ImagePlus, MousePointer2, Pen, Redo2, Trash2, Type, Undo2 } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
+import { useTranslation, TranslationKey } from '@/shared/i18n';
 import { PEN_COLORS, STROKE_WIDTHS } from './canvasConstants';
 
 export type EditorTool = 'select' | 'pen' | 'eraser' | 'text' | 'image';
@@ -23,11 +24,11 @@ interface CanvasToolbarProps {
   isUploadingImage: boolean;
 }
 
-const TOOLS: Array<{ id: EditorTool; label: string; icon: typeof Pen }> = [
-  { id: 'select', label: 'Wskaźnik (zaznaczanie i przesuwanie)', icon: MousePointer2 },
-  { id: 'pen', label: 'Pióro', icon: Pen },
-  { id: 'eraser', label: 'Gumka (tylko rysunek)', icon: Eraser },
-  { id: 'text', label: 'Tekst (kliknij na płótno)', icon: Type },
+const TOOLS: Array<{ id: EditorTool; labelKey: TranslationKey; icon: typeof Pen }> = [
+  { id: 'select', labelKey: 'wishlist.toolbar.select', icon: MousePointer2 },
+  { id: 'pen', labelKey: 'wishlist.toolbar.pen', icon: Pen },
+  { id: 'eraser', labelKey: 'wishlist.toolbar.eraser', icon: Eraser },
+  { id: 'text', labelKey: 'wishlist.toolbar.text', icon: Type },
 ];
 
 /**
@@ -51,19 +52,20 @@ function CanvasToolbar({
   onPickImage,
   isUploadingImage,
 }: CanvasToolbarProps) {
+  const { t } = useTranslation();
   const showStrokeOptions = tool === 'pen' || tool === 'eraser';
   const showColorOptions = tool === 'pen' || tool === 'text';
 
   return (
     <div className="flex md:flex-col flex-wrap items-center gap-2 rounded-md bg-white/90 p-2 shadow md:w-16">
-      {TOOLS.map(({ id, label, icon: Icon }) => (
+      {TOOLS.map(({ id, labelKey, icon: Icon }) => (
         <Button
           key={id}
           type="button"
           size="icon"
           variant={tool === id ? 'default' : 'ghost'}
-          title={label}
-          aria-label={label}
+          title={t(labelKey)}
+          aria-label={t(labelKey)}
           aria-pressed={tool === id}
           onClick={() => onToolChange(id)}
         >
@@ -74,8 +76,8 @@ function CanvasToolbar({
         type="button"
         size="icon"
         variant="ghost"
-        title="Wstaw zdjęcie"
-        aria-label="Wstaw zdjęcie"
+        title={t('wishlist.toolbar.insertImage')}
+        aria-label={t('wishlist.toolbar.insertImage')}
         disabled={isUploadingImage}
         onClick={onPickImage}
       >
@@ -85,13 +87,13 @@ function CanvasToolbar({
       <div className="h-px w-full bg-gray-200 max-md:hidden" />
 
       {showColorOptions && (
-        <div className="grid grid-cols-5 md:grid-cols-2 gap-1" role="group" aria-label="Kolor">
+        <div className="grid grid-cols-5 md:grid-cols-2 gap-1" role="group" aria-label={t('wishlist.toolbar.colorGroup')}>
           {PEN_COLORS.map((penColor) => (
             <button
               key={penColor}
               type="button"
-              title={`Kolor ${penColor}`}
-              aria-label={`Kolor ${penColor}`}
+              title={t('wishlist.toolbar.colorOption', { color: penColor })}
+              aria-label={t('wishlist.toolbar.colorOption', { color: penColor })}
               aria-pressed={color === penColor}
               onClick={() => onColorChange(penColor)}
               className={cn(
@@ -105,13 +107,13 @@ function CanvasToolbar({
       )}
 
       {showStrokeOptions && (
-        <div className="flex md:flex-col gap-1" role="group" aria-label="Grubość linii">
+        <div className="flex md:flex-col gap-1" role="group" aria-label={t('wishlist.toolbar.strokeGroup')}>
           {STROKE_WIDTHS.map((width) => (
             <button
               key={width}
               type="button"
-              title={`Grubość ${width}`}
-              aria-label={`Grubość ${width}`}
+              title={t('wishlist.toolbar.strokeOption', { width })}
+              aria-label={t('wishlist.toolbar.strokeOption', { width })}
               aria-pressed={strokeWidth === width}
               onClick={() => onStrokeWidthChange(width)}
               className={cn(
@@ -131,16 +133,16 @@ function CanvasToolbar({
 
       <div className="h-px w-full bg-gray-200 max-md:hidden" />
 
-      <Button type="button" size="icon" variant="ghost" title="Cofnij" aria-label="Cofnij"
+      <Button type="button" size="icon" variant="ghost" title={t('wishlist.toolbar.undo')} aria-label={t('wishlist.toolbar.undo')}
         disabled={!canUndo} onClick={onUndo}>
         <Undo2 />
       </Button>
-      <Button type="button" size="icon" variant="ghost" title="Ponów" aria-label="Ponów"
+      <Button type="button" size="icon" variant="ghost" title={t('wishlist.toolbar.redo')} aria-label={t('wishlist.toolbar.redo')}
         disabled={!canRedo} onClick={onRedo}>
         <Redo2 />
       </Button>
-      <Button type="button" size="icon" variant="ghost" title="Usuń zaznaczony element"
-        aria-label="Usuń zaznaczony element" disabled={!hasSelection} onClick={onDeleteSelection}>
+      <Button type="button" size="icon" variant="ghost" title={t('wishlist.toolbar.deleteSelection')}
+        aria-label={t('wishlist.toolbar.deleteSelection')} disabled={!hasSelection} onClick={onDeleteSelection}>
         <Trash2 />
       </Button>
       <Button
@@ -150,7 +152,7 @@ function CanvasToolbar({
         className="text-xs text-red-600 hover:text-red-700"
         onClick={onClearAll}
       >
-        Wyczyść
+        {t('wishlist.toolbar.clearAll')}
       </Button>
     </div>
   );

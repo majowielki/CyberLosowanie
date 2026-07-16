@@ -1,8 +1,11 @@
 // Types, (de)serialization and validation of the wishlist canvas document —
 // the client-side mirror of the backend model (Models/Dto/CanvasDocument.cs)
 // and its validator. Validation runs before saving so the user gets a readable
-// warning instead of a 400 from the server.
+// warning instead of a 400 from the server. Problems are reported as
+// translation keys + params (not final strings), so this module stays pure
+// and the caller renders them in the current UI language.
 
+import type { TranslationKey, TranslationParams } from '@/shared/i18n';
 import {
   CANVAS_BACKGROUND,
   CANVAS_DOCUMENT_VERSION,
@@ -10,6 +13,12 @@ import {
   CANVAS_WIDTH,
   DOCUMENT_LIMITS,
 } from './canvasConstants';
+
+/** A validation problem, translatable at display time. */
+export interface CanvasValidationError {
+  key: TranslationKey;
+  params?: TranslationParams;
+}
 
 export type StrokeTool = 'pen' | 'eraser';
 
@@ -78,22 +87,28 @@ export const serializeCanvasDocument = (document: CanvasDocument): string =>
 export function validateCanvasDocument(
   document: CanvasDocument,
   authorCyberekId?: number | null,
-): string[] {
-  const errors: string[] = [];
+): CanvasValidationError[] {
+  const errors: CanvasValidationError[] = [];
 
   if (document.version !== CANVAS_DOCUMENT_VERSION) {
-    errors.push(`Nieobsługiwana wersja dokumentu (oczekiwano ${CANVAS_DOCUMENT_VERSION}).`);
+    errors.push({
+      key: 'wishlist.validation.unsupportedVersion',
+      params: { version: CANVAS_DOCUMENT_VERSION },
+    });
   }
 
   if (
     document.canvas.width !== CANVAS_WIDTH ||
     document.canvas.height !== CANVAS_HEIGHT
   ) {
-    errors.push(`Płótno musi mieć rozmiar ${CANVAS_WIDTH}x${CANVAS_HEIGHT}.`);
+    errors.push({
+      key: 'wishlist.validation.canvasSize',
+      params: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+    });
   }
 
   if (!HEX_COLOR_PATTERN.test(document.canvas.background)) {
-    errors.push('Tło płótna musi być kolorem w formacie #rrggbb.');
+    errors.push({ key: 'wishlist.validation.background' });
   }
 
   validateStrokes(document.strokes, errors);
@@ -102,47 +117,58 @@ export function validateCanvasDocument(
   if (errors.length === 0) {
     const jsonBytes = new TextEncoder().encode(serializeCanvasDocument(document)).length;
     if (jsonBytes > DOCUMENT_LIMITS.maxJsonBytes) {
-      errors.push(
-        `Lista jest zbyt duża (${Math.ceil(jsonBytes / 1024)} KB, limit ${DOCUMENT_LIMITS.maxJsonBytes / 1024} KB). Usuń część elementów.`,
-      );
+      errors.push({
+        key: 'wishlist.validation.documentTooLarge',
+        params: {
+          size: Math.ceil(jsonBytes / 1024),
+          limit: DOCUMENT_LIMITS.maxJsonBytes / 1024,
+        },
+      });
     }
   }
 
   return errors;
 }
 
-function validateStrokes(strokes: CanvasStroke[], errors: string[]): void {
+function validateStrokes(strokes: CanvasStroke[], errors: CanvasValidationError[]): void {
   if (strokes.length > DOCUMENT_LIMITS.maxStrokes) {
-    errors.push(`Za dużo pociągnięć (limit ${DOCUMENT_LIMITS.maxStrokes}).`);
+    errors.push({
+      key: 'wishlist.validation.tooManyStrokes',
+      params: { limit: DOCUMENT_LIMITS.maxStrokes },
+    });
     return;
   }
 
   for (const stroke of strokes) {
     if (!stroke.id) {
-      errors.push('Pociągnięcie bez identyfikatora.');
+      errors.push({ key: 'wishlist.validation.strokeNoId' });
     }
     if (stroke.tool !== 'pen' && stroke.tool !== 'eraser') {
-      errors.push('Nieznane narzędzie pociągnięcia.');
+      errors.push({ key: 'wishlist.validation.strokeTool' });
     }
     if (!HEX_COLOR_PATTERN.test(stroke.color)) {
-      errors.push('Kolor pociągnięcia musi być w formacie #rrggbb.');
+      errors.push({ key: 'wishlist.validation.strokeColor' });
     }
     if (
       stroke.width < DOCUMENT_LIMITS.minStrokeWidth ||
       stroke.width > DOCUMENT_LIMITS.maxStrokeWidth
     ) {
-      errors.push(
-        `Grubość pociągnięcia musi być w zakresie ${DOCUMENT_LIMITS.minStrokeWidth}–${DOCUMENT_LIMITS.maxStrokeWidth}.`,
-      );
+      errors.push({
+        key: 'wishlist.validation.strokeWidth',
+        params: { min: DOCUMENT_LIMITS.minStrokeWidth, max: DOCUMENT_LIMITS.maxStrokeWidth },
+      });
     }
     if (stroke.points.length === 0 || stroke.points.length % 2 !== 0) {
-      errors.push('Punkty pociągnięcia muszą być parami współrzędnych x,y.');
+      errors.push({ key: 'wishlist.validation.strokePoints' });
     }
     if (stroke.points.length > DOCUMENT_LIMITS.maxPointsPerStroke) {
-      errors.push(`Pociągnięcie ma za dużo punktów (limit ${DOCUMENT_LIMITS.maxPointsPerStroke}).`);
+      errors.push({
+        key: 'wishlist.validation.strokeTooManyPoints',
+        params: { limit: DOCUMENT_LIMITS.maxPointsPerStroke },
+      });
     }
     if (stroke.points.some((value) => !Number.isFinite(value))) {
-      errors.push('Punkty pociągnięcia muszą być liczbami.');
+      errors.push({ key: 'wishlist.validation.strokePointsNumbers' });
     }
   }
 }
@@ -150,62 +176,72 @@ function validateStrokes(strokes: CanvasStroke[], errors: string[]): void {
 function validateItems(
   items: CanvasItem[],
   authorCyberekId: number | null | undefined,
-  errors: string[],
+  errors: CanvasValidationError[],
 ): void {
   if (items.length > DOCUMENT_LIMITS.maxItems) {
-    errors.push(`Za dużo elementów (limit ${DOCUMENT_LIMITS.maxItems}).`);
+    errors.push({
+      key: 'wishlist.validation.tooManyItems',
+      params: { limit: DOCUMENT_LIMITS.maxItems },
+    });
     return;
   }
 
   const imageCount = items.filter((item) => item.type === 'image').length;
   if (imageCount > DOCUMENT_LIMITS.maxImageItems) {
-    errors.push(`Za dużo zdjęć (limit ${DOCUMENT_LIMITS.maxImageItems}).`);
+    errors.push({
+      key: 'wishlist.validation.tooManyImages',
+      params: { limit: DOCUMENT_LIMITS.maxImageItems },
+    });
   }
 
   for (const item of items) {
     if (!item.id) {
-      errors.push('Element bez identyfikatora.');
+      errors.push({ key: 'wishlist.validation.itemNoId' });
     }
     if (![item.x, item.y, item.rotation].every(Number.isFinite)) {
-      errors.push('Współrzędne elementu muszą być liczbami.');
+      errors.push({ key: 'wishlist.validation.itemCoords' });
     }
 
     if (item.type === 'text') {
       if (item.text.length === 0) {
-        errors.push('Tekst nie może być pusty.');
+        errors.push({ key: 'wishlist.validation.textEmpty' });
       }
       if (item.text.length > DOCUMENT_LIMITS.maxTextLength) {
-        errors.push(`Tekst jest za długi (limit ${DOCUMENT_LIMITS.maxTextLength} znaków).`);
+        errors.push({
+          key: 'wishlist.validation.textTooLong',
+          params: { limit: DOCUMENT_LIMITS.maxTextLength },
+        });
       }
       if (
         item.fontSize < DOCUMENT_LIMITS.minFontSize ||
         item.fontSize > DOCUMENT_LIMITS.maxFontSize
       ) {
-        errors.push(
-          `Rozmiar czcionki musi być w zakresie ${DOCUMENT_LIMITS.minFontSize}–${DOCUMENT_LIMITS.maxFontSize}.`,
-        );
+        errors.push({
+          key: 'wishlist.validation.fontSize',
+          params: { min: DOCUMENT_LIMITS.minFontSize, max: DOCUMENT_LIMITS.maxFontSize },
+        });
       }
       if (!HEX_COLOR_PATTERN.test(item.fill)) {
-        errors.push('Kolor tekstu musi być w formacie #rrggbb.');
+        errors.push({ key: 'wishlist.validation.textColor' });
       }
       if (!Number.isFinite(item.width) || item.width <= 0) {
-        errors.push('Szerokość tekstu musi być dodatnia.');
+        errors.push({ key: 'wishlist.validation.textWidth' });
       }
     } else {
       const match = IMAGE_PATH_PATTERN.exec(item.path);
       if (!match) {
-        errors.push('Nieprawidłowa ścieżka zdjęcia.');
+        errors.push({ key: 'wishlist.validation.imagePath' });
       } else if (
         authorCyberekId != null &&
         Number.parseInt(match[1], 10) !== authorCyberekId
       ) {
-        errors.push('Zdjęcie nie należy do Twojej listy życzeń.');
+        errors.push({ key: 'wishlist.validation.imageNotOwned' });
       }
       if (
         !Number.isFinite(item.width) || item.width <= 0 ||
         !Number.isFinite(item.height) || item.height <= 0
       ) {
-        errors.push('Wymiary zdjęcia muszą być dodatnie.');
+        errors.push({ key: 'wishlist.validation.imageSize' });
       }
     }
   }
@@ -213,7 +249,7 @@ function validateItems(
 
 export type ParseCanvasDocumentResult =
   | { document: CanvasDocument; errors: [] }
-  | { document: null; errors: string[] };
+  | { document: null; errors: CanvasValidationError[] };
 
 /**
  * Parses saved JSON back into a typed document (re-edit flow, requirement 4).
@@ -225,11 +261,11 @@ export function parseCanvasDocument(json: string): ParseCanvasDocumentResult {
   try {
     raw = JSON.parse(json);
   } catch {
-    return { document: null, errors: ['Dokument listy życzeń nie jest poprawnym JSON-em.'] };
+    return { document: null, errors: [{ key: 'wishlist.validation.invalidJson' }] };
   }
 
   if (!isRecord(raw) || !isRecord(raw.canvas)) {
-    return { document: null, errors: ['Dokument listy życzeń ma nieznany format.'] };
+    return { document: null, errors: [{ key: 'wishlist.validation.unknownFormat' }] };
   }
 
   const strokes = Array.isArray(raw.strokes) ? raw.strokes.filter(isStrokeShape) : [];

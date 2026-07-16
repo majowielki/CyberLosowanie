@@ -1,5 +1,6 @@
 import { Maximize, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { useTranslation } from '@/shared/i18n';
 import type { StageViewport } from './useStageViewport';
 
 /**
@@ -7,21 +8,23 @@ import type { StageViewport } from './useStageViewport';
  * in / fit-to-width reset.
  */
 function ZoomControls({ viewport }: { viewport: StageViewport }) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center gap-1 rounded-md bg-white/90 p-1 shadow">
-      <Button type="button" size="icon" variant="ghost" title="Oddal" aria-label="Oddal"
+      <Button type="button" size="icon" variant="ghost" title={t('wishlist.zoom.out')} aria-label={t('wishlist.zoom.out')}
         disabled={!viewport.canZoomOut} onClick={viewport.zoomOut}>
         <ZoomOut />
       </Button>
       <span className="w-12 text-center text-xs font-medium tabular-nums">
         {viewport.zoomPercentage}%
       </span>
-      <Button type="button" size="icon" variant="ghost" title="Przybliż" aria-label="Przybliż"
+      <Button type="button" size="icon" variant="ghost" title={t('wishlist.zoom.in')} aria-label={t('wishlist.zoom.in')}
         disabled={!viewport.canZoomIn} onClick={viewport.zoomIn}>
         <ZoomIn />
       </Button>
-      <Button type="button" size="icon" variant="ghost" title="Dopasuj do szerokości"
-        aria-label="Dopasuj do szerokości" onClick={viewport.resetView}>
+      <Button type="button" size="icon" variant="ghost" title={t('wishlist.zoom.fit')}
+        aria-label={t('wishlist.zoom.fit')} onClick={viewport.resetView}>
         <Maximize />
       </Button>
     </div>

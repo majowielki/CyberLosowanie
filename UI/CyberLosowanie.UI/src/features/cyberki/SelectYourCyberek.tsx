@@ -16,11 +16,13 @@ import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/shared/hooks/use-toast";
 import { debugLog } from "@/shared/config";
+import { useTranslation } from "@/shared/i18n";
 
 // Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function SelectYourCyberek() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const userHasGiftedCyberekId = useSelector((state: RootState) => state.userAuthStore.giftedCyberekId);
 
   const { data, isLoading, error } = useGetAvailableToPickQuery();
@@ -36,11 +38,11 @@ function SelectYourCyberek() {
       await assignCyberek({ cyberekId }).unwrap();
 
       dispatch(setCyberekId(cyberekId));
-      toast({ description: "Cyberek selected successfully!" });
+      toast({ description: t('cyberki.select.success') });
     } catch (error) {
       debugLog("Failed to assign cyberek:", error);
       toast({
-        description: "Failed to select cyberek. Please try again.",
+        description: t('cyberki.select.fail'),
         variant: "destructive"
       });
     } finally {
@@ -51,7 +53,7 @@ function SelectYourCyberek() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">Selecting your cyberek...</div>
+        <div className="text-white text-lg">{t('cyberki.select.selecting')}</div>
       </div>
     );
   }
@@ -59,7 +61,7 @@ function SelectYourCyberek() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">Loading available cybereks...</div>
+        <div className="text-white text-lg">{t('cyberki.select.loading')}</div>
       </div>
     );
   }
@@ -67,9 +69,9 @@ function SelectYourCyberek() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">Error loading available cybereks. Please try again.</div>
+        <div className="text-white text-lg">{t('cyberki.select.loadError')}</div>
         <Button onClick={() => window.location.reload()} className="mt-4">
-          Retry
+          {t('common.action.retry')}
         </Button>
       </div>
     );
@@ -78,10 +80,10 @@ function SelectYourCyberek() {
   if (!data?.data?.length) {
     return (
       <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">No cybereks available to pick at this time.</div>
-        <div className="text-white text-sm mt-2">You may have already selected a cyberek or none are available.</div>
+        <div className="text-white text-lg">{t('cyberki.select.empty')}</div>
+        <div className="text-white text-sm mt-2">{t('cyberki.select.emptyHint')}</div>
         <Button onClick={() => navigate("/")} className="mt-4">
-          Go to Home
+          {t('common.action.goHome')}
         </Button>
       </div>
     );
@@ -89,8 +91,8 @@ function SelectYourCyberek() {
 
   return (
     <div className="flex flex-col items-center justify-center mt-20">
-      <h1 className="text-4xl font-extrabold text-white mb-10">Wybierz siebie z listy</h1>
-      <p className="text-white text-center mb-6">Wybierz spośród dostępnych opcji w karuzeli poniżej</p>
+      <h1 className="text-4xl font-extrabold text-white mb-10">{t('cyberki.select.title')}</h1>
+      <p className="text-white text-center mb-6">{t('cyberki.select.subtitle')}</p>
       <Carousel className="w-full max-w-xs">
         <CarouselContent>
           {(data.data || []).map((cyberek, index) => (
@@ -98,7 +100,7 @@ function SelectYourCyberek() {
                 <Card>
                 <CardContent className="p-2 flex flex-col items-center">
                   <span className="text-black text-lg font-semibold mb-2">{cyberek.name}</span>
-                  <img src={cyberek.imageUrl} alt="cyberki" className="w-full h-[24rem] rounded-md object-cover mb-4" />
+                  <img src={cyberek.imageUrl} alt={t('cyberki.select.imageAlt', { name: cyberek.name })} className="w-full h-[24rem] rounded-md object-cover mb-4" />
                   <Button
                     className="px-4 py-2 mb-2"
                     onClick={async () => {
@@ -106,7 +108,7 @@ function SelectYourCyberek() {
                       navigate(userHasGiftedCyberekId != null ? "/final-page" : "/choose-to-be-gifted-cyberek");
                     }}
                   >
-                    Confirm your choice
+                    {t('cyberki.select.confirm')}
                   </Button>
                 </CardContent>
               </Card>

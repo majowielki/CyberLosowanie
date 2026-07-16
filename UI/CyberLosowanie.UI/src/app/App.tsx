@@ -13,7 +13,9 @@ import GiftedWishlistPage from "@/features/wishlist/GiftedWishlistPage";
 import { ErrorElement } from "@/shared/components";
 import ErrorBoundary from "@/shared/components/ErrorBoundary";
 import { useAuthPersistence } from "@/features/auth/useAuthPersistence";
+import { useTranslation } from "@/shared/i18n";
 import { Toaster } from "@/shared/ui/toaster";
+import { useEffect } from "react";
 
 // Route protection lives here (and only here) via ProtectedRoute — pages must
 // not re-implement their own auth checks.
@@ -98,6 +100,12 @@ const router = createBrowserRouter([
 function App() {
   // Restore authentication state on app load
   useAuthPersistence();
+
+  // Keep the document language in sync with the UI language (a11y/SEO, doc §6.7).
+  const { language } = useTranslation();
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   return (
     <ErrorBoundary>
