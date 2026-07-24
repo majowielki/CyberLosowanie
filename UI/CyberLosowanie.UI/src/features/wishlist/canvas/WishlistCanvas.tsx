@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { Group, Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Circle, Group, Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import {
@@ -27,8 +27,12 @@ export interface WishlistCanvasProps {
   strokes: CanvasStroke[];
   items: CanvasItem[];
   stageProps: StageViewport['stageProps'];
+  /** Page background color (#rrggbb). */
+  background?: string;
   /** In-progress stroke rendered on top of committed ones (editor only). */
   liveStroke?: CanvasStroke | null;
+  /** Brush-size preview cursor for pen/eraser (radius in document units). */
+  brushCursor?: { radius: number; color: string } | null;
   editable?: boolean;
   /** True when the select tool is active — items react to clicks/drags. */
   itemsInteractive?: boolean;
@@ -57,7 +61,9 @@ function WishlistCanvas({
   strokes,
   items,
   stageProps,
+  background = CANVAS_BACKGROUND,
   liveStroke = null,
+  brushCursor = null,
   editable = false,
   itemsInteractive = false,
   selectedItemId = null,
@@ -71,6 +77,8 @@ function WishlistCanvas({
 }: WishlistCanvasProps) {
   const itemNodesRef = useRef<Map<string, Konva.Node>>(new Map());
   const transformerRef = useRef<Konva.Transformer>(null);
+  // Pointer position (document coords) for the brush-size preview cursor.
+  const [cursorPos, setCursorPos] = useState<Point | null>(null);
 
   const registerItemNode = useCallback((id: string, node: Konva.Node | null) => {
     if (node) {
@@ -109,8 +117,14 @@ function WishlistCanvas({
   const handleMouseMove = (event: KonvaEventObject<MouseEvent>) => {
     const position = getDocumentPosition(event);
     if (position) {
+      setCursorPos(position);
       onPointerMove?.(position);
     }
+  };
+
+  const handleMouseLeave = () => {
+    setCursorPos(null);
+    onPointerUp?.();
   };
 
   const handleTouchStart = (event: KonvaEventObject<TouchEvent>) => {
@@ -126,6 +140,7 @@ function WishlistCanvas({
     if (event.evt.touches.length === 1) {
       const position = getDocumentPosition(event);
       if (position) {
+        setCursorPos(position);
         onPointerMove?.(position);
       }
     }
@@ -133,6 +148,7 @@ function WishlistCanvas({
 
   const handleTouchEnd = (event: KonvaEventObject<TouchEvent>) => {
     stageProps.onTouchEnd(event);
+    setCursorPos(null);
     onPointerUp?.();
   };
 
@@ -198,7 +214,7 @@ function WishlistCanvas({
       onMouseDown={editable ? handlePointerDown : undefined}
       onMouseMove={editable ? handleMouseMove : undefined}
       onMouseUp={editable ? onPointerUp : undefined}
-      onMouseLeave={editable ? onPointerUp : undefined}
+      onMouseLeave={editable ? handleMouseLeave : undefined}
       onTouchStart={editable ? handleTouchStart : undefined}
     >
       {/* Background — separate layer so the eraser cannot cut through it. */}
@@ -209,7 +225,7 @@ function WishlistCanvas({
           y={0}
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
-          fill={CANVAS_BACKGROUND}
+          fill={background}
         />
       </Layer>
 
@@ -285,6 +301,28 @@ function WishlistCanvas({
           />
         )}
       </Layer>
+
+      {/* Brush-size preview cursor (pen/eraser). Two concentric strokes keep it
+          visible on any background; outline width is divided by the stage scale
+          so it stays a constant thickness on screen at every zoom level. */}
+      {brushCursor && cursorPos && (
+        <Layer listening={false}>
+          <Circle
+            x={cursorPos.x}
+            y={cursorPos.y}
+            radius={brushCursor.radius}
+            stroke="#111827"
+            strokeWidth={2 / (stageProps.scaleX || 1)}
+          />
+          <Circle
+            x={cursorPos.x}
+            y={cursorPos.y}
+            radius={brushCursor.radius}
+            stroke="#ffffff"
+            strokeWidth={1 / (stageProps.scaleX || 1)}
+          />
+        </Layer>
+      )}
     </Stage>
   );
 }

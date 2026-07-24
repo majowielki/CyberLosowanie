@@ -2,7 +2,9 @@
 // (API Constants/WishlistConstants.cs, section 3.4 of Docs/lista-zyczen-projekt.md)
 // so the user gets a warning before the server would answer 400. Keep in sync.
 
-export const CANVAS_DOCUMENT_VERSION = 1;
+// Version 2 introduced multiple pages (a document is a carousel of pages).
+// Version 1 documents are upgraded on read (parseCanvasDocument).
+export const CANVAS_DOCUMENT_VERSION = 2;
 
 // Fixed logical workspace (decision D5, portrait ~A4). Every screen renders the
 // same document scaled to its container, so the drawing looks identical for the
@@ -11,11 +13,14 @@ export const CANVAS_WIDTH = 1080;
 export const CANVAS_HEIGHT = 1528;
 export const CANVAS_BACKGROUND = '#ffffff';
 
+// Mirror of API Constants/WishlistConstants.cs. Strokes/items are counted per
+// page, images across the whole document, and the total JSON size is capped.
 export const DOCUMENT_LIMITS = {
   maxJsonBytes: 512 * 1024,
-  maxStrokes: 4_000,
+  maxPages: 10,
+  maxStrokesPerPage: 4_000,
   maxPointsPerStroke: 20_000,
-  maxItems: 120,
+  maxItemsPerPage: 120,
   maxImageItems: 10,
   maxTextLength: 500,
   minStrokeWidth: 1,
@@ -45,6 +50,8 @@ export const DEFAULT_STROKE_WIDTH: number = STROKE_WIDTHS[1];
 
 export const TEXT_FONT_FAMILY = 'Arial';
 export const DEFAULT_FONT_SIZE = 36;
+// Emojis are inserted as text items at a larger, sticker-like size.
+export const EMOJI_INSERT_FONT_SIZE = 120;
 export const DEFAULT_TEXT_WIDTH = 420;
 export const DEFAULT_TEXT_PLACEHOLDER = 'Wpisz tekst...';
 export const MIN_TEXT_WIDTH = 40;

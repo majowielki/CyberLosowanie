@@ -5,8 +5,14 @@ import {
   CanvasDocument,
   CanvasTextItem,
   createEmptyCanvasDocument,
+  createEmptyPage,
 } from './canvasDocument';
-import { CANVAS_DOCUMENT_VERSION } from './canvasConstants';
+import {
+  CANVAS_DOCUMENT_VERSION,
+  CANVAS_HEIGHT,
+  CANVAS_WIDTH,
+  DOCUMENT_LIMITS,
+} from './canvasConstants';
 
 const renderEngine = (document: CanvasDocument = createEmptyCanvasDocument()) =>
   renderHook(() => useCanvasEngine(document));
@@ -108,7 +114,7 @@ describe('useCanvasEngine — items', () => {
     expect(result.current.selectedItemId).toBeNull();
   });
 
-  it('clearAll empties strokes and items but stays undoable', () => {
+  it('clearPage empties the current page but stays undoable', () => {
     const { result } = renderEngine();
 
     act(() => {
@@ -117,7 +123,7 @@ describe('useCanvasEngine — items', () => {
       result.current.addTextItem(0, 0, '#111827');
     });
     act(() => {
-      result.current.clearAll();
+      result.current.clearPage();
     });
 
     expect(result.current.strokes).toHaveLength(0);
@@ -129,6 +135,108 @@ describe('useCanvasEngine — items', () => {
 
     expect(result.current.strokes).toHaveLength(1);
     expect(result.current.items).toHaveLength(1);
+  });
+});
+
+describe('useCanvasEngine — pages', () => {
+  it('starts with a single page', () => {
+    const { result } = renderEngine();
+    expect(result.current.pageCount).toBe(1);
+    expect(result.current.currentPageIndex).toBe(0);
+    expect(result.current.canDeletePage).toBe(false);
+  });
+
+  it('addPage appends a blank page and switches to it', () => {
+    const { result } = renderEngine();
+
+    act(() => {
+      result.current.beginStroke('pen', '#e11d48', 6, { x: 1, y: 1 });
+      result.current.endStroke();
+    });
+    act(() => {
+      result.current.addPage();
+    });
+
+    expect(result.current.pageCount).toBe(2);
+    expect(result.current.currentPageIndex).toBe(1);
+    expect(result.current.strokes).toHaveLength(0); // the new blank page
+    expect(result.current.pages[0].strokes).toHaveLength(1); // the first page is untouched
+  });
+
+  it('duplicatePage copies content with fresh ids and switches to the copy', () => {
+    const { result } = renderEngine();
+
+    act(() => {
+      result.current.addTextItem(10, 10, '#111827');
+    });
+    act(() => {
+      result.current.duplicatePage();
+    });
+
+    expect(result.current.pageCount).toBe(2);
+    expect(result.current.currentPageIndex).toBe(1);
+    expect(result.current.items).toHaveLength(1);
+    // Same content, different id.
+    const sourceItem = result.current.pages[0].items[0] as CanvasTextItem;
+    const copyItem = result.current.items[0] as CanvasTextItem;
+    expect(copyItem.text).toBe(sourceItem.text);
+    expect(copyItem.id).not.toBe(sourceItem.id);
+  });
+
+  it('editing one page does not affect another', () => {
+    const { result } = renderEngine();
+
+    act(() => {
+      result.current.addPage();
+    });
+    act(() => {
+      result.current.addTextItem(5, 5, '#111827');
+    });
+    act(() => {
+      result.current.goToPage(0);
+    });
+
+    expect(result.current.currentPageIndex).toBe(0);
+    expect(result.current.items).toHaveLength(0); // first page still empty
+    expect(result.current.pages[1].items).toHaveLength(1);
+  });
+
+  it('deletePage removes the current page and never drops the last one', () => {
+    const { result } = renderEngine();
+
+    act(() => {
+      result.current.addPage();
+    });
+    expect(result.current.pageCount).toBe(2);
+
+    act(() => {
+      result.current.deletePage();
+    });
+    expect(result.current.pageCount).toBe(1);
+    expect(result.current.currentPageIndex).toBe(0);
+
+    // The last remaining page cannot be deleted.
+    act(() => {
+      result.current.deletePage();
+    });
+    expect(result.current.pageCount).toBe(1);
+  });
+
+  it('cannot add pages beyond the limit', () => {
+    const fullDocument: CanvasDocument = {
+      version: CANVAS_DOCUMENT_VERSION,
+      canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+      pages: Array.from({ length: DOCUMENT_LIMITS.maxPages }, () => createEmptyPage()),
+    };
+    const { result } = renderEngine(fullDocument);
+
+    expect(result.current.canAddPage).toBe(false);
+
+    act(() => {
+      result.current.addPage();
+    });
+
+    expect(result.current.pageCount).toBe(DOCUMENT_LIMITS.maxPages);
   });
 });
 
@@ -190,7 +298,7 @@ describe('useCanvasEngine — undo/redo', () => {
 });
 
 describe('useCanvasEngine — document io', () => {
-  it('buildDocument emits the current content in the versioned envelope', () => {
+  it('buildDocument emits the current pages in the versioned envelope', () => {
     const { result } = renderEngine();
 
     act(() => {
@@ -200,9 +308,10 @@ describe('useCanvasEngine — document io', () => {
     const document = result.current.buildDocument();
 
     expect(document.version).toBe(CANVAS_DOCUMENT_VERSION);
-    expect(document.canvas.width).toBeGreaterThan(0);
-    expect(document.items).toHaveLength(1);
-    expect(document.strokes).toHaveLength(0);
+    expect(document.canvas.width).toBe(CANVAS_WIDTH);
+    expect(document.pages).toHaveLength(1);
+    expect(document.pages[0].items).toHaveLength(1);
+    expect(document.pages[0].strokes).toHaveLength(0);
   });
 
   it('loadDocument replaces content and resets history and dirt', () => {
@@ -213,10 +322,16 @@ describe('useCanvasEngine — document io', () => {
     });
     expect(result.current.isDirty).toBe(true);
 
-    const incoming = {
-      ...createEmptyCanvasDocument(),
-      strokes: [
-        { id: 's1', tool: 'pen' as const, color: '#22c55e', width: 3, points: [0, 0, 1, 1] },
+    const incoming: CanvasDocument = {
+      version: CANVAS_DOCUMENT_VERSION,
+      canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+      pages: [
+        {
+          id: 'p1',
+          background: '#ffffff',
+          strokes: [{ id: 's1', tool: 'pen', color: '#22c55e', width: 3, points: [0, 0, 1, 1] }],
+          items: [],
+        },
       ],
     };
     act(() => {

@@ -4,6 +4,9 @@
 // warning instead of a 400 from the server. Problems are reported as
 // translation keys + params (not final strings), so this module stays pure
 // and the caller renders them in the current UI language.
+//
+// Version 2: a document is a list of pages (a carousel). Version 1 documents
+// (a single implicit page) are upgraded on read by parseCanvasDocument.
 
 import type { TranslationKey, TranslationParams } from '@/shared/i18n';
 import {
@@ -59,21 +62,40 @@ export interface CanvasImageItem {
 /** Order in the items array is the z-order. */
 export type CanvasItem = CanvasTextItem | CanvasImageItem;
 
-export interface CanvasDocument {
-  version: number;
-  canvas: { width: number; height: number; background: string };
+/** One page of the document. Order in the document's page list is the carousel order. */
+export interface CanvasPage {
+  id: string;
+  background: string;
   strokes: CanvasStroke[];
   items: CanvasItem[];
+}
+
+export interface CanvasDocument {
+  version: number;
+  canvas: { width: number; height: number };
+  pages: CanvasPage[];
 }
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const IMAGE_PATH_PATTERN = /^(\d{1,9})\/[0-9a-fA-F]{32}\.(jpg|png|webp)$/;
 
-export const createEmptyCanvasDocument = (): CanvasDocument => ({
-  version: CANVAS_DOCUMENT_VERSION,
-  canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT, background: CANVAS_BACKGROUND },
+/** Opaque id for pages and elements (matches useCanvasEngine's scheme). */
+export const generateCanvasId = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID().replace(/-/g, '')
+    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+export const createEmptyPage = (): CanvasPage => ({
+  id: generateCanvasId(),
+  background: CANVAS_BACKGROUND,
   strokes: [],
   items: [],
+});
+
+export const createEmptyCanvasDocument = (): CanvasDocument => ({
+  version: CANVAS_DOCUMENT_VERSION,
+  canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+  pages: [createEmptyPage()],
 });
 
 export const serializeCanvasDocument = (document: CanvasDocument): string =>
@@ -81,7 +103,7 @@ export const serializeCanvasDocument = (document: CanvasDocument): string =>
 
 /**
  * Validates a document against the shared limits (section 3.4). Returns a list
- * of human-readable problems — empty means the document is safe to save.
+ * of problems (as translation keys) — empty means the document is safe to save.
  * When `authorCyberekId` is known, image ownership is checked too.
  */
 export function validateCanvasDocument(
@@ -107,12 +129,7 @@ export function validateCanvasDocument(
     });
   }
 
-  if (!HEX_COLOR_PATTERN.test(document.canvas.background)) {
-    errors.push({ key: 'wishlist.validation.background' });
-  }
-
-  validateStrokes(document.strokes, errors);
-  validateItems(document.items, authorCyberekId, errors);
+  validatePages(document.pages, authorCyberekId, errors);
 
   if (errors.length === 0) {
     const jsonBytes = new TextEncoder().encode(serializeCanvasDocument(document)).length;
@@ -130,11 +147,48 @@ export function validateCanvasDocument(
   return errors;
 }
 
+function validatePages(
+  pages: CanvasPage[],
+  authorCyberekId: number | null | undefined,
+  errors: CanvasValidationError[],
+): void {
+  if (pages.length === 0) {
+    errors.push({ key: 'wishlist.validation.noPages' });
+    return;
+  }
+  if (pages.length > DOCUMENT_LIMITS.maxPages) {
+    errors.push({
+      key: 'wishlist.validation.tooManyPages',
+      params: { limit: DOCUMENT_LIMITS.maxPages },
+    });
+    return;
+  }
+
+  let totalImages = 0;
+  for (const page of pages) {
+    if (!page.id) {
+      errors.push({ key: 'wishlist.validation.pageNoId' });
+    }
+    if (!HEX_COLOR_PATTERN.test(page.background)) {
+      errors.push({ key: 'wishlist.validation.pageBackground' });
+    }
+    validateStrokes(page.strokes, errors);
+    totalImages += validateItems(page.items, authorCyberekId, errors);
+  }
+
+  if (totalImages > DOCUMENT_LIMITS.maxImageItems) {
+    errors.push({
+      key: 'wishlist.validation.tooManyImages',
+      params: { limit: DOCUMENT_LIMITS.maxImageItems },
+    });
+  }
+}
+
 function validateStrokes(strokes: CanvasStroke[], errors: CanvasValidationError[]): void {
-  if (strokes.length > DOCUMENT_LIMITS.maxStrokes) {
+  if (strokes.length > DOCUMENT_LIMITS.maxStrokesPerPage) {
     errors.push({
       key: 'wishlist.validation.tooManyStrokes',
-      params: { limit: DOCUMENT_LIMITS.maxStrokes },
+      params: { limit: DOCUMENT_LIMITS.maxStrokesPerPage },
     });
     return;
   }
@@ -173,27 +227,21 @@ function validateStrokes(strokes: CanvasStroke[], errors: CanvasValidationError[
   }
 }
 
+/** Validates a page's items and returns how many of them are images. */
 function validateItems(
   items: CanvasItem[],
   authorCyberekId: number | null | undefined,
   errors: CanvasValidationError[],
-): void {
-  if (items.length > DOCUMENT_LIMITS.maxItems) {
+): number {
+  if (items.length > DOCUMENT_LIMITS.maxItemsPerPage) {
     errors.push({
       key: 'wishlist.validation.tooManyItems',
-      params: { limit: DOCUMENT_LIMITS.maxItems },
+      params: { limit: DOCUMENT_LIMITS.maxItemsPerPage },
     });
-    return;
+    return 0;
   }
 
-  const imageCount = items.filter((item) => item.type === 'image').length;
-  if (imageCount > DOCUMENT_LIMITS.maxImageItems) {
-    errors.push({
-      key: 'wishlist.validation.tooManyImages',
-      params: { limit: DOCUMENT_LIMITS.maxImageItems },
-    });
-  }
-
+  let imageCount = 0;
   for (const item of items) {
     if (!item.id) {
       errors.push({ key: 'wishlist.validation.itemNoId' });
@@ -228,6 +276,7 @@ function validateItems(
         errors.push({ key: 'wishlist.validation.textWidth' });
       }
     } else {
+      imageCount++;
       const match = IMAGE_PATH_PATTERN.exec(item.path);
       if (!match) {
         errors.push({ key: 'wishlist.validation.imagePath' });
@@ -245,6 +294,8 @@ function validateItems(
       }
     }
   }
+
+  return imageCount;
 }
 
 export type ParseCanvasDocumentResult =
@@ -254,7 +305,8 @@ export type ParseCanvasDocumentResult =
 /**
  * Parses saved JSON back into a typed document (re-edit flow, requirement 4).
  * The backend stores only validated canonical JSON, so a failure here means a
- * malformed/legacy payload — the caller decides how to degrade.
+ * malformed payload — the caller decides how to degrade. The version is kept
+ * as-is so validation rejects anything that is not the current schema.
  */
 export function parseCanvasDocument(json: string): ParseCanvasDocumentResult {
   let raw: unknown;
@@ -268,19 +320,13 @@ export function parseCanvasDocument(json: string): ParseCanvasDocumentResult {
     return { document: null, errors: [{ key: 'wishlist.validation.unknownFormat' }] };
   }
 
-  const strokes = Array.isArray(raw.strokes) ? raw.strokes.filter(isStrokeShape) : [];
-  const items = Array.isArray(raw.items) ? raw.items.filter(isItemShape) : [];
-
   const document: CanvasDocument = {
     version: typeof raw.version === 'number' ? raw.version : 0,
     canvas: {
       width: typeof raw.canvas.width === 'number' ? raw.canvas.width : 0,
       height: typeof raw.canvas.height === 'number' ? raw.canvas.height : 0,
-      background:
-        typeof raw.canvas.background === 'string' ? raw.canvas.background : CANVAS_BACKGROUND,
     },
-    strokes,
-    items,
+    pages: Array.isArray(raw.pages) ? raw.pages.filter(isRecord).map(toPage) : [],
   };
 
   const errors = validateCanvasDocument(document);
@@ -289,6 +335,15 @@ export function parseCanvasDocument(json: string): ParseCanvasDocumentResult {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
+
+function toPage(value: Record<string, unknown>): CanvasPage {
+  return {
+    id: typeof value.id === 'string' ? value.id : generateCanvasId(),
+    background: typeof value.background === 'string' ? value.background : CANVAS_BACKGROUND,
+    strokes: Array.isArray(value.strokes) ? value.strokes.filter(isStrokeShape) : [],
+    items: Array.isArray(value.items) ? value.items.filter(isItemShape) : [],
+  };
+}
 
 function isStrokeShape(value: unknown): value is CanvasStroke {
   return (

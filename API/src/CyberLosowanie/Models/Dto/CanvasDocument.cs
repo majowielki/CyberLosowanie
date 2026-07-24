@@ -5,21 +5,34 @@ namespace CyberLosowanie.Models.Dto
     /// <see cref="Models.Wishlist.CanvasJson"/>. Incoming JSON is deserialized into
     /// this model, validated (Services/CanvasDocumentValidator) and re-serialized,
     /// so unknown fields are dropped and only checked data reaches the database.
+    ///
+    /// The document is a list of <see cref="CanvasPage"/>s (a carousel of pages
+    /// sharing one logical canvas size).
     /// </summary>
     public class CanvasDocument
     {
         public int Version { get; set; }
         public CanvasSettings? Canvas { get; set; }
-        public List<CanvasStroke>? Strokes { get; set; }
-        public List<CanvasItem>? Items { get; set; }
+        public List<CanvasPage>? Pages { get; set; }
     }
 
-    /// <summary>Logical workspace of the document — fixed 1080x1528 (decision D5).</summary>
+    /// <summary>Shared logical workspace of every page — fixed 1080x1528 (decision D5).</summary>
     public class CanvasSettings
     {
         public int Width { get; set; }
         public int Height { get; set; }
+    }
+
+    /// <summary>
+    /// One page of the wishlist. Order in the document's page list is the page
+    /// order shown in the carousel.
+    /// </summary>
+    public class CanvasPage
+    {
+        public string? Id { get; set; }
         public string? Background { get; set; }
+        public List<CanvasStroke>? Strokes { get; set; }
+        public List<CanvasItem>? Items { get; set; }
     }
 
     /// <summary>

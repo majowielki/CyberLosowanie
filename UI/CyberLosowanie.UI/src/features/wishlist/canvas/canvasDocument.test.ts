@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CanvasDocument,
   CanvasImageItem,
+  CanvasPage,
   CanvasStroke,
   CanvasTextItem,
   createEmptyCanvasDocument,
@@ -45,41 +46,63 @@ const imageItem = (overrides: Partial<CanvasImageItem> = {}): CanvasImageItem =>
   ...overrides,
 });
 
+const page = (overrides: Partial<CanvasPage> = {}): CanvasPage => ({
+  id: 'p1',
+  background: '#ffffff',
+  strokes: [],
+  items: [],
+  ...overrides,
+});
+
 const documentWith = (partial: Partial<CanvasDocument>): CanvasDocument => ({
   ...createEmptyCanvasDocument(),
   ...partial,
 });
 
 describe('validateCanvasDocument', () => {
-  it('accepts an empty document', () => {
+  it('accepts an empty (single blank page) document', () => {
     expect(validateCanvasDocument(createEmptyCanvasDocument())).toEqual([]);
   });
 
-  it('accepts a document with strokes, text and images', () => {
+  it('accepts a multi-page document with strokes, text and images', () => {
     const document = documentWith({
-      strokes: [stroke(), stroke({ id: 's2', tool: 'eraser', width: 24 })],
-      items: [textItem(), imageItem()],
+      pages: [
+        page({ strokes: [stroke(), stroke({ id: 's2', tool: 'eraser', width: 24 })] }),
+        page({ id: 'p2', items: [textItem(), imageItem()] }),
+      ],
     });
     expect(validateCanvasDocument(document, 3)).toEqual([]);
   });
 
   it('rejects an unsupported version', () => {
-    const document = documentWith({ version: 2 });
-    expect(validateCanvasDocument(document)).not.toEqual([]);
+    expect(validateCanvasDocument(documentWith({ version: 99 }))).not.toEqual([]);
   });
 
   it('rejects a wrong canvas size', () => {
-    const document = documentWith({
-      canvas: { width: 500, height: 500, background: '#ffffff' },
-    });
+    const document = documentWith({ canvas: { width: 500, height: 500 } });
     expect(validateCanvasDocument(document)).not.toEqual([]);
   });
 
-  it('rejects too many strokes', () => {
-    const strokes = Array.from({ length: DOCUMENT_LIMITS.maxStrokes + 1 }, (_, index) =>
+  it('rejects a document with no pages', () => {
+    expect(validateCanvasDocument(documentWith({ pages: [] }))).not.toEqual([]);
+  });
+
+  it('rejects a document with too many pages', () => {
+    const pages = Array.from({ length: DOCUMENT_LIMITS.maxPages + 1 }, (_, index) =>
+      page({ id: `p${index}` }),
+    );
+    expect(validateCanvasDocument(documentWith({ pages }))).not.toEqual([]);
+  });
+
+  it('rejects a page with a bad background', () => {
+    expect(validateCanvasDocument(documentWith({ pages: [page({ background: 'white' })] }))).not.toEqual([]);
+  });
+
+  it('rejects too many strokes on a single page', () => {
+    const strokes = Array.from({ length: DOCUMENT_LIMITS.maxStrokesPerPage + 1 }, (_, index) =>
       stroke({ id: `s${index}` }),
     );
-    expect(validateCanvasDocument(documentWith({ strokes }))).not.toEqual([]);
+    expect(validateCanvasDocument(documentWith({ pages: [page({ strokes })] }))).not.toEqual([]);
   });
 
   it.each([
@@ -89,7 +112,7 @@ describe('validateCanvasDocument', () => {
     ['odd point count', stroke({ points: [1, 2, 3] })],
     ['empty points', stroke({ points: [] })],
   ])('rejects a stroke with %s', (_case, badStroke) => {
-    expect(validateCanvasDocument(documentWith({ strokes: [badStroke] }))).not.toEqual([]);
+    expect(validateCanvasDocument(documentWith({ pages: [page({ strokes: [badStroke] })] }))).not.toEqual([]);
   });
 
   it.each([
@@ -100,14 +123,21 @@ describe('validateCanvasDocument', () => {
     ['bad fill color', textItem({ fill: 'blue' })],
     ['non-positive width', textItem({ width: 0 })],
   ])('rejects a text item with %s', (_case, badItem) => {
-    expect(validateCanvasDocument(documentWith({ items: [badItem] }))).not.toEqual([]);
+    expect(validateCanvasDocument(documentWith({ pages: [page({ items: [badItem] })] }))).not.toEqual([]);
   });
 
-  it('rejects too many images', () => {
-    const items = Array.from({ length: DOCUMENT_LIMITS.maxImageItems + 1 }, (_, index) =>
-      imageItem({ id: `i${index}` }),
-    );
-    expect(validateCanvasDocument(documentWith({ items }))).not.toEqual([]);
+  it('rejects too many images across all pages', () => {
+    // Each page stays within limits, but together they exceed the image cap.
+    const imagesPerPage = Math.ceil((DOCUMENT_LIMITS.maxImageItems + 1) / 2);
+    const makeImages = (prefix: string) =>
+      Array.from({ length: imagesPerPage }, (_, index) => imageItem({ id: `${prefix}${index}` }));
+    const document = documentWith({
+      pages: [
+        page({ id: 'p1', items: makeImages('a') }),
+        page({ id: 'p2', items: makeImages('b') }),
+      ],
+    });
+    expect(validateCanvasDocument(document, 3)).not.toEqual([]);
   });
 
   it.each([
@@ -115,12 +145,13 @@ describe('validateCanvasDocument', () => {
     ['a full URL', 'https://evil.example/x.png'],
     ['a wrong extension', `3/${'a'.repeat(32)}.exe`],
   ])('rejects an image path that is %s', (_case, path) => {
-    expect(validateCanvasDocument(documentWith({ items: [imageItem({ path })] }))).not.toEqual([]);
+    const document = documentWith({ pages: [page({ items: [imageItem({ path })] })] });
+    expect(validateCanvasDocument(document)).not.toEqual([]);
   });
 
   it("rejects an image path under someone else's prefix when the author is known", () => {
     const document = documentWith({
-      items: [imageItem({ path: `4/${'a'.repeat(32)}.jpg` })],
+      pages: [page({ items: [imageItem({ path: `4/${'a'.repeat(32)}.jpg` })] })],
     });
     // Owned by cyberek 4, author is 3.
     expect(validateCanvasDocument(document, 3)).not.toEqual([]);
@@ -129,23 +160,24 @@ describe('validateCanvasDocument', () => {
   });
 
   it('rejects a document exceeding the JSON size limit', () => {
-    // Many long-text items instead of one (each stays within the text limit).
-    const longText = 'x'.repeat(DOCUMENT_LIMITS.maxTextLength);
-    const itemCount = Math.ceil(DOCUMENT_LIMITS.maxJsonBytes / longText.length) + 1;
-    const items = Array.from({ length: itemCount }, (_, index) =>
-      textItem({ id: `t${index}`, text: longText }),
+    // A handful of max-length strokes on one page push the JSON past 512 KB
+    // without hitting any structural per-page limit.
+    const bigPoints = Array.from({ length: DOCUMENT_LIMITS.maxPointsPerStroke }, () => 999999);
+    const strokes = Array.from({ length: 5 }, (_, index) =>
+      stroke({ id: `s${index}`, points: bigPoints }),
     );
-    const errors = validateCanvasDocument(documentWith({ items }));
-    // Exceeds maxItems too — any error is fine, the save must be blocked.
-    expect(errors).not.toEqual([]);
+    const errors = validateCanvasDocument(documentWith({ pages: [page({ strokes })] }));
+    expect(errors.some((e) => e.key === 'wishlist.validation.documentTooLarge')).toBe(true);
   });
 });
 
 describe('serialize/parse round trip', () => {
-  it('round-trips a full document', () => {
+  it('round-trips a multi-page document', () => {
     const original = documentWith({
-      strokes: [stroke(), stroke({ id: 's2', tool: 'eraser' })],
-      items: [textItem(), imageItem()],
+      pages: [
+        page({ strokes: [stroke(), stroke({ id: 's2', tool: 'eraser' })] }),
+        page({ id: 'p2', items: [textItem(), imageItem()] }),
+      ],
     });
 
     const result = parseCanvasDocument(serializeCanvasDocument(original));
@@ -173,14 +205,22 @@ describe('serialize/parse round trip', () => {
   });
 
   it('drops items of unknown types instead of failing', () => {
-    const raw = JSON.stringify({
-      ...createEmptyCanvasDocument(),
-      items: [textItem(), { id: 'x', type: 'video', x: 0, y: 0, rotation: 0 }],
-    });
+    const raw = JSON.stringify(
+      documentWith({
+        pages: [
+          {
+            id: 'p1',
+            background: '#ffffff',
+            strokes: [],
+            items: [textItem(), { id: 'x', type: 'video', x: 0, y: 0, rotation: 0 }],
+          } as unknown as CanvasPage,
+        ],
+      }),
+    );
 
     const result = parseCanvasDocument(raw);
 
     expect(result.errors).toEqual([]);
-    expect(result.document?.items).toHaveLength(1);
+    expect(result.document?.pages[0].items).toHaveLength(1);
   });
 });

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { useBlocker } from 'react-router-dom';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { RootState } from '@/app/store';
 import { Button } from '@/shared/ui/button';
@@ -12,9 +13,11 @@ import {
   useUploadWishlistImageMutation,
 } from '../wishlistApi';
 import {
+  CANVAS_HEIGHT,
   CANVAS_WIDTH,
   DEFAULT_PEN_COLOR,
   DEFAULT_STROKE_WIDTH,
+  EMOJI_INSERT_FONT_SIZE,
   IMAGE_INSERT_MAX_WIDTH_RATIO,
 } from './canvasConstants';
 import {
@@ -30,6 +33,12 @@ import { useCanvasEngine, Point } from './useCanvasEngine';
 import { useStageViewport } from './useStageViewport';
 import WishlistCanvas from './WishlistCanvas';
 import ZoomControls from './ZoomControls';
+import PageCarousel from './PageCarousel';
+import EmojiPicker from './EmojiPicker';
+import UnsavedChangesDialog from './UnsavedChangesDialog';
+
+// Eraser cursor preview is drawn in a neutral gray (it has no ink color).
+const ERASER_CURSOR_COLOR = '#6b7280';
 
 interface WishlistEditorProps {
   initialDocument: CanvasDocument;
@@ -51,6 +60,10 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
   const [color, setColor] = useState<string>(DEFAULT_PEN_COLOR);
   const [strokeWidth, setStrokeWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  // Set when the in-editor Back button is pressed with unsaved changes; router
+  // navigation is caught separately by the blocker below.
+  const [backRequested, setBackRequested] = useState(false);
 
   const viewport = useStageViewport({
     panEnabled: tool === 'select',
@@ -66,8 +79,16 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
 
   const { selectedItemId, removeItem, isDirty } = engine;
 
-  // Native browser guard for closing/refreshing the tab with unsaved changes;
-  // in-app navigation is guarded by the exit button confirm below.
+  // Catch in-app route navigation (e.g. Navbar links) while there are unsaved
+  // changes, so the confirmation dialog below can offer save/discard.
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  // Native browser guard for the one thing the router cannot intercept: closing
+  // or refreshing the tab. The browser renders this prompt itself (no custom
+  // buttons); in-app exits use the UnsavedChangesDialog.
   useEffect(() => {
     if (!isDirty) {
       return;
@@ -109,6 +130,9 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       const item = engine.addTextItem(position.x, position.y, color);
       setEditingTextId(item.id);
       setTool('select');
+    } else if (tool === 'fill' && isBackground) {
+      // Fill the current page background with the selected color.
+      engine.setPageBackground(color);
     } else if (tool === 'select' && isBackground) {
       engine.setSelectedItemId(null);
     }
@@ -180,7 +204,8 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
 
   // --- save ---------------------------------------------------------------------
 
-  const handleSave = async () => {
+  /** Returns true when the wishlist was successfully saved. */
+  const handleSave = async (): Promise<boolean> => {
     const document = engine.buildDocument();
     // Client-side mirror of the server limits — a readable warning beats a 400.
     const validationErrors = validateCanvasDocument(document, cyberekId);
@@ -190,7 +215,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
         description: t(validationErrors[0].key, validationErrors[0].params),
         variant: 'destructive',
       });
-      return;
+      return false;
     }
 
     try {
@@ -198,38 +223,90 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       engine.markSaved();
       toast({ title: t('wishlist.editor.saved') });
       onSaved?.();
+      return true;
     } catch (error) {
       toast({
         title: t('wishlist.editor.saveFailed'),
         description: extractApiErrorMessage(error, t('common.error.tryAgainShort')),
         variant: 'destructive',
       });
+      return false;
     }
   };
+
+  const handleColorChange = (nextColor: string) => {
+    setColor(nextColor);
+    // With the fill tool active, choosing a color fills the page immediately.
+    if (tool === 'fill') {
+      engine.setPageBackground(nextColor);
+    }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    // Emojis are text items, so they are movable/scalable/rotatable like text.
+    engine.addTextItem(
+      (CANVAS_WIDTH - EMOJI_INSERT_FONT_SIZE) / 2,
+      (CANVAS_HEIGHT - EMOJI_INSERT_FONT_SIZE) / 2,
+      color,
+      { text: emoji, fontSize: EMOJI_INSERT_FONT_SIZE, width: EMOJI_INSERT_FONT_SIZE * 1.4 },
+    );
+    setShowEmojiPicker(false);
+    setTool('select');
+  };
+
+  // --- leaving with unsaved changes ------------------------------------------
+
+  const unsavedDialogOpen = blocker.state === 'blocked' || backRequested;
 
   const handleExit = () => {
     if (!onExit) {
       return;
     }
-    if (!engine.isDirty || window.confirm(t('wishlist.editor.unsavedConfirm'))) {
+    if (engine.isDirty) {
+      setBackRequested(true);
+    } else {
       onExit();
+    }
+  };
+
+  const performExit = () => {
+    if (blocker.state === 'blocked') {
+      blocker.proceed();
+    } else {
+      setBackRequested(false);
+      onExit?.();
+    }
+  };
+
+  const cancelExit = () => {
+    setBackRequested(false);
+    if (blocker.state === 'blocked') {
+      blocker.reset();
+    }
+  };
+
+  const saveAndExit = async () => {
+    if (await handleSave()) {
+      performExit();
     }
   };
 
   return (
     <div className="flex w-full max-w-5xl flex-col gap-3 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           {onExit && (
             <Button type="button" variant="secondary" size="sm" onClick={handleExit}>
               <ArrowLeft /> {t('common.action.back')}
             </Button>
           )}
-          <h1 className="text-xl font-bold text-white">{t('wishlist.my.title')}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight text-white drop-shadow-sm sm:text-3xl">
+            {t('wishlist.my.title')}
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           <ZoomControls viewport={viewport} />
-          <Button type="button" onClick={handleSave} disabled={isSaving}>
+          <Button type="button" onClick={handleSave} disabled={isSaving} className="h-11 px-5">
             {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
             {t('common.action.save')}
             {engine.isDirty && !isSaving && (
@@ -242,12 +319,31 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
         </div>
       </div>
 
+      <div className="flex justify-center">
+        <PageCarousel
+          pageCount={engine.pageCount}
+          currentPageIndex={engine.currentPageIndex}
+          onGoTo={engine.goToPage}
+          editing={{
+            canAddPage: engine.canAddPage,
+            canDeletePage: engine.canDeletePage,
+            onAddPage: engine.addPage,
+            onDuplicatePage: engine.duplicatePage,
+            onDeletePage: () => {
+              if (window.confirm(t('wishlist.pages.deleteConfirm'))) {
+                engine.deletePage();
+              }
+            },
+          }}
+        />
+      </div>
+
       <div className="flex flex-col gap-3 md:flex-row">
         <CanvasToolbar
           tool={tool}
           onToolChange={setTool}
           color={color}
-          onColorChange={setColor}
+          onColorChange={handleColorChange}
           strokeWidth={strokeWidth}
           onStrokeWidthChange={setStrokeWidth}
           canUndo={engine.canUndo}
@@ -258,10 +354,11 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           onDeleteSelection={() => selectedItemId && removeItem(selectedItemId)}
           onClearAll={() => {
             if (window.confirm(t('wishlist.editor.clearConfirm'))) {
-              engine.clearAll();
+              engine.clearPage();
             }
           }}
           onPickImage={() => fileInputRef.current?.click()}
+          onPickEmoji={() => setShowEmojiPicker(true)}
           isUploadingImage={isUploadingImage}
         />
 
@@ -269,8 +366,10 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           ref={viewport.containerRef}
           className={cn(
             'relative flex-1 touch-none overflow-hidden rounded-md shadow-lg',
-            (tool === 'pen' || tool === 'eraser') && 'cursor-crosshair',
+            // Pen/eraser hide the native cursor — the on-canvas brush circle is the cursor.
+            (tool === 'pen' || tool === 'eraser') && 'cursor-none',
             tool === 'text' && 'cursor-text',
+            tool === 'fill' && 'cursor-pointer',
           )}
         >
           {viewport.isMeasured && (
@@ -278,6 +377,15 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
               strokes={engine.strokes}
               liveStroke={engine.liveStroke}
               items={engine.items}
+              background={engine.background}
+              brushCursor={
+                tool === 'pen' || tool === 'eraser'
+                  ? {
+                      radius: strokeWidth / 2,
+                      color: tool === 'eraser' ? ERASER_CURSOR_COLOR : color,
+                    }
+                  : null
+              }
               stageProps={viewport.stageProps}
               editable
               itemsInteractive={tool === 'select'}
@@ -314,6 +422,18 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           event.target.value = '';
           void handleImageFilePicked(file);
         }}
+      />
+
+      {showEmojiPicker && (
+        <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />
+      )}
+
+      <UnsavedChangesDialog
+        open={unsavedDialogOpen}
+        isSaving={isSaving}
+        onSave={saveAndExit}
+        onDiscard={performExit}
+        onCancel={cancelExit}
       />
     </div>
   );

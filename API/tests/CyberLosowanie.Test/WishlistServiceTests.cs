@@ -57,22 +57,33 @@ namespace CyberLosowanie.Test
                     GiftedCyberekId = giftedCyberekId
                 });
 
+        // Builds a v2 document. Strokes/items go onto a single page (the common case);
+        // multi-page tests pass an explicit `pages` array instead.
         private static string BuildCanvasJson(
             int version = WishlistConstants.CANVAS_DOCUMENT_VERSION,
             int width = WishlistConstants.CANVAS_WIDTH,
             int height = WishlistConstants.CANVAS_HEIGHT,
             string background = "#ffffff",
             object[]? strokes = null,
-            object[]? items = null)
+            object[]? items = null,
+            object[]? pages = null)
         {
             return JsonSerializer.Serialize(new
             {
                 version,
-                canvas = new { width, height, background },
-                strokes = strokes ?? Array.Empty<object>(),
-                items = items ?? Array.Empty<object>()
+                canvas = new { width, height },
+                pages = pages ?? new[] { Page(strokes, items, background) },
             });
         }
+
+        private static object Page(object[]? strokes = null, object[]? items = null, string background = "#ffffff") =>
+            new
+            {
+                id = Guid.NewGuid().ToString("N"),
+                background,
+                strokes = strokes ?? Array.Empty<object>(),
+                items = items ?? Array.Empty<object>(),
+            };
 
         private static object Stroke(string tool = "pen", string color = "#e11d48", double width = 6, double[]? points = null) =>
             new { id = Guid.NewGuid().ToString("N"), tool, color, width, points = points ?? new double[] { 1, 2, 3, 4 } };
@@ -218,7 +229,7 @@ namespace CyberLosowanie.Test
             await CreateService().SaveMyWishlistAsync(UserName, raw);
 
             added!.CanvasJson.Should().NotContain("evil");
-            added.CanvasJson.Should().Contain("\"version\":1");
+            added.CanvasJson.Should().Contain("\"version\":2");
         }
 
         [Fact]
@@ -248,7 +259,8 @@ namespace CyberLosowanie.Test
         [Fact]
         public async Task SaveMyWishlistAsync_WrongVersion_ThrowsBusinessValidation()
         {
-            var json = BuildCanvasJson(version: 2);
+            // Only the current schema version is accepted.
+            var json = BuildCanvasJson(version: 1);
 
             var ex = await Assert.ThrowsAsync<BusinessValidationException>(
                 () => CreateService().SaveMyWishlistAsync(UserName, json));
@@ -280,7 +292,7 @@ namespace CyberLosowanie.Test
         [Fact]
         public async Task SaveMyWishlistAsync_TooManyStrokes_ThrowsBusinessValidation()
         {
-            var strokes = Enumerable.Range(0, WishlistConstants.MAX_STROKES + 1)
+            var strokes = Enumerable.Range(0, WishlistConstants.MAX_STROKES_PER_PAGE + 1)
                 .Select(_ => Stroke())
                 .ToArray();
             var json = BuildCanvasJson(strokes: strokes);
@@ -406,6 +418,64 @@ namespace CyberLosowanie.Test
 
         #endregion
 
+        #region SaveMyWishlistAsync — pages
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_MultiplePages_IsAccepted()
+        {
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(OwnCyberekId)).ReturnsAsync((Wishlist?)null);
+            _storage.Setup(s => s.ListPathsAsync(It.IsAny<string>())).ReturnsAsync(new List<string>());
+
+            var json = BuildCanvasJson(pages: new[]
+            {
+                Page(strokes: new[] { Stroke() }),
+                Page(items: new[] { TextItem() }),
+                Page(items: new[] { ImageItem(OwnImagePath()) }),
+            });
+
+            var result = await CreateService().SaveMyWishlistAsync(UserName, json);
+
+            result.Should().NotBeNull();
+            _wishlistRepo.Verify(r => r.SaveChangesAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_NoPages_ThrowsBusinessValidation()
+        {
+            var json = BuildCanvasJson(pages: Array.Empty<object>());
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_TooManyPages_ThrowsBusinessValidation()
+        {
+            var pages = Enumerable.Range(0, WishlistConstants.MAX_PAGES + 1)
+                .Select(_ => Page())
+                .ToArray();
+            var json = BuildCanvasJson(pages: pages);
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_ImagesAcrossPagesExceedTotalLimit_ThrowsBusinessValidation()
+        {
+            // Each page stays under the per-page item limit, but together they exceed
+            // the document-wide image cap (images are stored blobs).
+            var imagesPerPage = (WishlistConstants.MAX_IMAGE_ITEMS / 2) + 1;
+            object BuildImagePage() =>
+                Page(items: Enumerable.Range(0, imagesPerPage).Select(_ => ImageItem(OwnImagePath())).ToArray());
+            var json = BuildCanvasJson(pages: new[] { BuildImagePage(), BuildImagePage() });
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        #endregion
+
         #region SaveMyWishlistAsync — orphaned image cleanup
 
         [Fact]
@@ -417,7 +487,12 @@ namespace CyberLosowanie.Test
             _storage.Setup(s => s.ListPathsAsync($"{OwnCyberekId}/"))
                 .ReturnsAsync(new List<string> { keptPath, orphanedPath });
 
-            var json = BuildCanvasJson(items: new[] { ImageItem(keptPath) });
+            // The kept image lives on the second page — cleanup must scan every page.
+            var json = BuildCanvasJson(pages: new[]
+            {
+                Page(strokes: new[] { Stroke() }),
+                Page(items: new[] { ImageItem(keptPath) }),
+            });
             await CreateService().SaveMyWishlistAsync(UserName, json);
 
             _storage.Verify(s => s.DeleteAsync(orphanedPath), Times.Once);

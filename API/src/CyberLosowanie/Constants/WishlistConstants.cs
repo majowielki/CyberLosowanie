@@ -7,16 +7,21 @@ namespace CyberLosowanie.Constants
     /// </summary>
     public static class WishlistConstants
     {
-        // Canvas document schema
-        public const int CANVAS_DOCUMENT_VERSION = 1;
+        // Canvas document schema. The document is a list of pages (a carousel),
+        // each with its own background, strokes and items.
+        public const int CANVAS_DOCUMENT_VERSION = 2;
         public const int CANVAS_WIDTH = 1080;
         public const int CANVAS_HEIGHT = 1528;
 
         // Document limits (validated before anything reaches the database)
         public const int MAX_CANVAS_JSON_BYTES = 512 * 1024;
-        public const int MAX_STROKES = 4_000;
+        public const int MAX_PAGES = 10;
+        // Strokes and items are counted per page; the total document size is
+        // additionally bounded by MAX_CANVAS_JSON_BYTES.
+        public const int MAX_STROKES_PER_PAGE = 4_000;
         public const int MAX_POINTS_PER_STROKE = 20_000;
-        public const int MAX_ITEMS = 120;
+        public const int MAX_ITEMS_PER_PAGE = 120;
+        // Images are capped across the whole document (each one is a stored blob).
         public const int MAX_IMAGE_ITEMS = 10;
         public const int MAX_TEXT_LENGTH = 500;
         public const int MIN_STROKE_WIDTH = 1;

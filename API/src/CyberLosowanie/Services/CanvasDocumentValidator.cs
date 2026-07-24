@@ -11,6 +11,9 @@ namespace CyberLosowanie.Services
     /// section 3.4 of Docs/lista-zyczen-projekt.md. The document is deserialized
     /// into the typed model, checked, and re-serialized to a canonical form —
     /// raw client JSON never reaches the database.
+    ///
+    /// Version 2 documents carry multiple pages; strokes and items are counted
+    /// per page, images across the whole document.
     /// </summary>
     public static class CanvasDocumentValidator
     {
@@ -79,9 +82,10 @@ namespace CyberLosowanie.Services
         public static string ToCanonicalJson(CanvasDocument document) =>
             JsonSerializer.Serialize(document, SerializerOptions);
 
-        /// <summary>Blob paths of all image items — used for orphaned blob cleanup.</summary>
+        /// <summary>Blob paths of every image on every page — used for orphaned blob cleanup.</summary>
         public static HashSet<string> GetReferencedImagePaths(CanvasDocument document) =>
-            (document.Items ?? [])
+            (document.Pages ?? [])
+                .SelectMany(page => page.Items ?? [])
                 .Where(i => i.Type == WishlistConstants.ITEM_TYPE_IMAGE && !string.IsNullOrEmpty(i.Path))
                 .Select(i => i.Path!)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -94,8 +98,7 @@ namespace CyberLosowanie.Services
             }
 
             ValidateCanvasSettings(document.Canvas, errors);
-            ValidateStrokes(document.Strokes, errors);
-            ValidateItems(document.Items, authorCyberekId, errors);
+            ValidatePages(document.Pages, authorCyberekId, errors);
         }
 
         private static void ValidateCanvasSettings(CanvasSettings? canvas, List<string> errors)
@@ -110,31 +113,66 @@ namespace CyberLosowanie.Services
             {
                 errors.Add($"Canvas size must be {WishlistConstants.CANVAS_WIDTH}x{WishlistConstants.CANVAS_HEIGHT}.");
             }
-
-            if (canvas.Background == null || !HexColorRegex.IsMatch(canvas.Background))
-            {
-                errors.Add("Canvas background must be a #rrggbb color.");
-            }
         }
 
-        private static void ValidateStrokes(List<CanvasStroke>? strokes, List<string> errors)
+        private static void ValidatePages(List<CanvasPage>? pages, int authorCyberekId, List<string> errors)
         {
-            if (strokes == null)
+            if (pages == null || pages.Count == 0)
             {
-                errors.Add("Strokes collection is required (may be empty).");
+                errors.Add("Document must contain at least one page.");
                 return;
             }
 
-            if (strokes.Count > WishlistConstants.MAX_STROKES)
+            if (pages.Count > WishlistConstants.MAX_PAGES)
             {
-                errors.Add($"Document must not contain more than {WishlistConstants.MAX_STROKES} strokes.");
+                errors.Add($"Document must not contain more than {WishlistConstants.MAX_PAGES} pages.");
+                return;
+            }
+
+            var totalImages = 0;
+            for (var pageIndex = 0; pageIndex < pages.Count; pageIndex++)
+            {
+                var page = pages[pageIndex];
+                var pageLabel = $"Page {pageIndex}";
+
+                if (string.IsNullOrWhiteSpace(page.Id))
+                {
+                    errors.Add($"{pageLabel}: id is required.");
+                }
+
+                if (page.Background == null || !HexColorRegex.IsMatch(page.Background))
+                {
+                    errors.Add($"{pageLabel}: background must be a #rrggbb color.");
+                }
+
+                ValidateStrokes(page.Strokes, pageLabel, errors);
+                totalImages += ValidateItems(page.Items, authorCyberekId, pageLabel, errors);
+            }
+
+            if (totalImages > WishlistConstants.MAX_IMAGE_ITEMS)
+            {
+                errors.Add($"Document must not contain more than {WishlistConstants.MAX_IMAGE_ITEMS} images in total.");
+            }
+        }
+
+        private static void ValidateStrokes(List<CanvasStroke>? strokes, string pageLabel, List<string> errors)
+        {
+            if (strokes == null)
+            {
+                errors.Add($"{pageLabel}: strokes collection is required (may be empty).");
+                return;
+            }
+
+            if (strokes.Count > WishlistConstants.MAX_STROKES_PER_PAGE)
+            {
+                errors.Add($"{pageLabel}: must not contain more than {WishlistConstants.MAX_STROKES_PER_PAGE} strokes.");
                 return;
             }
 
             for (var i = 0; i < strokes.Count; i++)
             {
                 var stroke = strokes[i];
-                var label = $"Stroke {i}";
+                var label = $"{pageLabel} stroke {i}";
 
                 if (string.IsNullOrWhiteSpace(stroke.Id))
                 {
@@ -171,30 +209,26 @@ namespace CyberLosowanie.Services
             }
         }
 
-        private static void ValidateItems(List<CanvasItem>? items, int authorCyberekId, List<string> errors)
+        /// <summary>Validates a page's items and returns how many of them are images.</summary>
+        private static int ValidateItems(List<CanvasItem>? items, int authorCyberekId, string pageLabel, List<string> errors)
         {
             if (items == null)
             {
-                errors.Add("Items collection is required (may be empty).");
-                return;
+                errors.Add($"{pageLabel}: items collection is required (may be empty).");
+                return 0;
             }
 
-            if (items.Count > WishlistConstants.MAX_ITEMS)
+            if (items.Count > WishlistConstants.MAX_ITEMS_PER_PAGE)
             {
-                errors.Add($"Document must not contain more than {WishlistConstants.MAX_ITEMS} items.");
-                return;
+                errors.Add($"{pageLabel}: must not contain more than {WishlistConstants.MAX_ITEMS_PER_PAGE} items.");
+                return 0;
             }
 
-            var imageCount = items.Count(i => i.Type == WishlistConstants.ITEM_TYPE_IMAGE);
-            if (imageCount > WishlistConstants.MAX_IMAGE_ITEMS)
-            {
-                errors.Add($"Document must not contain more than {WishlistConstants.MAX_IMAGE_ITEMS} images.");
-            }
-
+            var imageCount = 0;
             for (var i = 0; i < items.Count; i++)
             {
                 var item = items[i];
-                var label = $"Item {i}";
+                var label = $"{pageLabel} item {i}";
 
                 if (string.IsNullOrWhiteSpace(item.Id))
                 {
@@ -207,6 +241,7 @@ namespace CyberLosowanie.Services
                         ValidateTextItem(item, label, errors);
                         break;
                     case WishlistConstants.ITEM_TYPE_IMAGE:
+                        imageCount++;
                         ValidateImageItem(item, authorCyberekId, label, errors);
                         break;
                     default:
@@ -214,6 +249,8 @@ namespace CyberLosowanie.Services
                         break;
                 }
             }
+
+            return imageCount;
         }
 
         private static void ValidateTextItem(CanvasItem item, string label, List<string> errors)
