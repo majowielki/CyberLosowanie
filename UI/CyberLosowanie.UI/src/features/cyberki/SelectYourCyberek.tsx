@@ -1,19 +1,18 @@
-import { useGetAvailableToPickQuery, useAssignCyberekMutation } from "@/features/cyberki/cyberLosowanieApi";
-import { Button } from "@/shared/ui/button";
-import { Card, CardContent } from "@/shared/ui/card"
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/shared/ui/carousel";
+  useGetAvailableToPickQuery,
+  useGetCyberkiQuery,
+  useAssignCyberekMutation,
+} from "@/features/cyberki/cyberLosowanieApi";
+import { Button } from "@/shared/ui/button";
+import { PageHeader, StatusMessage } from "@/shared/components";
 import { RootState } from "@/app/store";
 import { setCyberekId } from "@/features/auth/userSlice";
 import { useState } from "react";
 import { useSelector } from "react-redux";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { Check, Lock } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "@/shared/hooks/use-toast";
 import { debugLog } from "@/shared/config";
 import { useTranslation } from "@/shared/i18n";
@@ -25,10 +24,16 @@ function SelectYourCyberek() {
   const { t } = useTranslation();
   const userHasGiftedCyberekId = useSelector((state: RootState) => state.userAuthStore.giftedCyberekId);
 
+  // The full list keeps the grid stable (everyone always in the same place);
+  // the "available" list only decides which portraits can still be picked.
+  const { data: allData, isLoading: allLoading, error: allError } = useGetCyberkiQuery();
   const { data, isLoading, error } = useGetAvailableToPickQuery();
 
   const [assignCyberek] = useAssignCyberekMutation();
   const [loading, setLoading] = useState(false);
+  // Two-step pick: tap a portrait to highlight it, then confirm once. Keeps a
+  // mis-tap on the grid from committing the (irreversible) choice.
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const handleSelect = async (cyberekId: number) => {
     setLoading(true);
@@ -51,73 +56,132 @@ function SelectYourCyberek() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">{t('cyberki.select.selecting')}</div>
-      </div>
-    );
+    return <StatusMessage tone="loading" message={t('cyberki.select.selecting')} />;
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">{t('cyberki.select.loading')}</div>
-      </div>
-    );
+  if (isLoading || allLoading) {
+    return <StatusMessage tone="loading" message={t('cyberki.select.loading')} />;
   }
 
-  if (error) {
+  if (error || allError) {
     return (
-      <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">{t('cyberki.select.loadError')}</div>
-        <Button onClick={() => window.location.reload()} className="mt-4">
-          {t('common.action.retry')}
-        </Button>
-      </div>
+      <StatusMessage
+        tone="error"
+        message={t('cyberki.select.loadError')}
+        action={<Button onClick={() => window.location.reload()}>{t('common.action.retry')}</Button>}
+      />
     );
   }
 
   if (!data?.data?.length) {
     return (
-      <div className="flex flex-col items-center justify-center mt-20">
-        <div className="text-white text-lg">{t('cyberki.select.empty')}</div>
-        <div className="text-white text-sm mt-2">{t('cyberki.select.emptyHint')}</div>
-        <Button onClick={() => navigate("/")} className="mt-4">
-          {t('common.action.goHome')}
-        </Button>
-      </div>
+      <StatusMessage
+        message={t('cyberki.select.empty')}
+        hint={t('cyberki.select.emptyHint')}
+        action={<Button variant="glass" onClick={() => navigate("/")}>{t('common.action.goHome')}</Button>}
+      />
     );
   }
 
+  const availableIds = new Set(data.data.map((cyberek) => cyberek.id));
+  // Fall back to the available list if the full list is missing for any reason.
+  const cyberki = allData?.data?.length ? allData.data : data.data;
+  const selected = cyberki.find((cyberek) => cyberek.id === selectedId && availableIds.has(cyberek.id)) ?? null;
+
   return (
-    <div className="flex flex-col items-center justify-center mt-20">
-      <h1 className="text-4xl font-extrabold text-white mb-10">{t('cyberki.select.title')}</h1>
-      <p className="text-white text-center mb-6">{t('cyberki.select.subtitle')}</p>
-      <Carousel className="w-full max-w-xs">
-        <CarouselContent>
-          {(data.data || []).map((cyberek, index) => (
-            <CarouselItem key={index}>
-                <Card>
-                <CardContent className="p-2 flex flex-col items-center">
-                  <span className="text-black text-lg font-semibold mb-2">{cyberek.name}</span>
-                  <img src={cyberek.imageUrl} alt={t('cyberki.select.imageAlt', { name: cyberek.name })} className="w-full h-[24rem] rounded-md object-cover mb-4" />
-                  <Button
-                    className="px-4 py-2 mb-2"
-                    onClick={async () => {
-                      await handleSelect(cyberek.id);
-                      navigate(userHasGiftedCyberekId != null ? "/final-page" : "/choose-to-be-gifted-cyberek");
-                    }}
-                  >
-                    {t('cyberki.select.confirm')}
-                  </Button>
-                </CardContent>
-              </Card>
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <CarouselPrevious />
-        <CarouselNext />
-      </Carousel>
+    <div className="flex w-full flex-col items-center gap-8">
+      <PageHeader
+        eyebrow={t('common.step.indicator', { current: 1, total: 2 })}
+        title={t('cyberki.select.title')}
+        subtitle={t('cyberki.select.subtitle')}
+      />
+
+      {/* Portrait grid — everyone visible at once, one tap to highlight. */}
+      <ul
+        role="radiogroup"
+        aria-label={t('cyberki.select.title')}
+        className="grid w-full max-w-5xl grid-cols-3 gap-3 sm:grid-cols-4 sm:gap-5"
+      >
+        {cyberki.map((cyberek) => {
+          const isTaken = !availableIds.has(cyberek.id);
+          const isSelected = !isTaken && cyberek.id === selectedId;
+          return (
+            <li key={cyberek.id}>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={isSelected}
+                aria-disabled={isTaken}
+                disabled={isTaken}
+                title={isTaken ? t('cyberki.select.taken') : undefined}
+                onClick={() => setSelectedId(cyberek.id)}
+                className={cn(
+                  'group flex w-full flex-col items-center gap-2 rounded-2xl p-2 text-center transition-all duration-200',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  isSelected && 'glass border-gold/60 bg-white/10',
+                  !isSelected && !isTaken && 'hover:bg-white/[0.06]',
+                  isTaken && 'cursor-not-allowed opacity-45 saturate-50',
+                )}
+              >
+                <span className="relative block aspect-square w-full overflow-hidden rounded-xl bg-secondary">
+                  <img
+                    src={cyberek.imageUrl}
+                    alt={t('cyberki.select.imageAlt', { name: cyberek.name })}
+                    className={cn(
+                      'h-full w-full object-cover transition-transform duration-300',
+                      isSelected && 'scale-105',
+                      !isSelected && !isTaken && 'group-hover:scale-105',
+                    )}
+                  />
+                  {isTaken && (
+                    <span className="absolute inset-x-2 bottom-2 inline-flex items-center justify-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
+                      <Lock className="h-3 w-3" aria-hidden />
+                      {t('cyberki.select.taken')}
+                    </span>
+                  )}
+                  {isSelected && (
+                    <>
+                      <span className="absolute inset-0 rounded-xl ring-4 ring-inset ring-gold" aria-hidden />
+                      <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-gold text-pine-950 shadow" aria-hidden>
+                        <Check className="h-4 w-4" />
+                      </span>
+                    </>
+                  )}
+                </span>
+                <span
+                  className={cn(
+                    'font-display text-base font-medium leading-tight sm:text-lg',
+                    isSelected ? 'text-gold' : isTaken ? 'text-cream-muted' : 'text-cream',
+                  )}
+                >
+                  {cyberek.name}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* Sticky confirm bar: always reachable, names the current pick. */}
+      <div className="sticky bottom-4 z-10 flex w-full max-w-md items-center justify-center">
+        <Button
+          size="lg"
+          className="w-full"
+          disabled={!selected}
+          onClick={async () => {
+            if (!selected) {
+              return;
+            }
+            await handleSelect(selected.id);
+            navigate(userHasGiftedCyberekId != null ? "/final-page" : "/choose-to-be-gifted-cyberek");
+          }}
+        >
+          <Check aria-hidden />
+          {selected
+            ? t('cyberki.select.confirmNamed', { name: selected.name })
+            : t('cyberki.select.confirm')}
+        </Button>
+      </div>
     </div>
   )
 }

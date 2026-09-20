@@ -80,7 +80,7 @@ function CanvasToolbar({
   const showContextualOptions = showColorOptions || showStrokeOptions;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/95 p-2 shadow-lg md:w-16 md:flex-col md:flex-nowrap">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/95 p-2 text-card-foreground shadow-elevated md:w-16 md:flex-col md:flex-nowrap">
       {/* Tools */}
       <div className="flex flex-wrap items-center gap-1.5 md:flex-col">
         {TOOLS.map(({ id, labelKey, icon: Icon }) => (

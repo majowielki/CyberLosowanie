@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
-import { Loading } from '@/shared/components';
+import { Loading, PageHeader, StatusMessage } from '@/shared/components';
 import { useTranslation } from '@/shared/i18n';
 import { useGetMyGiftedCyberekQuery } from '@/features/cyberki/cyberLosowanieApi';
 import { extractApiErrorMessage, useGetGiftedWishlistQuery } from './wishlistApi';
@@ -39,53 +39,54 @@ function GiftedWishlistPage() {
     // 409 = the caller has not completed the draw yet.
     if (isConflictError(error)) {
       return (
-        <div className="mt-20 flex flex-col items-center gap-4">
-          <p className="text-lg text-white">
-            {t('wishlist.gifted.finishDrawFirst')}
-          </p>
-          <Button onClick={() => navigate('/')}>{t('common.action.goHome')}</Button>
-        </div>
+        <StatusMessage
+          message={t('wishlist.gifted.finishDrawFirst')}
+          action={<Button onClick={() => navigate('/')}>{t('common.action.goHome')}</Button>}
+        />
       );
     }
     return (
-      <div className="mt-20 flex flex-col items-center gap-4">
-        <p className="text-lg text-white">
-          {extractApiErrorMessage(error, t('wishlist.loadFailed'))}
-        </p>
-        <Button onClick={() => navigate('/final-page')}>{t('common.action.back')}</Button>
-      </div>
+      <StatusMessage
+        tone="error"
+        message={extractApiErrorMessage(error, t('wishlist.loadFailed'))}
+        action={<Button variant="glass" onClick={() => navigate('/final-page')}>{t('common.action.back')}</Button>}
+      />
     );
   }
 
   if (!saved) {
     return (
-      <div className="mt-20 flex flex-col items-center gap-4">
-        <p className="text-lg text-white">
-          {t('wishlist.gifted.notSavedYet', {
-            name: giftedName ?? t('wishlist.gifted.fallbackPerson'),
-          })}
-        </p>
-        <Button onClick={() => navigate('/final-page')}>
-          <ArrowLeft /> {t('common.action.back')}
-        </Button>
-      </div>
+      <StatusMessage
+        message={t('wishlist.gifted.notSavedYet', {
+          name: giftedName ?? t('wishlist.gifted.fallbackPerson'),
+        })}
+        action={
+          <Button variant="glass" onClick={() => navigate('/final-page')}>
+            <ArrowLeft aria-hidden /> {t('common.action.back')}
+          </Button>
+        }
+      />
     );
   }
 
   return (
-    <div className="flex w-full max-w-4xl flex-col gap-3 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-white">
-          {giftedName
-            ? t('wishlist.gifted.titleNamed', { name: giftedName })
-            : t('wishlist.gifted.titleFallback')}
-        </h1>
-        <Button variant="secondary" onClick={() => navigate('/final-page')}>
-          <ArrowLeft /> {t('common.action.back')}
+    <div className="flex w-full max-w-4xl flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <PageHeader
+          align="left"
+          size="md"
+          title={
+            giftedName
+              ? t('wishlist.gifted.titleNamed', { name: giftedName })
+              : t('wishlist.gifted.titleFallback')
+          }
+        />
+        <Button variant="glass" onClick={() => navigate('/final-page')}>
+          <ArrowLeft aria-hidden /> {t('common.action.back')}
         </Button>
       </div>
       {parsed && parsed.errors.length > 0 ? (
-        <p className="rounded-md bg-red-100 p-3 text-sm text-red-800">
+        <p role="alert" className="rounded-xl border border-primary/40 bg-primary/15 px-4 py-3 text-sm text-cream">
           {t('wishlist.gifted.corrupt')}
         </p>
       ) : (

@@ -1,5 +1,7 @@
 import { Button } from "@/shared/ui/button";
-import { Card, CardContent } from "@/shared/ui/card";
+import { PageHeader, StatusMessage } from "@/shared/components";
+import { cn } from "@/shared/lib/utils";
+import { Gift, PackageOpen } from "lucide-react";
 import CyberLosowanieClosed from "@/assets/CyberLosowanieClosed.svg";
 import CyberLosowanieOpen from "@/assets/CyberLosowanieOpen.svg";
 import { useDispatch } from "react-redux";
@@ -88,45 +90,62 @@ function ChooseToBeGiftedCyberek() {
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="text-white text-lg">{t('cyberki.choose.processing')}</div>
-      </div>
-    );
+    return <StatusMessage tone="loading" message={t('cyberki.choose.processing')} />;
   }
 
   if (cyberkiLoading || targetsLoading || targetsData?.data?.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="text-white text-lg">{t('cyberki.choose.loading')}</div>
-      </div>
-    );
+    return <StatusMessage tone="loading" message={t('cyberki.choose.loading')} />;
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-4xl font-extrabold text-white mb-10 mt-10">{t('cyberki.choose.title')}</h1>
-      <div className="grid grid-cols-1 mb-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {boxIds.map((boxId) => (
-          <Card key={`gift-box-${boxId}`} className="bg-transparent border-2 border-white">
-            <CardContent className="p-4 flex flex-col items-center">
-              {availableIds.has(boxId) ? (
-                <>
-                  <img src={CyberLosowanieClosed} alt={t('cyberki.choose.closedBoxAlt', { boxId })} className="w-full h-64 md:h-48 rounded-md object-cover mb-4" />
-                  <Button className="text-xl font-semibold capitalize" onClick={() => handleSelect(boxId)}>
-                    {t('cyberki.choose.select')}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <img src={CyberLosowanieOpen} alt={t('cyberki.choose.openBoxAlt', { boxId })} className="w-full h-64 md:h-48 rounded-md object-cover mb-4" />
-                  <Button className="text-xl font-semibold capitalize" disabled>{t('cyberki.choose.selected')}</Button>
-                </>
+    <div className="flex w-full flex-col items-center gap-10">
+      <PageHeader
+        eyebrow={t('common.step.indicator', { current: 2, total: 2 })}
+        title={t('cyberki.choose.title')}
+        subtitle={t('cyberki.choose.subtitle')}
+      />
+      <ul className="grid w-full max-w-5xl grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+        {boxIds.map((boxId) => {
+          const available = availableIds.has(boxId);
+          return (
+            <li
+              key={`gift-box-${boxId}`}
+              className={cn(
+                'glass group flex flex-col items-center gap-3 p-3 text-center transition-all duration-300 sm:p-4',
+                available
+                  ? 'hover:-translate-y-1 hover:border-gold/40'
+                  : 'opacity-60 saturate-50',
               )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            >
+              <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cream-muted">
+                {t('cyberki.choose.boxLabel', { boxId })}
+              </span>
+              {/* The box SVGs carry wide transparent padding — crop by scaling inside a square frame. */}
+              <span className="block aspect-square w-full overflow-hidden">
+                <img
+                  src={available ? CyberLosowanieClosed : CyberLosowanieOpen}
+                  alt={t(available ? 'cyberki.choose.closedBoxAlt' : 'cyberki.choose.openBoxAlt', { boxId })}
+                  className={cn(
+                    'h-full w-full scale-[1.6] object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.45)] transition-transform duration-300',
+                    available && 'group-hover:scale-[1.7]',
+                  )}
+                />
+              </span>
+              {available ? (
+                <Button className="w-full" onClick={() => handleSelect(boxId)}>
+                  <Gift aria-hidden />
+                  {t('cyberki.choose.select')}
+                </Button>
+              ) : (
+                <span className="inline-flex h-10 items-center gap-2 rounded-full border border-white/15 px-4 text-sm font-semibold text-cream-muted">
+                  <PackageOpen className="h-4 w-4" aria-hidden />
+                  {t('cyberki.choose.selected')}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

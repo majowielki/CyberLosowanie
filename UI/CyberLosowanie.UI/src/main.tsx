@@ -1,4 +1,7 @@
 import { createRoot } from 'react-dom/client'
+// Self-hosted variable fonts (no third-party font requests at runtime).
+import '@fontsource-variable/manrope'
+import '@fontsource-variable/fraunces'
 import './index.css'
 import App from './app/App.tsx'
 import store, { persistor } from './app/store'
@@ -11,7 +14,11 @@ import { useTranslation } from '@/shared/i18n'
 // store holds the default language (pl), which matches most users.
 function PersistLoading() {
   const { t } = useTranslation()
-  return <div>{t('common.action.loading')}</div>
+  return (
+    <div className="grid min-h-screen place-items-center text-sm text-cream-muted">
+      {t('common.action.loading')}
+    </div>
+  )
 }
 
 createRoot(document.getElementById('root')!).render(

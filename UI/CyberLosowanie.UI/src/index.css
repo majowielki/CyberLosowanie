@@ -2,73 +2,152 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme: one festive "winter evening" look for the whole app — deep pine
+ * background, warm cream text, cranberry primary, gold accents. White surfaces
+ * (Card, toolbars) declare their own dark foreground via text-card-foreground.
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --background: 152 48% 8%;
+    --foreground: 38 52% 93%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 152 30% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 72.2% 50.6%;
-    --primary-foreground: 0 85.7% 97.3%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
+    --popover-foreground: 152 30% 12%;
+    --primary: 355 68% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 38 45% 94%;
+    --secondary-foreground: 152 30% 12%;
+    --muted: 152 20% 18%;
+    --muted-foreground: 150 12% 50%;
+    --accent: 38 45% 94%;
+    --accent-foreground: 152 30% 12%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 72.2% 50.6%;
+    --border: 150 12% 88%;
+    --input: 150 12% 85%;
+    --ring: 42 86% 63%;
     --radius: 1rem;
+
+    /* Festive extras (also exposed in tailwind.config as pine.* / gold / cream). */
+    --pine-950: 152 48% 8%;
+    --pine-900: 152 51% 12%;
+    --pine-800: 152 49% 18%;
+    --pine-700: 152 45% 26%;
+    --gold: 42 86% 63%;
+    --cream: 38 52% 93%;
+    --cream-muted: 150 14% 76%;
+
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
   }
- 
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 72.2% 50.6%;
-    --primary-foreground: 0 85.7% 97.3%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 72.2% 50.6%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
 }
+
 @layer base {
   * {
     @apply border-border;
   }
+  html {
+    @apply antialiased;
+    text-rendering: optimizeLegibility;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    min-height: 100vh;
+    /* Layered gradients: a warm glow at the top centre fading into deep pine. */
+    background-image:
+      radial-gradient(60rem 36rem at 50% -8rem, hsl(var(--pine-700) / 0.9), transparent 70%),
+      radial-gradient(40rem 30rem at 100% 100%, hsl(var(--pine-800) / 0.7), transparent 70%),
+      linear-gradient(180deg, hsl(var(--pine-900)) 0%, hsl(var(--pine-950)) 100%);
+    background-attachment: fixed;
+  }
+  #root {
+    isolation: isolate;
+    min-height: 100vh;
+  }
+  ::selection {
+    background: hsl(var(--gold) / 0.35);
   }
 }
 
 @layer components {
   .align-element {
-    @apply mx-auto max-w-6xl px-8;
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+  }
+
+  /* Display typography — Fraunces for headings, with its optical-size axis
+     so large sizes get the finer, more elegant cut. */
+  .font-display {
+    font-family: theme('fontFamily.display');
+    font-variation-settings: 'opsz' 144, 'SOFT' 30;
+  }
+
+  /* Small letter-spaced label above a heading. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-gold;
+  }
+
+  /* Translucent panel for content sitting directly on the pine background. */
+  .glass {
+    @apply rounded-2xl border border-white/10 bg-white/[0.06] shadow-elevated backdrop-blur-md;
+  }
+
+  /* Soft light source behind hero artwork. */
+  .halo {
+    background: radial-gradient(closest-side, hsl(var(--gold) / 0.28), hsl(var(--primary) / 0.12) 55%, transparent 72%);
+  }
+}
+
+/*
+ * Snowfall — three parallax layers of radial-gradient "flakes" tiled and
+ * scrolled with background-position. No JS, no DOM per flake; each layer is a
+ * single fixed element (see SceneBackground). Disabled for reduced motion.
+ */
+.snow-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: repeat;
+  will-change: background-position;
+}
+.snow-layer--far {
+  opacity: 0.35;
+  background-image:
+    radial-gradient(1.2px 1.2px at 18px 24px, #fff 50%, transparent 52%),
+    radial-gradient(1px 1px at 96px 130px, #fff 50%, transparent 52%),
+    radial-gradient(1.2px 1.2px at 160px 60px, #fff 50%, transparent 52%),
+    radial-gradient(1px 1px at 230px 190px, #fff 50%, transparent 52%);
+  background-size: 280px 280px;
+  animation: snow-far 34s linear infinite;
+}
+.snow-layer--mid {
+  opacity: 0.5;
+  background-image:
+    radial-gradient(1.8px 1.8px at 40px 70px, #fff 50%, transparent 52%),
+    radial-gradient(1.6px 1.6px at 150px 20px, #fff 50%, transparent 52%),
+    radial-gradient(1.8px 1.8px at 260px 150px, #fff 50%, transparent 52%);
+  background-size: 360px 360px;
+  animation: snow-mid 24s linear infinite;
+}
+.snow-layer--near {
+  opacity: 0.6;
+  background-image:
+    radial-gradient(2.6px 2.6px at 90px 40px, #fff 50%, transparent 52%),
+    radial-gradient(2.4px 2.4px at 300px 260px, #fff 50%, transparent 52%);
+  background-size: 480px 480px;
+  animation: snow-near 16s linear infinite;
+}
+/* Each layer scrolls exactly one tile height per cycle, so the loop is seamless. */
+@keyframes snow-far  { to { background-position: 0 280px; } }
+@keyframes snow-mid  { to { background-position: 0 360px; } }
+@keyframes snow-near { to { background-position: 0 480px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .snow-layer {
+    animation: none;
   }
 }

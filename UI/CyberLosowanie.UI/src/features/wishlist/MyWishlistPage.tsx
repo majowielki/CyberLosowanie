@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
-import { Loading } from '@/shared/components';
+import { Loading, PageHeader, StatusMessage } from '@/shared/components';
 import { useTranslation } from '@/shared/i18n';
 import { extractApiErrorMessage, useGetMyWishlistQuery } from './wishlistApi';
 import {
@@ -40,21 +40,18 @@ function MyWishlistPage() {
     // 409 = no cyberek selected yet — the wishlist belongs to a cyberek.
     if (isConflictError(error)) {
       return (
-        <div className="mt-20 flex flex-col items-center gap-4">
-          <p className="text-lg text-white">
-            {t('wishlist.my.needCyberekFirst')}
-          </p>
-          <Button onClick={() => navigate('/select-your-cyberek')}>{t('wishlist.my.pickCyberek')}</Button>
-        </div>
+        <StatusMessage
+          message={t('wishlist.my.needCyberekFirst')}
+          action={<Button onClick={() => navigate('/select-your-cyberek')}>{t('wishlist.my.pickCyberek')}</Button>}
+        />
       );
     }
     return (
-      <div className="mt-20 flex flex-col items-center gap-4">
-        <p className="text-lg text-white">
-          {extractApiErrorMessage(error, t('wishlist.loadFailed'))}
-        </p>
-        <Button onClick={() => navigate('/')}>{t('common.action.goHome')}</Button>
-      </div>
+      <StatusMessage
+        tone="error"
+        message={extractApiErrorMessage(error, t('wishlist.loadFailed'))}
+        action={<Button variant="glass" onClick={() => navigate('/')}>{t('common.action.goHome')}</Button>}
+      />
     );
   }
 
@@ -73,24 +70,24 @@ function MyWishlistPage() {
   }
 
   return (
-    <div className="flex w-full max-w-4xl flex-col gap-3 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold text-white">{t('wishlist.my.title')}</h1>
-          <p className="text-sm text-white/80">
-            {t('wishlist.my.lastSaved', {
-              date: new Date(saved.updatedAtUtc).toLocaleString(
-                language === 'pl' ? 'pl-PL' : 'en-GB',
-              ),
-            })}
-          </p>
-        </div>
+    <div className="flex w-full max-w-4xl flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <PageHeader
+          align="left"
+          size="md"
+          title={t('wishlist.my.title')}
+          subtitle={t('wishlist.my.lastSaved', {
+            date: new Date(saved.updatedAtUtc).toLocaleString(
+              language === 'pl' ? 'pl-PL' : 'en-GB',
+            ),
+          })}
+        />
         <Button onClick={() => setIsEditing(true)}>
-          <Pencil /> {t('common.action.edit')}
+          <Pencil aria-hidden /> {t('common.action.edit')}
         </Button>
       </div>
       {parsed && parsed.errors.length > 0 && (
-        <p className="rounded-md bg-red-100 p-3 text-sm text-red-800">
+        <p role="alert" className="rounded-xl border border-primary/40 bg-primary/15 px-4 py-3 text-sm text-cream">
           {t('wishlist.my.corruptSaved')}
         </p>
       )}

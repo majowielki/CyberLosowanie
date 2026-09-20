@@ -1,9 +1,11 @@
 import { useNavigate } from "react-router-dom";
+import { ArrowRight, LogIn } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { useSelector } from "react-redux";
 import { RootState } from "@/app/store";
 import { useTranslation } from "@/shared/i18n";
 
+/** Landing call-to-action: resumes the draw where the user left off, or sends to login. */
 const ProceedButton = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -20,18 +22,16 @@ const ProceedButton = () => {
     navigate(path);
   };
 
-  return (
-    <div>
-      {user ? (
-        <Button size="lg" onClick={handleContinue}>
-          {t('cyberki.proceed.continue')}
-        </Button>
-      ) : (
-        <Button size="lg" onClick={() => navigate("/login")}>
-          {t('cyberki.proceed.signIn')}
-        </Button>
-      )}
-    </div>
+  return user ? (
+    <Button size="lg" onClick={handleContinue}>
+      {t('cyberki.proceed.continue')}
+      <ArrowRight aria-hidden />
+    </Button>
+  ) : (
+    <Button size="lg" onClick={() => navigate("/login")}>
+      <LogIn aria-hidden />
+      {t('cyberki.proceed.signIn')}
+    </Button>
   );
 };
 

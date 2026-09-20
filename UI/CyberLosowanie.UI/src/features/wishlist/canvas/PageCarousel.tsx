@@ -35,7 +35,7 @@ function PageCarousel({ pageCount, currentPageIndex, onGoTo, editing }: PageCaro
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 rounded-md bg-white/90 px-2 py-1 shadow">
+    <div className="flex flex-wrap items-center justify-center gap-2 rounded-full bg-white/90 px-2 py-1 text-card-foreground shadow">
       <Button
         type="button"
         size="icon"
@@ -64,7 +64,7 @@ function PageCarousel({ pageCount, currentPageIndex, onGoTo, editing }: PageCaro
             onClick={() => onGoTo(index)}
             className={cn(
               'h-2.5 w-2.5 rounded-full border border-gray-400 transition-colors',
-              index === currentPageIndex ? 'bg-green-700' : 'bg-transparent hover:bg-gray-300',
+              index === currentPageIndex ? 'bg-pine-700' : 'bg-transparent hover:bg-gray-300',
             )}
           />
         ))}

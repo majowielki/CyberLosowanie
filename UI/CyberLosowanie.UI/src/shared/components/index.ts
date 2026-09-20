@@ -2,4 +2,8 @@ export { default as ErrorElement } from "./ErrorElement";
 export { default as ErrorBoundary } from "./ErrorBoundary";
 export { default as Logo } from "./Logo";
 export { default as Navbar } from "./Navbar";
+export { default as Footer } from "./Footer";
 export { default as Loading } from "./Loading";
+export { default as PageHeader } from "./PageHeader";
+export { default as StatusMessage } from "./StatusMessage";
+export { default as SceneBackground } from "./SceneBackground";

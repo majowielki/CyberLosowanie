@@ -296,11 +296,11 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {onExit && (
-            <Button type="button" variant="secondary" size="sm" onClick={handleExit}>
-              <ArrowLeft /> {t('common.action.back')}
+            <Button type="button" variant="glass" size="sm" onClick={handleExit}>
+              <ArrowLeft aria-hidden /> {t('common.action.back')}
             </Button>
           )}
-          <h1 className="text-2xl font-extrabold tracking-tight text-white drop-shadow-sm sm:text-3xl">
+          <h1 className="font-display text-2xl font-medium tracking-tight text-cream sm:text-3xl">
             {t('wishlist.my.title')}
           </h1>
         </div>

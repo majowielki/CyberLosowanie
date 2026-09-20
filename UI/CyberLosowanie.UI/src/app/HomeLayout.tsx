@@ -1,15 +1,18 @@
 import { Outlet, useNavigation } from "react-router-dom";
-import { Loading, Navbar } from "@/shared/components";
+import { Footer, Loading, Navbar } from "@/shared/components";
 
+// The pine background and snow live on <body> / SceneBackground (App), so the
+// layout only arranges navbar · content · footer.
 const HomeLayout = () => {
   const navigation = useNavigation();
   const isPageLoading = navigation.state === "loading";
   return (
-    <div className="bg-gradient-to-t from-green-900 via-green-700 to-green-500 min-h-screen w-full">
+    <div className="flex min-h-screen flex-col">
       <Navbar />
-        <div className="align-element flex items-center justify-center">
-          {isPageLoading ? <Loading /> : <Outlet />}
-        </div>
+      <main className="align-element flex flex-1 flex-col items-center py-8 sm:py-12">
+        {isPageLoading ? <Loading /> : <Outlet />}
+      </main>
+      <Footer />
     </div>
   );
 };

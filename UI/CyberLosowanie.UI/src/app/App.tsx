@@ -12,6 +12,7 @@ import MyWishlistPage from "@/features/wishlist/MyWishlistPage";
 import GiftedWishlistPage from "@/features/wishlist/GiftedWishlistPage";
 import { ErrorElement } from "@/shared/components";
 import ErrorBoundary from "@/shared/components/ErrorBoundary";
+import SceneBackground from "@/shared/components/SceneBackground";
 import { useAuthPersistence } from "@/features/auth/useAuthPersistence";
 import { useTranslation } from "@/shared/i18n";
 import { Toaster } from "@/shared/ui/toaster";
@@ -109,6 +110,8 @@ function App() {
 
   return (
     <ErrorBoundary>
+      {/* Shared festive backdrop for every route (public and layout pages alike). */}
+      <SceneBackground />
       <RouterProvider router={router} />
       <Toaster />
     </ErrorBoundary>

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { LogIn, LogOut, UserRoundPlus } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, persistor } from "@/app/store";
@@ -6,6 +7,7 @@ import { resetUser } from "@/features/auth/userSlice";
 import { useTranslation } from "@/shared/i18n";
 import { tokenUtils } from "./tokenUtils";
 
+/** Session controls for the navbar: sign in / register, or log out. */
 const LoginOrRegister = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -22,27 +24,32 @@ const LoginOrRegister = () => {
     navigate("/");
   };
 
+  if (user) {
+    return (
+      // Icon-only on phones; aria-label keeps the accessible name either way.
+      <Button variant="glass" onClick={handleLogout} aria-label={t('auth.logout')} title={t('auth.logout')}>
+        <LogOut aria-hidden />
+        <span className="hidden sm:inline">{t('auth.logout')}</span>
+      </Button>
+    );
+  }
+
   return (
-    <header>
-      <div className="align-element flex justify-center sm:justify-end py-2">
-        {user ? (
-          <div className="flex -mr-8">
-            <Button onClick={handleLogout}>
-              {t('auth.logout')}
-            </Button>
-          </div>
-        ) : (
-          <div className="flex gap-x-6 justify-center items-center -mr-8">
-            <Button onClick={() => navigate("/login")}>
-              {t('auth.signIn')}
-            </Button>
-            <Button onClick={() => navigate("/register")}>
-              {t('auth.register.submit')}
-            </Button>
-          </div>
-        )}
-      </div>
-    </header>
+    <div className="flex items-center gap-2">
+      <Button
+        variant="glass"
+        onClick={() => navigate("/register")}
+        aria-label={t('auth.register.submit')}
+        title={t('auth.register.submit')}
+      >
+        <UserRoundPlus aria-hidden />
+        <span className="hidden sm:inline">{t('auth.register.submit')}</span>
+      </Button>
+      <Button onClick={() => navigate("/login")}>
+        <LogIn aria-hidden />
+        {t('auth.signIn')}
+      </Button>
+    </div>
   );
 };
 export default LoginOrRegister;

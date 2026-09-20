@@ -44,13 +44,13 @@ export function LanguageSwitcher() {
   return (
     <Button
       type="button"
-      variant="ghost"
+      variant="glass"
       size="icon"
       onClick={() => dispatch(toggleLanguage())}
       title={next.label}
       aria-label={next.ariaLabel}
     >
-      <span className="block h-4 w-6 overflow-hidden rounded-sm ring-1 ring-black/20">
+      <span className="block h-4 w-6 overflow-hidden rounded-sm ring-1 ring-black/30">
         {next.flag}
       </span>
     </Button>

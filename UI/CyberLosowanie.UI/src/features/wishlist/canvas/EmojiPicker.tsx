@@ -41,7 +41,7 @@ function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
       onClick={onClose}
     >
       <div
-        className="max-h-[70vh] w-[min(92vw,420px)] overflow-y-auto rounded-lg bg-white p-3 shadow-xl"
+        className="max-h-[70vh] w-[min(92vw,420px)] overflow-y-auto rounded-2xl bg-white p-3 text-card-foreground shadow-xl"
         role="dialog"
         aria-modal="true"
         aria-label={t('wishlist.emoji.title')}

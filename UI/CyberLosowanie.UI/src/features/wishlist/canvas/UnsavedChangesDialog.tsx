@@ -36,7 +36,7 @@ function UnsavedChangesDialog({
       aria-modal="true"
       aria-labelledby="unsaved-changes-title"
     >
-      <div className="w-[min(92vw,440px)] rounded-lg bg-white p-5 shadow-xl">
+      <div className="w-[min(92vw,440px)] rounded-2xl bg-white p-5 text-card-foreground shadow-xl">
         <h2 id="unsaved-changes-title" className="text-lg font-bold text-gray-900">
           {t('wishlist.unsaved.title')}
         </h2>
@@ -48,9 +48,11 @@ function UnsavedChangesDialog({
           <Button type="button" variant="destructive" onClick={onDiscard} disabled={isSaving}>
             {t('wishlist.unsaved.discard')}
           </Button>
+          {/* While the request is in flight every button is disabled (it cannot be
+              aborted), so the label has to say what is happening. */}
           <Button type="button" onClick={onSave} disabled={isSaving}>
             {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-            {t('wishlist.unsaved.saveAndLeave')}
+            {isSaving ? t('wishlist.unsaved.saving') : t('wishlist.unsaved.saveAndLeave')}
           </Button>
         </div>
       </div>
