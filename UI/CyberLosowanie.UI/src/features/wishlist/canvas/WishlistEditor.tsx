@@ -204,8 +204,13 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
 
   // --- save ---------------------------------------------------------------------
 
-  /** Returns true when the wishlist was successfully saved. */
-  const handleSave = async (): Promise<boolean> => {
+  /**
+   * Validates and persists the document. Returns true on success. Deliberately
+   * does NOT notify the parent (onSaved): the parent reacts by unmounting the
+   * editor, which would also drop the navigation blocker — so an exit that
+   * follows a save must be triggered before the parent hears about it.
+   */
+  const persist = async (): Promise<boolean> => {
     const document = engine.buildDocument();
     // Client-side mirror of the server limits — a readable warning beats a 400.
     const validationErrors = validateCanvasDocument(document, cyberekId);
@@ -222,7 +227,6 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       await saveMyWishlist({ canvasJson: serializeCanvasDocument(document) }).unwrap();
       engine.markSaved();
       toast({ title: t('wishlist.editor.saved') });
-      onSaved?.();
       return true;
     } catch (error) {
       toast({
@@ -285,8 +289,16 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     }
   };
 
+  /** Top-bar Save: persist, then let the page switch back to preview. */
+  const handleSave = async () => {
+    if (await persist()) {
+      onSaved?.();
+    }
+  };
+
+  /** Dialog "save and leave": persist, then continue the blocked exit. */
   const saveAndExit = async () => {
-    if (await handleSave()) {
+    if (await persist()) {
       performExit();
     }
   };

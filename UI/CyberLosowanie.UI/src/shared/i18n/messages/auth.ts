@@ -29,6 +29,7 @@ const pl = {
   'auth.nav.register': 'Rejestracja',
   'auth.signIn': 'Zaloguj się',
   'auth.logout': 'Wyloguj się',
+  'auth.loggingOut': 'Wylogowywanie…',
 } as const;
 
 export type AuthKey = keyof typeof pl;
@@ -61,5 +62,6 @@ export const auth: MessageCatalog<AuthKey> = {
     'auth.nav.register': 'Register',
     'auth.signIn': 'Sign in',
     'auth.logout': 'Logout',
+    'auth.loggingOut': 'Signing out…',
   },
 };

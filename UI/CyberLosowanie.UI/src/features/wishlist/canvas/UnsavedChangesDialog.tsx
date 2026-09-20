@@ -36,12 +36,13 @@ function UnsavedChangesDialog({
       aria-modal="true"
       aria-labelledby="unsaved-changes-title"
     >
-      <div className="w-[min(92vw,440px)] rounded-2xl bg-white p-5 text-card-foreground shadow-xl">
+      <div className="w-[min(92vw,480px)] rounded-2xl bg-white p-5 text-card-foreground shadow-xl">
         <h2 id="unsaved-changes-title" className="text-lg font-bold text-gray-900">
           {t('wishlist.unsaved.title')}
         </h2>
         <p className="mt-2 text-sm text-gray-600">{t('wishlist.unsaved.body')}</p>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        {/* Stacked on narrow screens, one row from sm up — never a ragged wrap. */}
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="ghost" onClick={onCancel} disabled={isSaving}>
             {t('wishlist.unsaved.cancel')}
           </Button>
@@ -50,7 +51,7 @@ function UnsavedChangesDialog({
           </Button>
           {/* While the request is in flight every button is disabled (it cannot be
               aborted), so the label has to say what is happening. */}
-          <Button type="button" onClick={onSave} disabled={isSaving}>
+          <Button type="button" onClick={onSave} disabled={isSaving} className="sm:min-w-44">
             {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
             {isSaving ? t('wishlist.unsaved.saving') : t('wishlist.unsaved.saveAndLeave')}
           </Button>

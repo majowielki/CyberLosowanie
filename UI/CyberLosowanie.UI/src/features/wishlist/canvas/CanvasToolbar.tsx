@@ -78,6 +78,7 @@ function CanvasToolbar({
   const showStrokeOptions = tool === 'pen' || tool === 'eraser';
   const showColorOptions = tool === 'pen' || tool === 'text' || tool === 'fill';
   const showContextualOptions = showColorOptions || showStrokeOptions;
+  const isCustomColor = !(PEN_COLORS as readonly string[]).includes(color);
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/95 p-2 text-card-foreground shadow-elevated md:w-16 md:flex-col md:flex-nowrap">
@@ -145,6 +146,30 @@ function CanvasToolbar({
                     style={{ backgroundColor: penColor }}
                   />
                 ))}
+                {/* Any colour: the native picker (zero dependencies, works on
+                    phones) yields #rrggbb — the exact format the document
+                    schema validates. The swatch shows the picked colour, or a
+                    rainbow ring while a preset is active. */}
+                <label
+                  title={t('wishlist.toolbar.customColor')}
+                  className={cn(
+                    'relative h-5 w-5 cursor-pointer rounded-full border border-gray-300 transition-transform hover:scale-110',
+                    isCustomColor && 'ring-2 ring-sky-500 ring-offset-1',
+                  )}
+                  style={
+                    isCustomColor
+                      ? { backgroundColor: color }
+                      : { background: 'conic-gradient(#f43f5e, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #f43f5e)' }
+                  }
+                >
+                  <input
+                    type="color"
+                    value={color}
+                    aria-label={t('wishlist.toolbar.customColor')}
+                    onChange={(event) => onColorChange(event.target.value)}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  />
+                </label>
               </div>
             )}
 

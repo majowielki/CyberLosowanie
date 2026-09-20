@@ -5,6 +5,7 @@ import Error from "./Error";
 import ProtectedRoute from "./ProtectedRoute";
 import Login from "@/features/auth/Login";
 import Register from "@/features/auth/Register";
+import Logout from "@/features/auth/Logout";
 import SelectYourCyberek from "@/features/cyberki/SelectYourCyberek";
 import ChooseToBeGiftedCyberek from "@/features/cyberki/ChooseToBeGiftedCyberek";
 import FinalPage from "@/features/cyberki/FinalPage";
@@ -65,6 +66,13 @@ const router = createBrowserRouter([
             <MyWishlistPage />
           </ProtectedRoute>
         ),
+        errorElement: <ErrorElement />,
+      },
+      {
+        // Not wrapped in ProtectedRoute: it must stay mounted while it clears
+        // the session, and it is harmless for a signed-out visitor.
+        path: "logout",
+        element: <Logout />,
         errorElement: <ErrorElement />,
       },
       {
