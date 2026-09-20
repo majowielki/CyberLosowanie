@@ -395,7 +395,7 @@ namespace CyberLosowanie.Test
             await repository.SaveChangesAsync();
 
             using var verify = db.NewContext();
-            var persisted = await verify.Cyberki.ToListAsync();
+            var persisted = await verify.Cyberki.ToListAsync(TestContext.Current.CancellationToken);
 
             persisted.Should().OnlyContain(c => c.GiftedCyberekId != 0);
             persisted.Select(c => c.GiftedCyberekId).Should().OnlyHaveUniqueItems();

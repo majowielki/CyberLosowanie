@@ -44,12 +44,12 @@ namespace CyberLosowanie.Test
             var repo = new CyberekRepository(db.Context);
 
             var cyberek = await repo.GetByIdAsync(1);
-            cyberek.GiftedCyberekId = 3;
+            cyberek!.GiftedCyberekId = 3;
             await repo.UpdateAsync(cyberek);
             await repo.SaveChangesAsync();
 
             using var verify = db.NewContext();
-            (await verify.Cyberki.FirstAsync(c => c.Id == 1)).GiftedCyberekId.Should().Be(3);
+            (await verify.Cyberki.FirstAsync(c => c.Id == 1, TestContext.Current.CancellationToken)).GiftedCyberekId.Should().Be(3);
         }
 
         [Fact]
@@ -60,7 +60,7 @@ namespace CyberLosowanie.Test
 
             // BannedCyberki is a primitive collection — verify it round-trips through the DB.
             var michal = await repo.GetByIdAsync(1);
-            michal.BannedCyberki.Should().BeEquivalentTo(new[] { 1, 2, 6, 4, 12 });
+            michal!.BannedCyberki.Should().BeEquivalentTo(new[] { 1, 2, 6, 4, 12 });
         }
 
         #endregion
@@ -73,7 +73,7 @@ namespace CyberLosowanie.Test
             using var db = new SqliteTestDatabase();
             db.Context.Users.Add(new ApplicationUser { UserName = "alice" });
             db.Context.Users.Add(new ApplicationUser { UserName = "bob" });
-            await db.Context.SaveChangesAsync();
+            await db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             var repo = new ApplicationUserRepository(db.Context, IdentityMocks.MockUserManager().Object);
 
@@ -90,11 +90,11 @@ namespace CyberLosowanie.Test
             {
                 db.Context.Users.Add(new ApplicationUser { UserName = "committed" });
                 await repo.SaveChangesAsync();
-                await transaction.CommitAsync();
+                await transaction.CommitAsync(TestContext.Current.CancellationToken);
             }
 
             using var verify = db.NewContext();
-            (await verify.Users.AnyAsync(u => u.UserName == "committed")).Should().BeTrue();
+            (await verify.Users.AnyAsync(u => u.UserName == "committed", TestContext.Current.CancellationToken)).Should().BeTrue();
         }
 
         [Fact]
@@ -107,11 +107,11 @@ namespace CyberLosowanie.Test
             {
                 db.Context.Users.Add(new ApplicationUser { UserName = "rolledback" });
                 await repo.SaveChangesAsync();
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync(TestContext.Current.CancellationToken);
             }
 
             using var verify = db.NewContext();
-            (await verify.Users.AnyAsync(u => u.UserName == "rolledback")).Should().BeFalse();
+            (await verify.Users.AnyAsync(u => u.UserName == "rolledback", TestContext.Current.CancellationToken)).Should().BeFalse();
         }
 
         #endregion
@@ -149,7 +149,7 @@ namespace CyberLosowanie.Test
             await repo.SaveChangesAsync();
 
             using var verify = db.NewContext();
-            var wishlists = await verify.Wishlists.Where(w => w.CyberekId == 1).ToListAsync();
+            var wishlists = await verify.Wishlists.Where(w => w.CyberekId == 1).ToListAsync(TestContext.Current.CancellationToken);
             wishlists.Should().ContainSingle().Which.CanvasJson.Should().Be("new");
         }
 
