@@ -82,7 +82,7 @@ namespace CyberLosowanie.Data
                     Name = "Michał",
                     Surname = "Majewski",
                     ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
-                    BannedCyberki = new List<int> { 1, 2, 6 }
+                    BannedCyberki = new List<int> { 1, 2, 6, 4, 12 }
                 },
                 new Cyberek
                 {
@@ -90,7 +90,7 @@ namespace CyberLosowanie.Data
                     Name = "Kornelia",
                     Surname = "Majewska",
                     ImageUrl = "https://randomuser.me/api/portraits/women/2.jpg",
-                    BannedCyberki = new List<int> { 1, 2, 10 }
+                    BannedCyberki = new List<int> { 2, 1, 10, 12, 5 }
                 },
                 new Cyberek
                 {
@@ -98,7 +98,7 @@ namespace CyberLosowanie.Data
                     Name = "Ola",
                     Surname = "Sudoł",
                     ImageUrl = "https://randomuser.me/api/portraits/women/3.jpg",
-                    BannedCyberki = new List<int> { 3, 9, 11 }
+                    BannedCyberki = new List<int> { 3, 9, 11, 10, 6}
                 },
                 new Cyberek
                 {
@@ -106,7 +106,7 @@ namespace CyberLosowanie.Data
                     Name = "Daria",
                     Surname = "Kurowska",
                     ImageUrl = "https://randomuser.me/api/portraits/women/4.jpg",
-                    BannedCyberki = new List<int> { 2, 4, 11 }
+                    BannedCyberki = new List<int> { 4, 11, 2, 5 }
                 },
                 new Cyberek
                 {
@@ -114,7 +114,7 @@ namespace CyberLosowanie.Data
                     Name = "Asia",
                     Surname = "Małek",
                     ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
-                    BannedCyberki = new List<int> { 5, 7, 8 }
+                    BannedCyberki = new List<int> { 5, 8, 7, 3, 10}
                 },
                 new Cyberek
                 {
@@ -122,7 +122,7 @@ namespace CyberLosowanie.Data
                     Name = "Filip",
                     Surname = "Wilczyński",
                     ImageUrl = "https://randomuser.me/api/portraits/men/6.jpg",
-                    BannedCyberki = new List<int> { 5, 6, 12 }
+                    BannedCyberki = new List<int> { 6, 12, 5, 9, 3}
                 },
                 new Cyberek
                 {
@@ -130,7 +130,7 @@ namespace CyberLosowanie.Data
                     Name = "Marek",
                     Surname = "Grabowski",
                     ImageUrl = "https://randomuser.me/api/portraits/men/7.jpg",
-                    BannedCyberki = new List<int> { 3, 7, 10 }
+                    BannedCyberki = new List<int> { 7, 10, 3, 5, 8 } //w 2024 wylosował 11 ale robił prezent 5
                 },
                 new Cyberek
                 {
@@ -138,7 +138,7 @@ namespace CyberLosowanie.Data
                     Name = "Michał",
                     Surname = "Karbowiak",
                     ImageUrl = "https://randomuser.me/api/portraits/men/8.jpg",
-                    BannedCyberki = new List<int> { 1, 5, 8 }
+                    BannedCyberki = new List<int> { 8, 5, 1, 7, 9}
                 },
                 new Cyberek
                 {
@@ -146,7 +146,7 @@ namespace CyberLosowanie.Data
                     Name = "Karol",
                     Surname = "Jagiełło",
                     ImageUrl = "https://randomuser.me/api/portraits/men/9.jpg",
-                    BannedCyberki = new List<int> { 3, 4, 9 }
+                    BannedCyberki = new List<int> { 9, 3, 4, 1, 7}
                 },
                 new Cyberek
                 {
@@ -154,7 +154,7 @@ namespace CyberLosowanie.Data
                     Name = "Natalia",
                     Surname = "Dutka",
                     ImageUrl = "https://randomuser.me/api/portraits/women/10.jpg",
-                    BannedCyberki = new List<int> { 7, 10, 12 }
+                    BannedCyberki = new List<int> { 10, 7, 12, 6, 2 }
                 },
                 new Cyberek
                 {
@@ -162,7 +162,7 @@ namespace CyberLosowanie.Data
                     Name = "Paweł",
                     Surname = "Kurowski",
                     ImageUrl = "https://randomuser.me/api/portraits/men/11.jpg",
-                    BannedCyberki = new List<int> { 4, 8, 11 }
+                    BannedCyberki = new List<int> { 11, 4, 8, 2}
                 },
                 new Cyberek
                 {
@@ -170,7 +170,7 @@ namespace CyberLosowanie.Data
                     Name = "Wiktoria",
                     Surname = "Wilczyńska",
                     ImageUrl = "https://randomuser.me/api/portraits/women/12.jpg",
-                    BannedCyberki = new List<int> { 6, 9, 12 }
+                    BannedCyberki = new List<int> { 12, 6, 9, 5, 1 } //w 2024 wylosowała 8 ale robiła prezent 5
                 });
         }
     }

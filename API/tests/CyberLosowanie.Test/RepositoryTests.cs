@@ -60,7 +60,7 @@ namespace CyberLosowanie.Test
 
             // BannedCyberki is a primitive collection — verify it round-trips through the DB.
             var michal = await repo.GetByIdAsync(1);
-            michal.BannedCyberki.Should().BeEquivalentTo(new[] { 1, 2, 6 });
+            michal.BannedCyberki.Should().BeEquivalentTo(new[] { 1, 2, 6, 4, 12 });
         }
 
         #endregion

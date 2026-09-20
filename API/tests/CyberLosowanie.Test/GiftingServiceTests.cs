@@ -3,6 +3,7 @@ using CyberLosowanie.Repositories;
 using CyberLosowanie.Services;
 using CyberLosowanie.Test.TestSupport;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 
 namespace CyberLosowanie.Test
 {
@@ -350,6 +351,56 @@ namespace CyberLosowanie.Test
 
             cyberki.Should().NotBeEmpty();
             _service.HasCompleteAssignment(cyberki).Should().BeTrue();
+        }
+
+        #endregion
+
+        #region Full draw against the real seed (integration)
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(4)]
+        public async Task FullDraw_OnSeededDatabase_MultipleDrawOrders_AlwaysCompletesAndPersistsValidly(int seed)
+        {
+            // End-to-end run of the actual draw against the real relational engine and
+            // the real seed data (schema, ban lists, unique-target index) — not the
+            // synthetic groups used above. Every participant, in a random order, opens
+            // a random SAFE box; the resulting assignment is saved through the same
+            // repository the app uses, then re-read from the database to confirm the
+            // persisted state satisfies every rule (no self/banned gifts, unique
+            // targets, everyone assigned).
+            using var db = new SqliteTestDatabase();
+            var repository = new CyberekRepository(db.Context);
+
+            var cyberki = await repository.GetAllForUpdateAsync();
+            var rng = new Random(seed);
+            var drawOrder = cyberki.OrderBy(_ => rng.Next()).ToList();
+
+            foreach (var giver in drawOrder)
+            {
+                var safe = _service.GetSafeTargets(cyberki, giver);
+                safe.Should().NotBeEmpty(
+                    $"seed {seed}: giver {giver.Id} ({giver.Name}) must always have a safe choice on the real seed");
+
+                var pick = safe[rng.Next(safe.Count)];
+                _service.IsChoiceSafe(cyberki, giver, pick).Should().BeTrue();
+
+                giver.GiftedCyberekId = pick;
+                await repository.UpdateAsync(giver);
+            }
+
+            await repository.SaveChangesAsync();
+
+            using var verify = db.NewContext();
+            var persisted = await verify.Cyberki.ToListAsync();
+
+            persisted.Should().OnlyContain(c => c.GiftedCyberekId != 0);
+            persisted.Select(c => c.GiftedCyberekId).Should().OnlyHaveUniqueItems();
+            persisted.Should().OnlyContain(c => c.GiftedCyberekId != c.Id);
+            persisted.Should().OnlyContain(c => !c.BannedCyberki.Contains(c.GiftedCyberekId));
         }
 
         #endregion
