@@ -46,6 +46,12 @@ namespace CyberLosowanie.Constants
         };
         public const string ITEM_TYPE_TEXT = "text";
         public const string ITEM_TYPE_IMAGE = "image";
+        public const string ITEM_TYPE_SHAPE = "shape";
+        // Shape items (item "shape"); outline colour + width like a pen stroke, optional fill.
+        public static readonly IReadOnlySet<string> SHAPE_KINDS = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "rect", "ellipse", "triangle", "diamond", "star", "heart", "arrow"
+        };
 
         // Image upload / storage
         public const long MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;

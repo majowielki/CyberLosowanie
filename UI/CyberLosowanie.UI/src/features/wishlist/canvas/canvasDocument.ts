@@ -16,6 +16,7 @@ import {
   CANVAS_WIDTH,
   DOCUMENT_LIMITS,
   PAGE_PATTERNS,
+  SHAPE_KINDS,
   STROKE_KINDS,
 } from './canvasConstants';
 
@@ -69,8 +70,26 @@ export interface CanvasImageItem {
   height: number;
 }
 
+export type ShapeKind = (typeof SHAPE_KINDS)[number];
+
+/** A geometric shape fitted to its bounding box; outline only unless `fill` is set. */
+export interface CanvasShapeItem {
+  id: string;
+  type: 'shape';
+  shape: ShapeKind;
+  x: number;
+  y: number;
+  rotation: number;
+  width: number;
+  height: number;
+  stroke: string;
+  strokeWidth: number;
+  /** Absent = no fill (outline only). */
+  fill?: string;
+}
+
 /** Order in the items array is the z-order. */
-export type CanvasItem = CanvasTextItem | CanvasImageItem;
+export type CanvasItem = CanvasTextItem | CanvasImageItem | CanvasShapeItem;
 
 /** Background pattern drawn over the page colour (see pagePatterns.ts). */
 export type PagePattern = (typeof PAGE_PATTERNS)[number];
@@ -296,6 +315,28 @@ function validateItems(
       if (!Number.isFinite(item.width) || item.width <= 0) {
         errors.push({ key: 'wishlist.validation.textWidth' });
       }
+    } else if (item.type === 'shape') {
+      if (!isShapeKind(item.shape)) {
+        errors.push({ key: 'wishlist.validation.shapeKind' });
+      }
+      if (!HEX_COLOR_PATTERN.test(item.stroke) || (item.fill !== undefined && !HEX_COLOR_PATTERN.test(item.fill))) {
+        errors.push({ key: 'wishlist.validation.shapeColor' });
+      }
+      if (
+        item.strokeWidth < DOCUMENT_LIMITS.minStrokeWidth ||
+        item.strokeWidth > DOCUMENT_LIMITS.maxStrokeWidth
+      ) {
+        errors.push({
+          key: 'wishlist.validation.strokeWidth',
+          params: { min: DOCUMENT_LIMITS.minStrokeWidth, max: DOCUMENT_LIMITS.maxStrokeWidth },
+        });
+      }
+      if (
+        !Number.isFinite(item.width) || item.width <= 0 ||
+        !Number.isFinite(item.height) || item.height <= 0
+      ) {
+        errors.push({ key: 'wishlist.validation.shapeSize' });
+      }
     } else {
       imageCount++;
       const match = IMAGE_PATH_PATTERN.exec(item.path);
@@ -370,6 +411,9 @@ function toPage(value: Record<string, unknown>): CanvasPage {
 export const isPagePattern = (value: unknown): value is PagePattern =>
   typeof value === 'string' && (PAGE_PATTERNS as readonly string[]).includes(value);
 
+export const isShapeKind = (value: unknown): value is ShapeKind =>
+  typeof value === 'string' && (SHAPE_KINDS as readonly string[]).includes(value);
+
 export const isStrokeKind = (value: unknown): value is StrokeKind =>
   typeof value === 'string' && (STROKE_KINDS as readonly string[]).includes(value);
 
@@ -411,6 +455,18 @@ function isItemShape(value: unknown): value is CanvasItem {
       typeof value.path === 'string' &&
       typeof value.width === 'number' &&
       typeof value.height === 'number'
+    );
+  }
+  if (value.type === 'shape') {
+    // An unknown shape kind is kept so validateCanvasDocument reports it.
+    return (
+      hasPlacement &&
+      typeof value.shape === 'string' &&
+      typeof value.width === 'number' &&
+      typeof value.height === 'number' &&
+      typeof value.stroke === 'string' &&
+      typeof value.strokeWidth === 'number' &&
+      (value.fill === undefined || typeof value.fill === 'string')
     );
   }
   return false;

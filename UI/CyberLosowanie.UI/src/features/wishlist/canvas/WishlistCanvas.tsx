@@ -13,10 +13,12 @@ import {
 import {
   CanvasImageItem,
   CanvasItem,
+  CanvasShapeItem,
   CanvasStroke,
   CanvasTextItem,
   PagePattern,
 } from './canvasDocument';
+import CanvasShapeNode from './CanvasShapeNode';
 import PagePatternLayer from './PagePatternLayer';
 import StrokeShape from './StrokeShape';
 import { useAuthorizedImage } from './useAuthorizedImage';
@@ -24,7 +26,8 @@ import type { Point } from './useCanvasEngine';
 import type { StageViewport } from './useStageViewport';
 
 export type CanvasItemPatch = Partial<Omit<CanvasTextItem, 'id' | 'type'>> &
-  Partial<Omit<CanvasImageItem, 'id' | 'type'>>;
+  Partial<Omit<CanvasImageItem, 'id' | 'type'>> &
+  Partial<Omit<CanvasShapeItem, 'id' | 'type'>>;
 
 export interface WishlistCanvasProps {
   strokes: CanvasStroke[];
@@ -37,6 +40,14 @@ export interface WishlistCanvasProps {
   pageId?: string;
   /** In-progress stroke rendered on top of committed ones (editor only). */
   liveStroke?: CanvasStroke | null;
+  /** Shape being dragged out with the shape tool (editor only). */
+  previewShape?: CanvasShapeItem | null;
+  /**
+   * Fill-tool mode: clicking an item recolours it instead of selecting it.
+   * Items listen to clicks while this is set even though they are not
+   * otherwise interactive.
+   */
+  onFillItem?: (id: string) => void;
   /** Brush-size preview cursor for pen/eraser (radius in document units). */
   brushCursor?: { radius: number; color: string } | null;
   editable?: boolean;
@@ -71,6 +82,8 @@ function WishlistCanvas({
   pattern,
   pageId = '',
   liveStroke = null,
+  previewShape = null,
+  onFillItem,
   brushCursor = null,
   editable = false,
   itemsInteractive = false,
@@ -199,12 +212,16 @@ function WishlistCanvas({
     rotation: item.rotation,
     draggable: editable && itemsInteractive,
     onClick: () => {
-      if (itemsInteractive) {
+      if (onFillItem) {
+        onFillItem(item.id);
+      } else if (itemsInteractive) {
         onSelectItem?.(item.id);
       }
     },
     onTap: () => {
-      if (itemsInteractive) {
+      if (onFillItem) {
+        onFillItem(item.id);
+      } else if (itemsInteractive) {
         onSelectItem?.(item.id);
       }
     },
@@ -254,10 +271,17 @@ function WishlistCanvas({
           clipY={0}
           clipWidth={CANVAS_WIDTH}
           clipHeight={CANVAS_HEIGHT}
-          listening={itemsInteractive}
+          listening={itemsInteractive || Boolean(onFillItem)}
         >
           {items.map((item) =>
-            item.type === 'text' ? (
+            item.type === 'shape' ? (
+              <CanvasShapeNode
+                key={item.id}
+                item={item}
+                nodeProps={sharedItemProps(item)}
+                registerNode={registerItemNode}
+              />
+            ) : item.type === 'text' ? (
               <Text
                 key={item.id}
                 ref={(node) => registerItemNode(item.id, node)}
@@ -280,6 +304,7 @@ function WishlistCanvas({
               />
             ),
           )}
+          {previewShape && <CanvasShapeNode item={previewShape} preview />}
         </Group>
         {editable && (
           <Transformer

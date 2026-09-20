@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useCanvasEngine } from './useCanvasEngine';
 import {
   CanvasDocument,
+  CanvasShapeItem,
   CanvasTextItem,
   createEmptyCanvasDocument,
   createEmptyPage,
@@ -386,5 +387,35 @@ describe('useCanvasEngine — page pattern', () => {
     expect(result.current.pattern).toBeUndefined();
     // A plain page must serialize exactly like one that never had a pattern.
     expect('pattern' in result.current.buildDocument().pages[0]).toBe(false);
+  });
+});
+
+describe('useCanvasEngine — shapes', () => {
+  it('adds a shape item, selects it and keeps it transformable like any item', () => {
+    const { result } = renderEngine();
+
+    let created: CanvasShapeItem | undefined;
+    act(() => {
+      created = result.current.addShapeItem({
+        shape: 'star',
+        x: 10,
+        y: 20,
+        rotation: 0,
+        width: 200,
+        height: 150,
+        stroke: '#e11d48',
+        strokeWidth: 12,
+      });
+    });
+
+    expect(result.current.items[0]).toMatchObject({ type: 'shape', shape: 'star', width: 200, stroke: '#e11d48' });
+    expect(result.current.selectedItemId).toBe(created?.id);
+    // Outline-only: the document must not carry a fill key.
+    expect('fill' in result.current.items[0]).toBe(false);
+
+    act(() => {
+      result.current.updateItem(created!.id, { fill: '#22c55e', width: 300 });
+    });
+    expect(result.current.items[0]).toMatchObject({ fill: '#22c55e', width: 300 });
   });
 });

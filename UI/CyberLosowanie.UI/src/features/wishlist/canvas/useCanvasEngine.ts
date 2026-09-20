@@ -4,6 +4,7 @@ import {
   CanvasImageItem,
   CanvasItem,
   CanvasPage,
+  CanvasShapeItem,
   CanvasStroke,
   CanvasTextItem,
   PagePattern,
@@ -217,8 +218,19 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     [updateCurrentPage],
   );
 
+  /** Adds a shape item (fields already validated by the caller) and selects it. */
+  const addShapeItem = useCallback(
+    (shape: Omit<CanvasShapeItem, 'id' | 'type'>): CanvasShapeItem => {
+      const item: CanvasShapeItem = { id: newElementId(), type: 'shape', ...shape };
+      updateCurrentPage((page) => ({ ...page, items: [...page.items, item] }));
+      setSelectedItemId(item.id);
+      return item;
+    },
+    [updateCurrentPage],
+  );
+
   const updateItem = useCallback(
-    (id: string, patch: Partial<CanvasTextItem> & Partial<CanvasImageItem>) => {
+    (id: string, patch: Partial<CanvasTextItem> & Partial<CanvasImageItem> & Partial<CanvasShapeItem>) => {
       updateCurrentPage((page) => ({
         ...page,
         items: page.items.map((item) =>
@@ -396,6 +408,7 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     // items
     addTextItem,
     addImageItem,
+    addShapeItem,
     updateItem,
     removeItem,
     clearPage,

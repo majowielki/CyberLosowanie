@@ -70,7 +70,12 @@ namespace CyberLosowanie.Models.Dto
         public double? FontSize { get; set; }
         public string? Fill { get; set; }
 
-        // Shared (text wrap width / image size)
+        // Shape fields (Fill is shared with text; for a shape it is optional)
+        public string? Shape { get; set; }
+        public string? Stroke { get; set; }
+        public double? StrokeWidth { get; set; }
+
+        // Shared (text wrap width / image size / shape size)
         public double? Width { get; set; }
 
         // Image fields

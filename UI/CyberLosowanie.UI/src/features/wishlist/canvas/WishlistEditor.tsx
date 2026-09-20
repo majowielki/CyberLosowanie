@@ -16,14 +16,18 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   DEFAULT_PEN_COLOR,
+  DEFAULT_SHAPE_SIZE,
   DEFAULT_STROKE_KIND,
   DEFAULT_STROKE_WIDTH,
+  SHAPE_DRAG_THRESHOLD,
   EMOJI_INSERT_FONT_SIZE,
   IMAGE_INSERT_MAX_WIDTH_RATIO,
 } from './canvasConstants';
 import {
   CanvasDocument,
+  CanvasShapeItem,
   CanvasTextItem,
+  ShapeKind,
   StrokeKind,
   serializeCanvasDocument,
   validateCanvasDocument,
@@ -38,6 +42,7 @@ import ZoomControls from './ZoomControls';
 import PageCarousel from './PageCarousel';
 import EmojiPicker from './EmojiPicker';
 import UnsavedChangesDialog from './UnsavedChangesDialog';
+import ConfirmDialog, { PendingConfirmation } from './ConfirmDialog';
 
 // Eraser cursor preview is drawn in a neutral gray (it has no ink color).
 const ERASER_CURSOR_COLOR = '#6b7280';
@@ -62,11 +67,18 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
   const [color, setColor] = useState<string>(DEFAULT_PEN_COLOR);
   const [strokeWidth, setStrokeWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
   const [strokeKind, setStrokeKind] = useState<StrokeKind>(DEFAULT_STROKE_KIND);
+  const [shapeKind, setShapeKind] = useState<ShapeKind>('rect');
+  const [shapeFilled, setShapeFilled] = useState(false);
+  // Shape tool: the bounding box being dragged out (preview until pointer up).
+  const shapeOriginRef = useRef<Point | null>(null);
+  const [shapeDraft, setShapeDraft] = useState<CanvasShapeItem | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   // Set when the in-editor Back button is pressed with unsaved changes; router
   // navigation is caught separately by the blocker below.
   const [backRequested, setBackRequested] = useState(false);
+  // Destructive actions (clear page, delete page) ask first, in-app.
+  const [confirmation, setConfirmation] = useState<PendingConfirmation | null>(null);
 
   const viewport = useStageViewport({
     panEnabled: tool === 'select',
@@ -133,6 +145,9 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       const item = engine.addTextItem(position.x, position.y, color);
       setEditingTextId(item.id);
       setTool('select');
+    } else if (tool === 'shape') {
+      shapeOriginRef.current = position;
+      setShapeDraft(shapeAt(position, position));
     } else if (tool === 'fill' && isBackground) {
       // Fill the current page background with the selected color.
       engine.setPageBackground(color);
@@ -144,9 +159,73 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
   const handlePointerMove = (position: Point) => {
     if (viewport.isPinching()) {
       engine.cancelStroke();
+      shapeOriginRef.current = null;
+      setShapeDraft(null);
+      return;
+    }
+    if (shapeOriginRef.current) {
+      setShapeDraft(shapeAt(shapeOriginRef.current, position));
       return;
     }
     engine.extendStroke(position);
+  };
+
+  const handlePointerUp = () => {
+    const origin = shapeOriginRef.current;
+    if (origin && shapeDraft) {
+      shapeOriginRef.current = null;
+      setShapeDraft(null);
+      // A plain click (no real drag) drops a default-sized shape centred on it.
+      const dragged =
+        Math.max(shapeDraft.width, shapeDraft.height) >= SHAPE_DRAG_THRESHOLD;
+      const committed = dragged
+        ? shapeDraft
+        : {
+            ...shapeDraft,
+            x: origin.x - DEFAULT_SHAPE_SIZE / 2,
+            y: origin.y - DEFAULT_SHAPE_SIZE / 2,
+            width: DEFAULT_SHAPE_SIZE,
+            height: DEFAULT_SHAPE_SIZE,
+          };
+      engine.addShapeItem({
+        shape: committed.shape,
+        x: committed.x,
+        y: committed.y,
+        rotation: 0,
+        width: committed.width,
+        height: committed.height,
+        stroke: committed.stroke,
+        strokeWidth: committed.strokeWidth,
+        ...(committed.fill ? { fill: committed.fill } : {}),
+      });
+      // Hand over to the pointer so the new shape can be adjusted right away.
+      setTool('select');
+      return;
+    }
+    engine.endStroke();
+  };
+
+  /** Bounding box between two corners, normalised so width/height are positive. */
+  const shapeAt = (from: Point, to: Point): CanvasShapeItem => ({
+    id: 'draft',
+    type: 'shape',
+    shape: shapeKind,
+    x: Math.min(from.x, to.x),
+    y: Math.min(from.y, to.y),
+    rotation: 0,
+    width: Math.abs(to.x - from.x),
+    height: Math.abs(to.y - from.y),
+    stroke: color,
+    strokeWidth,
+    ...(shapeFilled ? { fill: color } : {}),
+  });
+
+  // Fill tool on an item: recolour a shape's fill or a text's colour.
+  const handleFillItem = (id: string) => {
+    const item = engine.items.find((candidate) => candidate.id === id);
+    if (item?.type === 'shape' || item?.type === 'text') {
+      engine.updateItem(id, { fill: color });
+    }
   };
 
   // --- text editing overlay ---------------------------------------------------
@@ -241,13 +320,9 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     }
   };
 
-  const handleColorChange = (nextColor: string) => {
-    setColor(nextColor);
-    // With the fill tool active, choosing a color fills the page immediately.
-    if (tool === 'fill') {
-      engine.setPageBackground(nextColor);
-    }
-  };
+  // Picking a colour never paints by itself — with the fill tool the click on
+  // the page or on a shape decides what gets the colour.
+  const handleColorChange = (nextColor: string) => setColor(nextColor);
 
   const handleEmojiSelect = (emoji: string) => {
     // Emojis are text items, so they are movable/scalable/rotatable like text.
@@ -344,11 +419,13 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
             canDeletePage: engine.canDeletePage,
             onAddPage: engine.addPage,
             onDuplicatePage: engine.duplicatePage,
-            onDeletePage: () => {
-              if (window.confirm(t('wishlist.pages.deleteConfirm'))) {
-                engine.deletePage();
-              }
-            },
+            onDeletePage: () =>
+              setConfirmation({
+                title: t('wishlist.pages.deleteConfirm'),
+                description: t('wishlist.pages.deleteConfirmBody'),
+                confirmLabel: t('wishlist.pages.delete'),
+                onConfirm: engine.deletePage,
+              }),
           }}
         />
       </div>
@@ -363,6 +440,10 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           onStrokeWidthChange={setStrokeWidth}
           strokeKind={strokeKind}
           onStrokeKindChange={setStrokeKind}
+          shapeKind={shapeKind}
+          onShapeKindChange={setShapeKind}
+          shapeFilled={shapeFilled}
+          onShapeFilledChange={setShapeFilled}
           pageBackground={engine.background}
           pagePattern={engine.pattern}
           onPagePatternChange={engine.setPagePattern}
@@ -372,11 +453,14 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           onRedo={engine.redo}
           hasSelection={engine.selectedItemId !== null}
           onDeleteSelection={() => selectedItemId && removeItem(selectedItemId)}
-          onClearAll={() => {
-            if (window.confirm(t('wishlist.editor.clearConfirm'))) {
-              engine.clearPage();
-            }
-          }}
+          onClearAll={() =>
+            setConfirmation({
+              title: t('wishlist.editor.clearConfirm'),
+              description: t('wishlist.editor.clearConfirmBody'),
+              confirmLabel: t('wishlist.toolbar.clearAll'),
+              onConfirm: engine.clearPage,
+            })
+          }
           onPickImage={() => fileInputRef.current?.click()}
           onPickEmoji={() => setShowEmojiPicker(true)}
           isUploadingImage={isUploadingImage}
@@ -389,6 +473,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
             // Pen/eraser hide the native cursor — the on-canvas brush circle is the cursor.
             (tool === 'pen' || tool === 'eraser') && 'cursor-none',
             tool === 'text' && 'cursor-text',
+            tool === 'shape' && 'cursor-crosshair',
             tool === 'fill' && 'cursor-pointer',
           )}
         >
@@ -396,6 +481,8 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
             <WishlistCanvas
               strokes={engine.strokes}
               liveStroke={engine.liveStroke}
+              previewShape={shapeDraft}
+              onFillItem={tool === 'fill' ? handleFillItem : undefined}
               items={engine.items}
               background={engine.background}
               pattern={engine.pattern}
@@ -418,7 +505,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
               onTextEditRequest={setEditingTextId}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
-              onPointerUp={engine.endStroke}
+              onPointerUp={handlePointerUp}
             />
           )}
           {editingTextItem && (
@@ -457,6 +544,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
         onDiscard={performExit}
         onCancel={cancelExit}
       />
+      <ConfirmDialog pending={confirmation} onClose={() => setConfirmation(null)} />
     </div>
   );
 }

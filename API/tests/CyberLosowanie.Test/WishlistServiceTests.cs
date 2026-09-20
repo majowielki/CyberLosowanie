@@ -114,6 +114,11 @@ namespace CyberLosowanie.Test
         private static object TextItem(string text = "Lego Technic", double fontSize = 36) =>
             new { id = Guid.NewGuid().ToString("N"), type = "text", text, x = 10.0, y = 20.0, rotation = 0.0, fontSize, fill = "#111827", width = 400.0 };
 
+        private static object ShapeItem(string shape = "heart", string stroke = "#e11d48", double strokeWidth = 6, string? fill = null, double width = 200, double height = 200) =>
+            fill == null
+                ? new { id = Guid.NewGuid().ToString("N"), type = "shape", shape, x = 10.0, y = 20.0, rotation = 0.0, width, height, stroke, strokeWidth }
+                : new { id = Guid.NewGuid().ToString("N"), type = "shape", shape, x = 10.0, y = 20.0, rotation = 0.0, width, height, stroke, strokeWidth, fill };
+
         private static object ImageItem(string path) =>
             new { id = Guid.NewGuid().ToString("N"), type = "image", path, x = 5.0, y = 5.0, rotation = 0.0, width = 300.0, height = 200.0 };
 
@@ -327,6 +332,53 @@ namespace CyberLosowanie.Test
         public async Task SaveMyWishlistAsync_UnknownPagePattern_ThrowsBusinessValidation(string pattern)
         {
             var json = BuildCanvasJson(pages: new[] { Page(pattern: pattern) });
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        [Theory]
+        [InlineData("rect")]
+        [InlineData("star")]
+        [InlineData("arrow")]
+        public async Task SaveMyWishlistAsync_ShapeItem_IsStored(string shape)
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(
+                UserName, BuildCanvasJson(items: new[] { ShapeItem(shape: shape, fill: "#22c55e") }));
+
+            added()!.CanvasJson.Should().Contain($"\"shape\":\"{shape}\"").And.Contain("\"fill\":\"#22c55e\"");
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_OutlineShape_StoresNoFill()
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(items: new[] { ShapeItem() }));
+
+            added()!.CanvasJson.Should().Contain("\"shape\":\"heart\"").And.NotContain("\"fill\"");
+        }
+
+        [Theory]
+        [InlineData("blob", "#e11d48", 6.0, null)]          // unknown shape
+        [InlineData("rect", "red", 6.0, null)]              // bad stroke colour
+        [InlineData("rect", "#e11d48", 0.0, null)]          // stroke width below minimum
+        [InlineData("rect", "#e11d48", 65.0, null)]         // stroke width above maximum
+        [InlineData("rect", "#e11d48", 6.0, "green")]       // bad fill colour
+        public async Task SaveMyWishlistAsync_InvalidShapeItem_ThrowsBusinessValidation(string shape, string stroke, double strokeWidth, string? fill)
+        {
+            var json = BuildCanvasJson(items: new[] { ShapeItem(shape, stroke, strokeWidth, fill) });
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_ShapeWithoutSize_ThrowsBusinessValidation()
+        {
+            var json = BuildCanvasJson(items: new[] { ShapeItem(width: 0, height: 100) });
 
             await Assert.ThrowsAsync<BusinessValidationException>(
                 () => CreateService().SaveMyWishlistAsync(UserName, json));

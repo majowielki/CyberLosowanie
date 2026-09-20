@@ -1,15 +1,23 @@
 import { ReactNode, useState } from 'react';
 import {
+  ArrowBigRight,
   ChevronDown,
+  Circle,
+  Diamond,
   Eraser,
   FileX2,
+  Heart,
   ImagePlus,
   MousePointer2,
   PaintBucket,
   Pen,
   Redo2,
+  Shapes,
   Smile,
+  Square,
+  Star,
   Trash2,
+  Triangle,
   Type,
   Undo2,
 } from 'lucide-react';
@@ -19,11 +27,11 @@ import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import { cn } from '@/shared/lib/utils';
 import { useTranslation, TranslationKey } from '@/shared/i18n';
 import { PAGE_PATTERNS, PEN_COLORS, STROKE_KINDS, STROKE_WIDTHS } from './canvasConstants';
-import { PagePattern, StrokeKind } from './canvasDocument';
+import { PagePattern, ShapeKind, StrokeKind } from './canvasDocument';
 import PagePatternPreview from './PagePatternPreview';
 import StrokeKindPreview from './StrokeKindPreview';
 
-export type EditorTool = 'select' | 'pen' | 'eraser' | 'text' | 'fill';
+export type EditorTool = 'select' | 'pen' | 'eraser' | 'text' | 'shape' | 'fill';
 
 interface CanvasToolbarProps {
   tool: EditorTool;
@@ -34,6 +42,10 @@ interface CanvasToolbarProps {
   onStrokeWidthChange: (width: number) => void;
   strokeKind: StrokeKind;
   onStrokeKindChange: (kind: StrokeKind) => void;
+  shapeKind: ShapeKind;
+  onShapeKindChange: (kind: ShapeKind) => void;
+  shapeFilled: boolean;
+  onShapeFilledChange: (filled: boolean) => void;
   /** Current page's background colour and pattern (fill tool). */
   pageBackground: string;
   pagePattern: PagePattern | undefined;
@@ -55,7 +67,18 @@ const TOOLS: Array<{ id: EditorTool; labelKey: TranslationKey; icon: typeof Pen 
   { id: 'pen', labelKey: 'wishlist.toolbar.pen', icon: Pen },
   { id: 'eraser', labelKey: 'wishlist.toolbar.eraser', icon: Eraser },
   { id: 'text', labelKey: 'wishlist.toolbar.text', icon: Type },
+  { id: 'shape', labelKey: 'wishlist.toolbar.shape', icon: Shapes },
   { id: 'fill', labelKey: 'wishlist.toolbar.fill', icon: PaintBucket },
+];
+
+const SHAPE_OPTIONS: Array<{ id: ShapeKind; labelKey: TranslationKey; icon: typeof Square }> = [
+  { id: 'rect', labelKey: 'wishlist.toolbar.shape.rect', icon: Square },
+  { id: 'ellipse', labelKey: 'wishlist.toolbar.shape.ellipse', icon: Circle },
+  { id: 'triangle', labelKey: 'wishlist.toolbar.shape.triangle', icon: Triangle },
+  { id: 'diamond', labelKey: 'wishlist.toolbar.shape.diamond', icon: Diamond },
+  { id: 'star', labelKey: 'wishlist.toolbar.shape.star', icon: Star },
+  { id: 'heart', labelKey: 'wishlist.toolbar.shape.heart', icon: Heart },
+  { id: 'arrow', labelKey: 'wishlist.toolbar.shape.arrow', icon: ArrowBigRight },
 ];
 
 const KIND_LABEL_KEYS: Record<StrokeKind, TranslationKey> = {
@@ -145,6 +168,10 @@ function CanvasToolbar({
   onStrokeWidthChange,
   strokeKind,
   onStrokeKindChange,
+  shapeKind,
+  onShapeKindChange,
+  shapeFilled,
+  onShapeFilledChange,
   pageBackground,
   pagePattern,
   onPagePatternChange,
@@ -160,12 +187,14 @@ function CanvasToolbar({
   isUploadingImage,
 }: CanvasToolbarProps) {
   const { t } = useTranslation();
-  const showStrokeOptions = tool === 'pen' || tool === 'eraser';
-  const showColorOptions = tool === 'pen' || tool === 'text' || tool === 'fill';
+  const showStrokeOptions = tool === 'pen' || tool === 'eraser' || tool === 'shape';
+  const showColorOptions = tool === 'pen' || tool === 'text' || tool === 'shape' || tool === 'fill';
   const showKindOptions = tool === 'pen';
+  const showShapeOptions = tool === 'shape';
   const showPatternOptions = tool === 'fill';
   const showContextualOptions =
-    showColorOptions || showStrokeOptions || showKindOptions || showPatternOptions;
+    showColorOptions || showStrokeOptions || showKindOptions || showShapeOptions || showPatternOptions;
+  const CurrentShapeIcon = SHAPE_OPTIONS.find((option) => option.id === shapeKind)?.icon ?? Square;
   const isCustomColor = !(PEN_COLORS as readonly string[]).includes(color);
   // Desktop: toolbar is a left column, so panels open to its right; on phones
   // the toolbar is a strip above the canvas and panels drop below it.
@@ -244,6 +273,65 @@ function CanvasToolbar({
                         {t(KIND_LABEL_KEYS[kind])}
                       </button>
                     ))}
+                  </div>
+                )}
+              </ToolbarFlyout>
+            )}
+
+            {showShapeOptions && (
+              <ToolbarFlyout
+                label={t('wishlist.toolbar.shapeCurrent', {
+                  name: t(SHAPE_OPTIONS.find((option) => option.id === shapeKind)?.labelKey ?? 'wishlist.toolbar.shape.rect'),
+                })}
+                side={flyoutSide}
+                trigger={
+                  <CurrentShapeIcon
+                    className="h-6 w-6"
+                    style={{ color, fill: shapeFilled ? color : 'none' }}
+                    aria-hidden
+                  />
+                }
+              >
+                {(close) => (
+                  <div className="flex flex-col gap-2">
+                    <div className="grid grid-cols-4 gap-1" role="group" aria-label={t('wishlist.toolbar.shapeGroup')}>
+                      {SHAPE_OPTIONS.map(({ id, labelKey, icon: Icon }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          aria-pressed={shapeKind === id}
+                          onClick={() => {
+                            onShapeKindChange(id);
+                            close();
+                          }}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-[0.65rem] font-medium text-gray-600 hover:bg-gray-100',
+                            shapeKind === id && 'bg-gray-200 text-gray-900 ring-1 ring-sky-500',
+                          )}
+                        >
+                          <Icon className="h-6 w-6" style={{ color, fill: shapeFilled ? color : 'none' }} aria-hidden />
+                          {t(labelKey)}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Outline vs. filled — applies to the next shape drawn. */}
+                    <div className="grid grid-cols-2 gap-1 border-t border-gray-200 pt-2" role="group">
+                      {([false, true] as const).map((filled) => (
+                        <button
+                          key={String(filled)}
+                          type="button"
+                          aria-pressed={shapeFilled === filled}
+                          onClick={() => onShapeFilledChange(filled)}
+                          className={cn(
+                            'flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100',
+                            shapeFilled === filled && 'bg-gray-200 text-gray-900 ring-1 ring-sky-500',
+                          )}
+                        >
+                          <Square className="h-4 w-4" style={{ color, fill: filled ? color : 'none' }} aria-hidden />
+                          {t(filled ? 'wishlist.toolbar.shapeFilled' : 'wishlist.toolbar.shapeOutline')}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </ToolbarFlyout>

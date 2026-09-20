@@ -279,8 +279,11 @@ namespace CyberLosowanie.Services
                         imageCount++;
                         ValidateImageItem(item, authorCyberekId, label, errors);
                         break;
+                    case WishlistConstants.ITEM_TYPE_SHAPE:
+                        ValidateShapeItem(item, label, errors);
+                        break;
                     default:
-                        errors.Add($"{label}: type must be '{WishlistConstants.ITEM_TYPE_TEXT}' or '{WishlistConstants.ITEM_TYPE_IMAGE}'.");
+                        errors.Add($"{label}: type must be '{WishlistConstants.ITEM_TYPE_TEXT}', '{WishlistConstants.ITEM_TYPE_IMAGE}' or '{WishlistConstants.ITEM_TYPE_SHAPE}'.");
                         break;
                 }
             }
@@ -325,6 +328,36 @@ namespace CyberLosowanie.Services
                 || pathCyberekId != authorCyberekId)
             {
                 errors.Add($"{label}: path must match '{authorCyberekId}/{{guid}}.(jpg|png|webp)' and belong to the author.");
+            }
+
+            if (item.Width is null or <= 0 || item.Height is null or <= 0)
+            {
+                errors.Add($"{label}: width and height must be positive numbers.");
+            }
+        }
+
+        // A shape is an outline (stroke + width, same limits as a pen stroke) fitted
+        // to its box, with an optional fill.
+        private static void ValidateShapeItem(CanvasItem item, string label, List<string> errors)
+        {
+            if (item.Shape == null || !WishlistConstants.SHAPE_KINDS.Contains(item.Shape))
+            {
+                errors.Add($"{label}: shape must be one of {string.Join(", ", WishlistConstants.SHAPE_KINDS.Select(s => $"'{s}'"))}.");
+            }
+
+            if (item.Stroke == null || !HexColorRegex.IsMatch(item.Stroke))
+            {
+                errors.Add($"{label}: stroke must be a #rrggbb color.");
+            }
+
+            if (item.Fill != null && !HexColorRegex.IsMatch(item.Fill))
+            {
+                errors.Add($"{label}: fill must be a #rrggbb color when present.");
+            }
+
+            if (item.StrokeWidth is null or < WishlistConstants.MIN_STROKE_WIDTH or > WishlistConstants.MAX_STROKE_WIDTH)
+            {
+                errors.Add($"{label}: strokeWidth must be between {WishlistConstants.MIN_STROKE_WIDTH} and {WishlistConstants.MAX_STROKE_WIDTH}.");
             }
 
             if (item.Width is null or <= 0 || item.Height is null or <= 0)

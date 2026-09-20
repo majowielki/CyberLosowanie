@@ -104,3 +104,11 @@ export const PAGE_PATTERNS = [
   'glossy',
   'paper',
 ] as const;
+
+// Shape items (shape tool). Mirrors API WishlistConstants SHAPE_KINDS. A shape
+// is drawn by dragging its bounding box; a plain click inserts one at
+// DEFAULT_SHAPE_SIZE centred on the click.
+export const SHAPE_KINDS = ['rect', 'ellipse', 'triangle', 'diamond', 'star', 'heart', 'arrow'] as const;
+export const DEFAULT_SHAPE_SIZE = 220;
+// Drags shorter than this (document units) count as a click.
+export const SHAPE_DRAG_THRESHOLD = 6;

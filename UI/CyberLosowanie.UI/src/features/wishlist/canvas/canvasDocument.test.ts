@@ -3,6 +3,7 @@ import {
   CanvasDocument,
   CanvasImageItem,
   CanvasPage,
+  CanvasShapeItem,
   CanvasStroke,
   CanvasTextItem,
   createEmptyCanvasDocument,
@@ -10,7 +11,7 @@ import {
   serializeCanvasDocument,
   validateCanvasDocument,
 } from './canvasDocument';
-import { DOCUMENT_LIMITS, PAGE_PATTERNS, STROKE_KINDS } from './canvasConstants';
+import { DOCUMENT_LIMITS, PAGE_PATTERNS, SHAPE_KINDS, STROKE_KINDS } from './canvasConstants';
 
 const stroke = (overrides: Partial<CanvasStroke> = {}): CanvasStroke => ({
   id: 's1',
@@ -43,6 +44,20 @@ const imageItem = (overrides: Partial<CanvasImageItem> = {}): CanvasImageItem =>
   rotation: -5,
   width: 300,
   height: 200,
+  ...overrides,
+});
+
+const shapeItem = (overrides: Partial<CanvasShapeItem> = {}): CanvasShapeItem => ({
+  id: 'sh1',
+  type: 'shape',
+  shape: 'heart',
+  x: 50,
+  y: 60,
+  rotation: 0,
+  width: 200,
+  height: 180,
+  stroke: '#e11d48',
+  strokeWidth: 6,
   ...overrides,
 });
 
@@ -155,6 +170,25 @@ describe('validateCanvasDocument', () => {
     expect(validateCanvasDocument(documentWith({ pages: [page({ items: [badItem] })] }))).not.toEqual([]);
   });
 
+  it('accepts every shape kind, outlined or filled', () => {
+    const items = SHAPE_KINDS.flatMap((shape, index) => [
+      shapeItem({ id: `o${index}`, shape }),
+      shapeItem({ id: `f${index}`, shape, fill: '#22c55e' }),
+    ]);
+    expect(validateCanvasDocument(documentWith({ pages: [page({ items })] }))).toEqual([]);
+  });
+
+  it.each([
+    ['unknown kind', shapeItem({ shape: 'blob' as CanvasShapeItem['shape'] }), 'wishlist.validation.shapeKind'],
+    ['bad stroke colour', shapeItem({ stroke: 'red' }), 'wishlist.validation.shapeColor'],
+    ['bad fill colour', shapeItem({ fill: 'green' }), 'wishlist.validation.shapeColor'],
+    ['stroke width above maximum', shapeItem({ strokeWidth: DOCUMENT_LIMITS.maxStrokeWidth + 1 }), 'wishlist.validation.strokeWidth'],
+    ['zero height', shapeItem({ height: 0 }), 'wishlist.validation.shapeSize'],
+  ])('rejects a shape with %s', (_case, badItem, key) => {
+    const errors = validateCanvasDocument(documentWith({ pages: [page({ items: [badItem] })] }));
+    expect(errors.map((error) => error.key)).toContain(key);
+  });
+
   it('rejects too many images across all pages', () => {
     // Each page stays within limits, but together they exceed the image cap.
     const imagesPerPage = Math.ceil((DOCUMENT_LIMITS.maxImageItems + 1) / 2);
@@ -205,7 +239,7 @@ describe('serialize/parse round trip', () => {
     const original = documentWith({
       pages: [
         page({ strokes: [stroke(), stroke({ id: 's2', tool: 'eraser' }), stroke({ id: 's3', kind: 'glitter' })] }),
-        page({ id: 'p2', items: [textItem(), imageItem()], pattern: 'snowflakes' }),
+        page({ id: 'p2', items: [textItem(), imageItem(), shapeItem(), shapeItem({ id: 'sh2', fill: '#22c55e' })], pattern: 'snowflakes' }),
       ],
     });
 

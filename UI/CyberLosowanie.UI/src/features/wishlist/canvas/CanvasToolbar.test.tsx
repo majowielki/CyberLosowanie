@@ -14,6 +14,10 @@ const renderToolbar = (tool: EditorTool, overrides: Partial<React.ComponentProps
     onStrokeWidthChange: vi.fn(),
     strokeKind: 'pen' as const,
     onStrokeKindChange: vi.fn(),
+    shapeKind: 'rect' as const,
+    onShapeKindChange: vi.fn(),
+    shapeFilled: false,
+    onShapeFilledChange: vi.fn(),
     pageBackground: '#ffffff',
     pagePattern: undefined,
     onPagePatternChange: vi.fn(),
@@ -64,5 +68,20 @@ describe('CanvasToolbar flyouts', () => {
     expect(screen.getByRole('button', { name: 'Pen style: Glitter' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Color: #e11d48' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Line width: 24' })).toBeInTheDocument();
+  });
+});
+
+describe('CanvasToolbar shape tool', () => {
+  it('offers shape kinds and the outline/filled switch only for the shape tool', async () => {
+    const props = renderToolbar('shape');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Shape: Rectangle' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Filled' }));
+    expect(props.onShapeFilledChange).toHaveBeenCalledWith(true);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Heart' }));
+    expect(props.onShapeKindChange).toHaveBeenCalledWith('heart');
+    // Line width applies to shapes too, like the pen.
+    expect(screen.getByRole('button', { name: 'Line width: 6' })).toBeInTheDocument();
   });
 });
