@@ -39,6 +39,8 @@ function WishlistViewer({ document }: { document: CanvasDocument }) {
             strokes={page.strokes}
             items={page.items}
             background={page.background}
+            pattern={page.pattern}
+            pageId={page.id}
             stageProps={viewport.stageProps}
           />
         )}

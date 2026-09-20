@@ -39,6 +39,11 @@ namespace CyberLosowanie.Constants
         {
             STROKE_KIND_PEN, "marker", "highlighter", "crayon", "glossy", "neon", "glitter"
         };
+        // Page background patterns (page "pattern"); absent = plain colour.
+        public static readonly IReadOnlySet<string> PAGE_PATTERNS = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "dots", "grid", "lines", "stripes", "checker", "snowflakes", "stars", "satin", "glossy", "paper"
+        };
         public const string ITEM_TYPE_TEXT = "text";
         public const string ITEM_TYPE_IMAGE = "image";
 

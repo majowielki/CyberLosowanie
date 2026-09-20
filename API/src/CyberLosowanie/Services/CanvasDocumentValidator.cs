@@ -166,6 +166,13 @@ namespace CyberLosowanie.Services
                     errors.Add($"{pageLabel}: background must be a #rrggbb color.");
                 }
 
+                // Optional; null means a plain colour. The ink colour is derived from the
+                // background by the renderer, so only the pattern name is stored.
+                if (page.Pattern != null && !WishlistConstants.PAGE_PATTERNS.Contains(page.Pattern))
+                {
+                    errors.Add($"{pageLabel}: pattern must be one of {string.Join(", ", WishlistConstants.PAGE_PATTERNS.Select(p => $"'{p}'"))}.");
+                }
+
                 ValidateStrokes(page.Strokes, pageLabel, errors);
                 totalImages += ValidateItems(page.Items, authorCyberekId, pageLabel, errors);
             }

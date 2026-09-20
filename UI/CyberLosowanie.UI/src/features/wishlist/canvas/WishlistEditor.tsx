@@ -363,6 +363,9 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           onStrokeWidthChange={setStrokeWidth}
           strokeKind={strokeKind}
           onStrokeKindChange={setStrokeKind}
+          pageBackground={engine.background}
+          pagePattern={engine.pattern}
+          onPagePatternChange={engine.setPagePattern}
           canUndo={engine.canUndo}
           canRedo={engine.canRedo}
           onUndo={engine.undo}
@@ -395,6 +398,8 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
               liveStroke={engine.liveStroke}
               items={engine.items}
               background={engine.background}
+              pattern={engine.pattern}
+              pageId={engine.pageId}
               brushCursor={
                 tool === 'pen' || tool === 'eraser'
                   ? {

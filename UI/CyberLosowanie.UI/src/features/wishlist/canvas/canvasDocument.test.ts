@@ -10,7 +10,7 @@ import {
   serializeCanvasDocument,
   validateCanvasDocument,
 } from './canvasDocument';
-import { DOCUMENT_LIMITS, STROKE_KINDS } from './canvasConstants';
+import { DOCUMENT_LIMITS, PAGE_PATTERNS, STROKE_KINDS } from './canvasConstants';
 
 const stroke = (overrides: Partial<CanvasStroke> = {}): CanvasStroke => ({
   id: 's1',
@@ -106,6 +106,20 @@ describe('validateCanvasDocument', () => {
     expect(validateCanvasDocument(documentWith({ pages: [page({ strokes })] }))).toEqual([]);
   });
 
+  it('accepts every known page pattern and a page without one', () => {
+    // One document per pattern (a single document is capped at maxPages).
+    for (const pattern of PAGE_PATTERNS) {
+      expect(validateCanvasDocument(documentWith({ pages: [page(), page({ id: 'p2', pattern })] }))).toEqual([]);
+    }
+  });
+
+  it('rejects an unknown page pattern', () => {
+    const bad = page({ pattern: 'plaid' as CanvasPage['pattern'] });
+    expect(validateCanvasDocument(documentWith({ pages: [bad] }))).toEqual([
+      { key: 'wishlist.validation.pagePattern' },
+    ]);
+  });
+
   it('rejects an unknown pen style', () => {
     const bad = stroke({ kind: 'lipstick' as CanvasStroke['kind'] });
     expect(validateCanvasDocument(documentWith({ pages: [page({ strokes: [bad] })] }))).toEqual([
@@ -191,7 +205,7 @@ describe('serialize/parse round trip', () => {
     const original = documentWith({
       pages: [
         page({ strokes: [stroke(), stroke({ id: 's2', tool: 'eraser' }), stroke({ id: 's3', kind: 'glitter' })] }),
-        page({ id: 'p2', items: [textItem(), imageItem()] }),
+        page({ id: 'p2', items: [textItem(), imageItem()], pattern: 'snowflakes' }),
       ],
     });
 

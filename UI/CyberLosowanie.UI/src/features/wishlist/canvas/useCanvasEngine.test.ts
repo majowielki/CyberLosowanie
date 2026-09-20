@@ -373,3 +373,18 @@ describe('useCanvasEngine — document io', () => {
     expect(result.current.items).toHaveLength(1);
   });
 });
+
+describe('useCanvasEngine — page pattern', () => {
+  it('sets and clears the current page pattern without leaving a key behind', () => {
+    const { result } = renderEngine();
+
+    act(() => result.current.setPagePattern('dots'));
+    expect(result.current.pattern).toBe('dots');
+    expect(result.current.isDirty).toBe(true);
+
+    act(() => result.current.setPagePattern(undefined));
+    expect(result.current.pattern).toBeUndefined();
+    // A plain page must serialize exactly like one that never had a pattern.
+    expect('pattern' in result.current.buildDocument().pages[0]).toBe(false);
+  });
+});

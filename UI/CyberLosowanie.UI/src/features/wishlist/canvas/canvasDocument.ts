@@ -15,6 +15,7 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   DOCUMENT_LIMITS,
+  PAGE_PATTERNS,
   STROKE_KINDS,
 } from './canvasConstants';
 
@@ -71,10 +72,15 @@ export interface CanvasImageItem {
 /** Order in the items array is the z-order. */
 export type CanvasItem = CanvasTextItem | CanvasImageItem;
 
+/** Background pattern drawn over the page colour (see pagePatterns.ts). */
+export type PagePattern = (typeof PAGE_PATTERNS)[number];
+
 /** One page of the document. Order in the document's page list is the carousel order. */
 export interface CanvasPage {
   id: string;
   background: string;
+  /** Absent = plain colour. The ink colour is derived from `background`. */
+  pattern?: PagePattern;
   strokes: CanvasStroke[];
   items: CanvasItem[];
 }
@@ -177,6 +183,9 @@ function validatePages(
   for (const page of pages) {
     if (!page.id) {
       errors.push({ key: 'wishlist.validation.pageNoId' });
+    }
+    if (page.pattern !== undefined && !isPagePattern(page.pattern)) {
+      errors.push({ key: 'wishlist.validation.pagePattern' });
     }
     if (!HEX_COLOR_PATTERN.test(page.background)) {
       errors.push({ key: 'wishlist.validation.pageBackground' });
@@ -352,10 +361,14 @@ function toPage(value: Record<string, unknown>): CanvasPage {
   return {
     id: typeof value.id === 'string' ? value.id : generateCanvasId(),
     background: typeof value.background === 'string' ? value.background : CANVAS_BACKGROUND,
+    ...(typeof value.pattern === 'string' ? { pattern: value.pattern as PagePattern } : {}),
     strokes: Array.isArray(value.strokes) ? value.strokes.filter(isStrokeShape) : [],
     items: Array.isArray(value.items) ? value.items.filter(isItemShape) : [],
   };
 }
+
+export const isPagePattern = (value: unknown): value is PagePattern =>
+  typeof value === 'string' && (PAGE_PATTERNS as readonly string[]).includes(value);
 
 export const isStrokeKind = (value: unknown): value is StrokeKind =>
   typeof value === 'string' && (STROKE_KINDS as readonly string[]).includes(value);

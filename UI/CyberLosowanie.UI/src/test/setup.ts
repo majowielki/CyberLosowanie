@@ -7,3 +7,13 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
 });
+
+// jsdom has no ResizeObserver; Radix Popover (floating-ui) needs one to exist.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}

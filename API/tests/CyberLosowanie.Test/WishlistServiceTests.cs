@@ -76,14 +76,23 @@ namespace CyberLosowanie.Test
             });
         }
 
-        private static object Page(object[]? strokes = null, object[]? items = null, string background = "#ffffff") =>
-            new
-            {
-                id = Guid.NewGuid().ToString("N"),
-                background,
-                strokes = strokes ?? Array.Empty<object>(),
-                items = items ?? Array.Empty<object>(),
-            };
+        private static object Page(object[]? strokes = null, object[]? items = null, string background = "#ffffff", string? pattern = null) =>
+            pattern == null
+                ? new
+                {
+                    id = Guid.NewGuid().ToString("N"),
+                    background,
+                    strokes = strokes ?? Array.Empty<object>(),
+                    items = items ?? Array.Empty<object>(),
+                }
+                : new
+                {
+                    id = Guid.NewGuid().ToString("N"),
+                    background,
+                    pattern,
+                    strokes = strokes ?? Array.Empty<object>(),
+                    items = items ?? Array.Empty<object>(),
+                };
 
         private static object Stroke(string tool = "pen", string color = "#e11d48", double width = 6, double[]? points = null, string? kind = null) =>
             kind == null
@@ -296,6 +305,41 @@ namespace CyberLosowanie.Test
                 UserName, BuildCanvasJson(strokes: new[] { Stroke(tool: "eraser", kind: "glitter") }));
 
             added()!.CanvasJson.Should().NotContain("\"kind\"");
+        }
+
+        [Theory]
+        [InlineData("dots")]
+        [InlineData("snowflakes")]
+        [InlineData("paper")]
+        public async Task SaveMyWishlistAsync_KnownPagePattern_IsStored(string pattern)
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(
+                UserName, BuildCanvasJson(pages: new[] { Page(pattern: pattern) }));
+
+            added()!.CanvasJson.Should().Contain($"\"pattern\":\"{pattern}\"");
+        }
+
+        [Theory]
+        [InlineData("plaid")]
+        [InlineData("")]
+        public async Task SaveMyWishlistAsync_UnknownPagePattern_ThrowsBusinessValidation(string pattern)
+        {
+            var json = BuildCanvasJson(pages: new[] { Page(pattern: pattern) });
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_PlainPage_StoresNoPattern()
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson());
+
+            added()!.CanvasJson.Should().NotContain("\"pattern\"");
         }
 
         [Fact]

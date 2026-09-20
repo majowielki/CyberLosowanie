@@ -87,3 +87,20 @@ export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const IMAGE_DOWNSCALE_MAX_EDGE = 1600;
 export const IMAGE_DOWNSCALE_JPEG_QUALITY = 0.85;
 export const IMAGE_INSERT_MAX_WIDTH_RATIO = 0.6;
+
+// Page background patterns (page `pattern`, fill tool). Mirrors API
+// WishlistConstants PAGE_PATTERNS; a page without one is plain. The pattern's
+// ink colour is derived from the background (pagePatterns.ts), so a page
+// stores only the pattern name.
+export const PAGE_PATTERNS = [
+  'dots',
+  'grid',
+  'lines',
+  'stripes',
+  'checker',
+  'snowflakes',
+  'stars',
+  'satin',
+  'glossy',
+  'paper',
+] as const;

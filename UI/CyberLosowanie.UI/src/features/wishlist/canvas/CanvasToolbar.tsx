@@ -1,4 +1,6 @@
+import { ReactNode, useState } from 'react';
 import {
+  ChevronDown,
   Eraser,
   FileX2,
   ImagePlus,
@@ -12,10 +14,13 @@ import {
   Undo2,
 } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover';
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import { cn } from '@/shared/lib/utils';
 import { useTranslation, TranslationKey } from '@/shared/i18n';
-import { PEN_COLORS, STROKE_KINDS, STROKE_WIDTHS } from './canvasConstants';
-import { StrokeKind } from './canvasDocument';
+import { PAGE_PATTERNS, PEN_COLORS, STROKE_KINDS, STROKE_WIDTHS } from './canvasConstants';
+import { PagePattern, StrokeKind } from './canvasDocument';
+import PagePatternPreview from './PagePatternPreview';
 import StrokeKindPreview from './StrokeKindPreview';
 
 export type EditorTool = 'select' | 'pen' | 'eraser' | 'text' | 'fill';
@@ -29,6 +34,10 @@ interface CanvasToolbarProps {
   onStrokeWidthChange: (width: number) => void;
   strokeKind: StrokeKind;
   onStrokeKindChange: (kind: StrokeKind) => void;
+  /** Current page's background colour and pattern (fill tool). */
+  pageBackground: string;
+  pagePattern: PagePattern | undefined;
+  onPagePatternChange: (pattern: PagePattern | undefined) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -59,10 +68,67 @@ const KIND_LABEL_KEYS: Record<StrokeKind, TranslationKey> = {
   glitter: 'wishlist.toolbar.kind.glitter',
 };
 
+const PATTERN_LABEL_KEYS: Record<PagePattern | 'none', TranslationKey> = {
+  none: 'wishlist.toolbar.pattern.none',
+  dots: 'wishlist.toolbar.pattern.dots',
+  grid: 'wishlist.toolbar.pattern.grid',
+  lines: 'wishlist.toolbar.pattern.lines',
+  stripes: 'wishlist.toolbar.pattern.stripes',
+  checker: 'wishlist.toolbar.pattern.checker',
+  snowflakes: 'wishlist.toolbar.pattern.snowflakes',
+  stars: 'wishlist.toolbar.pattern.stars',
+  satin: 'wishlist.toolbar.pattern.satin',
+  glossy: 'wishlist.toolbar.pattern.glossy',
+  paper: 'wishlist.toolbar.pattern.paper',
+};
+
 // Divider between toolbar sections — a horizontal rule in the desktop column,
 // a vertical rule in the mobile strip.
 function ToolbarDivider() {
   return <div className="h-8 w-px shrink-0 bg-gray-200 md:h-px md:w-full" />;
+}
+
+interface ToolbarFlyoutProps {
+  /** Accessible name of the trigger, naming the current value. */
+  label: string;
+  /** Preview of the current value shown on the trigger. */
+  trigger: ReactNode;
+  side: 'right' | 'bottom';
+  /** Panel body; `close` lets an option collapse the panel after selection. */
+  children: (close: () => void) => ReactNode;
+}
+
+/**
+ * Collapsible option group: a compact trigger showing the current value,
+ * with the full palette in a popover beside the toolbar. Keeps the toolbar
+ * short — only the tools and the three current values stay visible.
+ */
+function ToolbarFlyout({ label, trigger, side, children }: ToolbarFlyoutProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          title={label}
+          aria-label={label}
+          className={cn(
+            'relative flex h-9 w-12 items-center justify-center rounded-md hover:bg-gray-100',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500',
+            open && 'bg-gray-200',
+          )}
+        >
+          {trigger}
+          {/* Corner mark: "there is more here" (flyout convention). */}
+          <ChevronDown className="absolute bottom-0.5 right-0.5 h-2.5 w-2.5 text-gray-500" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side={side} align="start" className="w-auto p-2">
+        {children(() => setOpen(false))}
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 /**
@@ -79,6 +145,9 @@ function CanvasToolbar({
   onStrokeWidthChange,
   strokeKind,
   onStrokeKindChange,
+  pageBackground,
+  pagePattern,
+  onPagePatternChange,
   canUndo,
   canRedo,
   onUndo,
@@ -94,8 +163,13 @@ function CanvasToolbar({
   const showStrokeOptions = tool === 'pen' || tool === 'eraser';
   const showColorOptions = tool === 'pen' || tool === 'text' || tool === 'fill';
   const showKindOptions = tool === 'pen';
-  const showContextualOptions = showColorOptions || showStrokeOptions || showKindOptions;
+  const showPatternOptions = tool === 'fill';
+  const showContextualOptions =
+    showColorOptions || showStrokeOptions || showKindOptions || showPatternOptions;
   const isCustomColor = !(PEN_COLORS as readonly string[]).includes(color);
+  // Desktop: toolbar is a left column, so panels open to its right; on phones
+  // the toolbar is a strip above the canvas and panels drop below it.
+  const flyoutSide = useMediaQuery('(min-width: 768px)') ? 'right' : 'bottom';
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/95 p-2 text-card-foreground shadow-elevated md:w-16 md:flex-col md:flex-nowrap">
@@ -141,107 +215,181 @@ function CanvasToolbar({
       {showContextualOptions && (
         <>
           <ToolbarDivider />
-          <div className="flex flex-wrap items-center gap-2 md:flex-col">
+          {/* Contextual options collapse into one trigger each (showing the
+              current value); the palette opens beside the toolbar. */}
+          <div className="flex flex-wrap items-center gap-1.5 md:flex-col">
             {showKindOptions && (
-              <div
-                className="grid grid-cols-4 gap-1 md:grid-cols-1"
-                role="group"
-                aria-label={t('wishlist.toolbar.kindGroup')}
+              <ToolbarFlyout
+                label={t('wishlist.toolbar.kindCurrent', { name: t(KIND_LABEL_KEYS[strokeKind]) })}
+                side={flyoutSide}
+                trigger={<StrokeKindPreview kind={strokeKind} color={color} />}
               >
-                {STROKE_KINDS.map((kind) => (
-                  <button
-                    key={kind}
-                    type="button"
-                    title={t(KIND_LABEL_KEYS[kind])}
-                    aria-label={t(KIND_LABEL_KEYS[kind])}
-                    aria-pressed={strokeKind === kind}
-                    onClick={() => onStrokeKindChange(kind)}
-                    className={cn(
-                      'flex h-8 w-11 items-center justify-center rounded-md hover:bg-gray-100',
-                      strokeKind === kind && 'bg-gray-200 ring-1 ring-sky-500',
-                    )}
-                  >
-                    <StrokeKindPreview kind={kind} color={color} />
-                  </button>
-                ))}
-              </div>
+                {(close) => (
+                  <div className="grid grid-cols-4 gap-1" role="group" aria-label={t('wishlist.toolbar.kindGroup')}>
+                    {STROKE_KINDS.map((kind) => (
+                      <button
+                        key={kind}
+                        type="button"
+                        aria-pressed={strokeKind === kind}
+                        onClick={() => {
+                          onStrokeKindChange(kind);
+                          close();
+                        }}
+                        className={cn(
+                          'flex flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-[0.65rem] font-medium text-gray-600 hover:bg-gray-100',
+                          strokeKind === kind && 'bg-gray-200 text-gray-900 ring-1 ring-sky-500',
+                        )}
+                      >
+                        <StrokeKindPreview kind={kind} color={color} />
+                        {t(KIND_LABEL_KEYS[kind])}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </ToolbarFlyout>
             )}
 
             {showColorOptions && (
-              <div
-                className="grid grid-cols-5 gap-1 md:grid-cols-2"
-                role="group"
-                aria-label={t('wishlist.toolbar.colorGroup')}
+              <ToolbarFlyout
+                label={t('wishlist.toolbar.colorCurrent', { color })}
+                side={flyoutSide}
+                trigger={
+                  // Rainbow ring around the current colour — reads as "palette",
+                  // not as a stroke-width dot.
+                  <span
+                    className="grid h-7 w-7 place-items-center rounded-full"
+                    style={{ background: 'conic-gradient(#f43f5e, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #f43f5e)' }}
+                  >
+                    <span
+                      className="block h-[18px] w-[18px] rounded-full border-2 border-white"
+                      style={{ backgroundColor: color }}
+                    />
+                  </span>
+                }
               >
-                {PEN_COLORS.map((penColor) => (
-                  <button
-                    key={penColor}
-                    type="button"
-                    title={t('wishlist.toolbar.colorOption', { color: penColor })}
-                    aria-label={t('wishlist.toolbar.colorOption', { color: penColor })}
-                    aria-pressed={color === penColor}
-                    onClick={() => onColorChange(penColor)}
-                    className={cn(
-                      'h-5 w-5 rounded-full border border-gray-300 transition-transform hover:scale-110',
-                      color === penColor && 'ring-2 ring-sky-500 ring-offset-1',
-                    )}
-                    style={{ backgroundColor: penColor }}
-                  />
-                ))}
-                {/* Any colour: the native picker (zero dependencies, works on
-                    phones) yields #rrggbb — the exact format the document
-                    schema validates. The swatch shows the picked colour, or a
-                    rainbow ring while a preset is active. */}
-                <label
-                  title={t('wishlist.toolbar.customColor')}
-                  className={cn(
-                    'relative h-5 w-5 cursor-pointer rounded-full border border-gray-300 transition-transform hover:scale-110',
-                    isCustomColor && 'ring-2 ring-sky-500 ring-offset-1',
-                  )}
-                  style={
-                    isCustomColor
-                      ? { backgroundColor: color }
-                      : { background: 'conic-gradient(#f43f5e, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #f43f5e)' }
-                  }
-                >
-                  <input
-                    type="color"
-                    value={color}
-                    aria-label={t('wishlist.toolbar.customColor')}
-                    onChange={(event) => onColorChange(event.target.value)}
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  />
-                </label>
-              </div>
+                {(close) => (
+                  <div className="grid grid-cols-6 gap-2" role="group" aria-label={t('wishlist.toolbar.colorGroup')}>
+                    {PEN_COLORS.map((penColor) => (
+                      <button
+                        key={penColor}
+                        type="button"
+                        title={t('wishlist.toolbar.colorOption', { color: penColor })}
+                        aria-label={t('wishlist.toolbar.colorOption', { color: penColor })}
+                        aria-pressed={color === penColor}
+                        onClick={() => {
+                          onColorChange(penColor);
+                          close();
+                        }}
+                        className={cn(
+                          'h-7 w-7 rounded-full border border-gray-300 transition-transform hover:scale-110',
+                          color === penColor && 'ring-2 ring-sky-500 ring-offset-1',
+                        )}
+                        style={{ backgroundColor: penColor }}
+                      />
+                    ))}
+                    {/* Any colour: the native picker (zero dependencies, works on
+                        phones) yields #rrggbb — the exact format the document
+                        schema validates. The swatch shows the picked colour, or a
+                        rainbow ring while a preset is active. */}
+                    <label
+                      title={t('wishlist.toolbar.customColor')}
+                      className={cn(
+                        'relative h-7 w-7 cursor-pointer rounded-full border border-gray-300 transition-transform hover:scale-110',
+                        isCustomColor && 'ring-2 ring-sky-500 ring-offset-1',
+                      )}
+                      style={
+                        isCustomColor
+                          ? { backgroundColor: color }
+                          : { background: 'conic-gradient(#f43f5e, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #f43f5e)' }
+                      }
+                    >
+                      <input
+                        type="color"
+                        value={color}
+                        aria-label={t('wishlist.toolbar.customColor')}
+                        onChange={(event) => onColorChange(event.target.value)}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      />
+                    </label>
+                  </div>
+                )}
+              </ToolbarFlyout>
             )}
 
             {showStrokeOptions && (
-              <div
-                className="flex items-center gap-1 md:flex-col"
-                role="group"
-                aria-label={t('wishlist.toolbar.strokeGroup')}
+              <ToolbarFlyout
+                label={t('wishlist.toolbar.strokeCurrent', { width: strokeWidth })}
+                side={flyoutSide}
+                trigger={
+                  <span
+                    className="block rounded-full bg-gray-800"
+                    style={{ width: Math.min(strokeWidth, 20), height: Math.min(strokeWidth, 20) }}
+                  />
+                }
               >
-                {STROKE_WIDTHS.map((width) => (
-                  <button
-                    key={width}
-                    type="button"
-                    title={t('wishlist.toolbar.strokeOption', { width })}
-                    aria-label={t('wishlist.toolbar.strokeOption', { width })}
-                    aria-pressed={strokeWidth === width}
-                    onClick={() => onStrokeWidthChange(width)}
-                    className={cn(
-                      'flex h-8 w-8 items-center justify-center rounded hover:bg-gray-100',
-                      strokeWidth === width && 'bg-gray-200',
-                    )}
-                  >
-                    {/* Dot preview of the stroke width, capped to fit the button. */}
-                    <span
-                      className="rounded-full bg-gray-800"
-                      style={{ width: Math.min(width, 20), height: Math.min(width, 20) }}
-                    />
-                  </button>
-                ))}
-              </div>
+                {(close) => (
+                  <div className="flex items-center gap-1" role="group" aria-label={t('wishlist.toolbar.strokeGroup')}>
+                    {STROKE_WIDTHS.map((width) => (
+                      <button
+                        key={width}
+                        type="button"
+                        title={t('wishlist.toolbar.strokeOption', { width })}
+                        aria-label={t('wishlist.toolbar.strokeOption', { width })}
+                        aria-pressed={strokeWidth === width}
+                        onClick={() => {
+                          onStrokeWidthChange(width);
+                          close();
+                        }}
+                        className={cn(
+                          'flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100',
+                          strokeWidth === width && 'bg-gray-200 ring-1 ring-sky-500',
+                        )}
+                      >
+                        {/* Dot preview of the stroke width, capped to fit the button. */}
+                        <span
+                          className="rounded-full bg-gray-800"
+                          style={{ width: Math.min(width, 24), height: Math.min(width, 24) }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </ToolbarFlyout>
+            )}
+
+            {showPatternOptions && (
+              <ToolbarFlyout
+                label={t('wishlist.toolbar.patternCurrent', { name: t(PATTERN_LABEL_KEYS[pagePattern ?? 'none']) })}
+                side={flyoutSide}
+                trigger={<PagePatternPreview pattern={pagePattern} background={pageBackground} />}
+              >
+                {(close) => (
+                  <div className="grid grid-cols-4 gap-1" role="group" aria-label={t('wishlist.toolbar.patternGroup')}>
+                    {(['none', ...PAGE_PATTERNS] as const).map((option) => {
+                      const value = option === 'none' ? undefined : option;
+                      const active = (pagePattern ?? 'none') === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => {
+                            onPagePatternChange(value);
+                            close();
+                          }}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-[0.65rem] font-medium text-gray-600 hover:bg-gray-100',
+                            active && 'bg-gray-200 text-gray-900 ring-1 ring-sky-500',
+                          )}
+                        >
+                          <PagePatternPreview pattern={value} background={pageBackground} />
+                          {t(PATTERN_LABEL_KEYS[option])}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </ToolbarFlyout>
             )}
           </div>
         </>

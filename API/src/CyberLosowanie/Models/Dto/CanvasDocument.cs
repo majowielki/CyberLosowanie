@@ -31,6 +31,8 @@ namespace CyberLosowanie.Models.Dto
     {
         public string? Id { get; set; }
         public string? Background { get; set; }
+        /// <summary>Background pattern (WishlistConstants.PAGE_PATTERNS); null = plain colour.</summary>
+        public string? Pattern { get; set; }
         public List<CanvasStroke>? Strokes { get; set; }
         public List<CanvasItem>? Items { get; set; }
     }

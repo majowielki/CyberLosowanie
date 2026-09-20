@@ -6,6 +6,7 @@ import {
   CanvasPage,
   CanvasStroke,
   CanvasTextItem,
+  PagePattern,
   StrokeKind,
   StrokeTool,
   createEmptyPage,
@@ -254,6 +255,23 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     [updateCurrentPage],
   );
 
+  /** Sets (or with undefined clears) the current page's background pattern. */
+  const setPagePattern = useCallback(
+    (pattern: PagePattern | undefined) => {
+      updateCurrentPage((page) => {
+        // Omit the key entirely when clearing, so a plain page serializes without it.
+        const next: CanvasPage = { ...page };
+        if (pattern) {
+          next.pattern = pattern;
+        } else {
+          delete next.pattern;
+        }
+        return next;
+      });
+    },
+    [updateCurrentPage],
+  );
+
   // --- pages -----------------------------------------------------------------
 
   const canAddPage = pages.length < DOCUMENT_LIMITS.maxPages;
@@ -364,6 +382,8 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     strokes: currentPage.strokes,
     items: currentPage.items,
     background: currentPage.background,
+    pattern: currentPage.pattern,
+    pageId: currentPage.id,
     liveStroke,
     selectedItemId,
     setSelectedItemId,
@@ -380,6 +400,7 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     removeItem,
     clearPage,
     setPageBackground,
+    setPagePattern,
     // pages
     pages,
     pageCount: pages.length,

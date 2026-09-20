@@ -15,7 +15,9 @@ import {
   CanvasItem,
   CanvasStroke,
   CanvasTextItem,
+  PagePattern,
 } from './canvasDocument';
+import PagePatternLayer from './PagePatternLayer';
 import StrokeShape from './StrokeShape';
 import { useAuthorizedImage } from './useAuthorizedImage';
 import type { Point } from './useCanvasEngine';
@@ -30,6 +32,9 @@ export interface WishlistCanvasProps {
   stageProps: StageViewport['stageProps'];
   /** Page background color (#rrggbb). */
   background?: string;
+  /** Background pattern drawn over the colour; `pageId` seeds its scatter. */
+  pattern?: PagePattern;
+  pageId?: string;
   /** In-progress stroke rendered on top of committed ones (editor only). */
   liveStroke?: CanvasStroke | null;
   /** Brush-size preview cursor for pen/eraser (radius in document units). */
@@ -63,6 +68,8 @@ function WishlistCanvas({
   items,
   stageProps,
   background = CANVAS_BACKGROUND,
+  pattern,
+  pageId = '',
   liveStroke = null,
   brushCursor = null,
   editable = false,
@@ -228,6 +235,7 @@ function WishlistCanvas({
           height={CANVAS_HEIGHT}
           fill={background}
         />
+        <PagePatternLayer pattern={pattern} background={background} seed={pageId} />
       </Layer>
 
       {/* Freehand drawing — the only layer destination-out may touch. */}
