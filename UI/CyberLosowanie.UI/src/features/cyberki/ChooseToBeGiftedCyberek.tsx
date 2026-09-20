@@ -8,7 +8,7 @@ import {
   useGetAvailableGiftTargetsQuery,
   useAssignGiftedCyberekMutation,
 } from "@/features/cyberki/cyberLosowanieApi";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { setGiftedCyberekId } from "@/features/auth/userSlice";
 import { toast } from "@/shared/hooks/use-toast";
@@ -35,6 +35,20 @@ function ChooseToBeGiftedCyberek() {
 
   const boxIds = (cyberkiData?.data ?? []).map((c) => c.id).sort((a, b) => a - b);
   const availableIds = new Set(targetsData?.data ?? []);
+
+  // Routing onto this page relies on the client's persisted giftedCyberekId flag,
+  // which can go stale (another device/tab completed the draw for this account).
+  // The backend guarantees GetSafeTargets is never empty for someone who hasn't
+  // drawn yet (Hall's-condition matching), so a successfully loaded, empty target
+  // list here can only mean the flag was wrong and this user already has a gift
+  // assigned. Self-heal by sending them to the real result — no extra request,
+  // this reuses the data the page already fetched.
+  useEffect(() => {
+    if (!targetsLoading && targetsData && targetsData.data?.length === 0) {
+      toast({ description: t('cyberki.choose.alreadyAssigned') });
+      navigate("/final-page");
+    }
+  }, [targetsLoading, targetsData, navigate, t]);
 
   // The user's pick IS the draw: send the chosen box id; the server re-validates it
   // in a serialized transaction. 409 = somebody just took this box (or it became
@@ -81,7 +95,7 @@ function ChooseToBeGiftedCyberek() {
     );
   }
 
-  if (cyberkiLoading || targetsLoading) {
+  if (cyberkiLoading || targetsLoading || targetsData?.data?.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="text-white text-lg">{t('cyberki.choose.loading')}</div>
