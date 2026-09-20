@@ -15,6 +15,7 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   DOCUMENT_LIMITS,
+  STROKE_KINDS,
 } from './canvasConstants';
 
 /** A validation problem, translatable at display time. */
@@ -25,9 +26,17 @@ export interface CanvasValidationError {
 
 export type StrokeTool = 'pen' | 'eraser';
 
+/** Pen style — how a pen stroke is rendered (see strokeStyles.ts). */
+export type StrokeKind = (typeof STROKE_KINDS)[number];
+
 export interface CanvasStroke {
   id: string;
   tool: StrokeTool;
+  /**
+   * Pen tool only. Absent on eraser strokes and on documents saved before
+   * styles existed — both render as a plain pen.
+   */
+  kind?: StrokeKind;
   color: string;
   width: number;
   /** Flat list of x,y pairs in document coordinates. */
@@ -200,6 +209,9 @@ function validateStrokes(strokes: CanvasStroke[], errors: CanvasValidationError[
     if (stroke.tool !== 'pen' && stroke.tool !== 'eraser') {
       errors.push({ key: 'wishlist.validation.strokeTool' });
     }
+    if (stroke.kind !== undefined && !isStrokeKind(stroke.kind)) {
+      errors.push({ key: 'wishlist.validation.strokeKind' });
+    }
     if (!HEX_COLOR_PATTERN.test(stroke.color)) {
       errors.push({ key: 'wishlist.validation.strokeColor' });
     }
@@ -345,11 +357,16 @@ function toPage(value: Record<string, unknown>): CanvasPage {
   };
 }
 
+export const isStrokeKind = (value: unknown): value is StrokeKind =>
+  typeof value === 'string' && (STROKE_KINDS as readonly string[]).includes(value);
+
+// An unknown kind is kept as-is here so validateCanvasDocument reports it.
 function isStrokeShape(value: unknown): value is CanvasStroke {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&
     (value.tool === 'pen' || value.tool === 'eraser') &&
+    (value.kind === undefined || typeof value.kind === 'string') &&
     typeof value.color === 'string' &&
     typeof value.width === 'number' &&
     Array.isArray(value.points) &&

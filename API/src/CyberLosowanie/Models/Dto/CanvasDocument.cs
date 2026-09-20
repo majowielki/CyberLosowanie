@@ -43,6 +43,8 @@ namespace CyberLosowanie.Models.Dto
     {
         public string? Id { get; set; }
         public string? Tool { get; set; }
+        /// <summary>Pen style (WishlistConstants.STROKE_KINDS); pen tool only, defaults to "pen".</summary>
+        public string? Kind { get; set; }
         public string? Color { get; set; }
         public double Width { get; set; }
         public List<double>? Points { get; set; }

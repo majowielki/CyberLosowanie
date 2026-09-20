@@ -6,6 +6,7 @@ import {
   CanvasPage,
   CanvasStroke,
   CanvasTextItem,
+  StrokeKind,
   StrokeTool,
   createEmptyPage,
 } from './canvasDocument';
@@ -110,11 +111,13 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     }
   }, []);
 
+  // `kind` (pen style) only applies to pen strokes; the eraser ignores it.
   const beginStroke = useCallback(
-    (tool: StrokeTool, color: string, width: number, point: Point) => {
+    (tool: StrokeTool, color: string, width: number, point: Point, kind?: StrokeKind) => {
       liveStrokeRef.current = {
         id: newElementId(),
         tool,
+        ...(tool === 'pen' && kind ? { kind } : {}),
         color,
         width,
         points: [point.x, point.y],

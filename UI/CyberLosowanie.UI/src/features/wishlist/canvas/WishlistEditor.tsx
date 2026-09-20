@@ -16,6 +16,7 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   DEFAULT_PEN_COLOR,
+  DEFAULT_STROKE_KIND,
   DEFAULT_STROKE_WIDTH,
   EMOJI_INSERT_FONT_SIZE,
   IMAGE_INSERT_MAX_WIDTH_RATIO,
@@ -23,6 +24,7 @@ import {
 import {
   CanvasDocument,
   CanvasTextItem,
+  StrokeKind,
   serializeCanvasDocument,
   validateCanvasDocument,
 } from './canvasDocument';
@@ -59,6 +61,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
   const [tool, setTool] = useState<EditorTool>('pen');
   const [color, setColor] = useState<string>(DEFAULT_PEN_COLOR);
   const [strokeWidth, setStrokeWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
+  const [strokeKind, setStrokeKind] = useState<StrokeKind>(DEFAULT_STROKE_KIND);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   // Set when the in-editor Back button is pressed with unsaved changes; router
@@ -125,7 +128,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       return;
     }
     if (tool === 'pen' || tool === 'eraser') {
-      engine.beginStroke(tool, color, strokeWidth, position);
+      engine.beginStroke(tool, color, strokeWidth, position, strokeKind);
     } else if (tool === 'text' && isBackground) {
       const item = engine.addTextItem(position.x, position.y, color);
       setEditingTextId(item.id);
@@ -358,6 +361,8 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           onColorChange={handleColorChange}
           strokeWidth={strokeWidth}
           onStrokeWidthChange={setStrokeWidth}
+          strokeKind={strokeKind}
+          onStrokeKindChange={setStrokeKind}
           canUndo={engine.canUndo}
           canRedo={engine.canRedo}
           onUndo={engine.undo}

@@ -45,6 +45,20 @@ export const PEN_COLORS = [
 
 export const STROKE_WIDTHS = [3, 6, 12, 24] as const;
 
+// Pen styles (stroke `kind`, pen tool only). Mirrors API WishlistConstants
+// STROKE_KIND_*; a stroke without a kind is a plain pen (documents saved
+// before styles existed). Rendering per kind lives in strokeStyles.ts.
+export const STROKE_KINDS = [
+  'pen',
+  'marker',
+  'highlighter',
+  'crayon',
+  'glossy',
+  'neon',
+  'glitter',
+] as const;
+export const DEFAULT_STROKE_KIND: (typeof STROKE_KINDS)[number] = 'pen';
+
 export const DEFAULT_PEN_COLOR: string = PEN_COLORS[0];
 export const DEFAULT_STROKE_WIDTH: number = STROKE_WIDTHS[1];
 

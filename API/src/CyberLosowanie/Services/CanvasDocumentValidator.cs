@@ -75,7 +75,28 @@ namespace CyberLosowanie.Services
             }
 
             ValidateSchema(document, authorCyberekId, errors);
-            return errors.Count == 0 ? (document, errors) : (null, errors);
+            if (errors.Count > 0)
+            {
+                return (null, errors);
+            }
+
+            NormalizeStrokeKinds(document);
+            return (document, errors);
+        }
+
+        /// <summary>
+        /// Canonical form of the pen style: every pen stroke carries an explicit
+        /// kind (a missing one means "pen" — documents saved before styles existed)
+        /// and eraser strokes carry none, so the stored JSON has one shape.
+        /// </summary>
+        private static void NormalizeStrokeKinds(CanvasDocument document)
+        {
+            foreach (var stroke in (document.Pages ?? []).SelectMany(page => page.Strokes ?? []))
+            {
+                stroke.Kind = stroke.Tool == WishlistConstants.TOOL_PEN
+                    ? stroke.Kind ?? WishlistConstants.STROKE_KIND_PEN
+                    : null;
+            }
         }
 
         /// <summary>Serializes a validated document to its canonical stored form.</summary>
@@ -182,6 +203,13 @@ namespace CyberLosowanie.Services
                 if (stroke.Tool != WishlistConstants.TOOL_PEN && stroke.Tool != WishlistConstants.TOOL_ERASER)
                 {
                     errors.Add($"{label}: tool must be '{WishlistConstants.TOOL_PEN}' or '{WishlistConstants.TOOL_ERASER}'.");
+                }
+
+                // Optional; the frontend always sends it for pen strokes. Rejecting an
+                // unknown value keeps the viewer from ever meeting a style it cannot draw.
+                if (stroke.Kind != null && !WishlistConstants.STROKE_KINDS.Contains(stroke.Kind))
+                {
+                    errors.Add($"{label}: kind must be one of {string.Join(", ", WishlistConstants.STROKE_KINDS.Select(k => $"'{k}'"))}.");
                 }
 
                 if (stroke.Color == null || !HexColorRegex.IsMatch(stroke.Color))

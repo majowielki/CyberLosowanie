@@ -10,7 +10,7 @@ import {
   serializeCanvasDocument,
   validateCanvasDocument,
 } from './canvasDocument';
-import { DOCUMENT_LIMITS } from './canvasConstants';
+import { DOCUMENT_LIMITS, STROKE_KINDS } from './canvasConstants';
 
 const stroke = (overrides: Partial<CanvasStroke> = {}): CanvasStroke => ({
   id: 's1',
@@ -98,6 +98,21 @@ describe('validateCanvasDocument', () => {
     expect(validateCanvasDocument(documentWith({ pages: [page({ background: 'white' })] }))).not.toEqual([]);
   });
 
+  it('accepts every known pen style and a stroke without one', () => {
+    const strokes = [
+      stroke({ id: 'plain' }),
+      ...STROKE_KINDS.map((kind, index) => stroke({ id: `k${index}`, kind })),
+    ];
+    expect(validateCanvasDocument(documentWith({ pages: [page({ strokes })] }))).toEqual([]);
+  });
+
+  it('rejects an unknown pen style', () => {
+    const bad = stroke({ kind: 'lipstick' as CanvasStroke['kind'] });
+    expect(validateCanvasDocument(documentWith({ pages: [page({ strokes: [bad] })] }))).toEqual([
+      { key: 'wishlist.validation.strokeKind' },
+    ]);
+  });
+
   it('rejects too many strokes on a single page', () => {
     const strokes = Array.from({ length: DOCUMENT_LIMITS.maxStrokesPerPage + 1 }, (_, index) =>
       stroke({ id: `s${index}` }),
@@ -175,7 +190,7 @@ describe('serialize/parse round trip', () => {
   it('round-trips a multi-page document', () => {
     const original = documentWith({
       pages: [
-        page({ strokes: [stroke(), stroke({ id: 's2', tool: 'eraser' })] }),
+        page({ strokes: [stroke(), stroke({ id: 's2', tool: 'eraser' }), stroke({ id: 's3', kind: 'glitter' })] }),
         page({ id: 'p2', items: [textItem(), imageItem()] }),
       ],
     });
@@ -184,6 +199,27 @@ describe('serialize/parse round trip', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.document).toEqual(original);
+  });
+
+  // Documents saved before pen styles existed have no `kind` — they must keep
+  // loading (and render as a plain pen).
+  it('parses a stroke without a kind', () => {
+    const json = serializeCanvasDocument(documentWith({ pages: [page({ strokes: [stroke()] })] }));
+
+    const result = parseCanvasDocument(json);
+
+    expect(result.errors).toEqual([]);
+    expect(result.document?.pages[0].strokes[0].kind).toBeUndefined();
+  });
+
+  it('rejects a stored stroke with an unknown kind', () => {
+    const json = serializeCanvasDocument(documentWith({ pages: [page({ strokes: [stroke()] })] }))
+      .replace('"tool":"pen"', '"tool":"pen","kind":"lipstick"');
+
+    const result = parseCanvasDocument(json);
+
+    expect(result.document).toBeNull();
+    expect(result.errors).toEqual([{ key: 'wishlist.validation.strokeKind' }]);
   });
 
   it('rejects malformed JSON', () => {

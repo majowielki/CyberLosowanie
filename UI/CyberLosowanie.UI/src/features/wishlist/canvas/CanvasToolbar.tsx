@@ -14,7 +14,9 @@ import {
 import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { useTranslation, TranslationKey } from '@/shared/i18n';
-import { PEN_COLORS, STROKE_WIDTHS } from './canvasConstants';
+import { PEN_COLORS, STROKE_KINDS, STROKE_WIDTHS } from './canvasConstants';
+import { StrokeKind } from './canvasDocument';
+import StrokeKindPreview from './StrokeKindPreview';
 
 export type EditorTool = 'select' | 'pen' | 'eraser' | 'text' | 'fill';
 
@@ -25,6 +27,8 @@ interface CanvasToolbarProps {
   onColorChange: (color: string) => void;
   strokeWidth: number;
   onStrokeWidthChange: (width: number) => void;
+  strokeKind: StrokeKind;
+  onStrokeKindChange: (kind: StrokeKind) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -45,6 +49,16 @@ const TOOLS: Array<{ id: EditorTool; labelKey: TranslationKey; icon: typeof Pen 
   { id: 'fill', labelKey: 'wishlist.toolbar.fill', icon: PaintBucket },
 ];
 
+const KIND_LABEL_KEYS: Record<StrokeKind, TranslationKey> = {
+  pen: 'wishlist.toolbar.kind.pen',
+  marker: 'wishlist.toolbar.kind.marker',
+  highlighter: 'wishlist.toolbar.kind.highlighter',
+  crayon: 'wishlist.toolbar.kind.crayon',
+  glossy: 'wishlist.toolbar.kind.glossy',
+  neon: 'wishlist.toolbar.kind.neon',
+  glitter: 'wishlist.toolbar.kind.glitter',
+};
+
 // Divider between toolbar sections — a horizontal rule in the desktop column,
 // a vertical rule in the mobile strip.
 function ToolbarDivider() {
@@ -63,6 +77,8 @@ function CanvasToolbar({
   onColorChange,
   strokeWidth,
   onStrokeWidthChange,
+  strokeKind,
+  onStrokeKindChange,
   canUndo,
   canRedo,
   onUndo,
@@ -77,7 +93,8 @@ function CanvasToolbar({
   const { t } = useTranslation();
   const showStrokeOptions = tool === 'pen' || tool === 'eraser';
   const showColorOptions = tool === 'pen' || tool === 'text' || tool === 'fill';
-  const showContextualOptions = showColorOptions || showStrokeOptions;
+  const showKindOptions = tool === 'pen';
+  const showContextualOptions = showColorOptions || showStrokeOptions || showKindOptions;
   const isCustomColor = !(PEN_COLORS as readonly string[]).includes(color);
 
   return (
@@ -125,6 +142,31 @@ function CanvasToolbar({
         <>
           <ToolbarDivider />
           <div className="flex flex-wrap items-center gap-2 md:flex-col">
+            {showKindOptions && (
+              <div
+                className="grid grid-cols-4 gap-1 md:grid-cols-1"
+                role="group"
+                aria-label={t('wishlist.toolbar.kindGroup')}
+              >
+                {STROKE_KINDS.map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    title={t(KIND_LABEL_KEYS[kind])}
+                    aria-label={t(KIND_LABEL_KEYS[kind])}
+                    aria-pressed={strokeKind === kind}
+                    onClick={() => onStrokeKindChange(kind)}
+                    className={cn(
+                      'flex h-8 w-11 items-center justify-center rounded-md hover:bg-gray-100',
+                      strokeKind === kind && 'bg-gray-200 ring-1 ring-sky-500',
+                    )}
+                  >
+                    <StrokeKindPreview kind={kind} color={color} />
+                  </button>
+                ))}
+              </div>
+            )}
+
             {showColorOptions && (
               <div
                 className="grid grid-cols-5 gap-1 md:grid-cols-2"

@@ -62,6 +62,21 @@ describe('useCanvasEngine — drawing', () => {
     expect(result.current.liveStroke).toBeNull();
     expect(result.current.isDirty).toBe(false);
   });
+
+  it('records the pen style on pen strokes only', () => {
+    const { result } = renderEngine();
+
+    act(() => {
+      result.current.beginStroke('pen', '#e11d48', 6, { x: 1, y: 1 }, 'neon');
+      result.current.endStroke();
+      result.current.beginStroke('eraser', '#000000', 24, { x: 1, y: 1 }, 'neon');
+      result.current.endStroke();
+    });
+
+    expect(result.current.strokes[0].kind).toBe('neon');
+    // The eraser has no style — the document must not carry one for it.
+    expect('kind' in result.current.strokes[1]).toBe(false);
+  });
 });
 
 describe('useCanvasEngine — items', () => {

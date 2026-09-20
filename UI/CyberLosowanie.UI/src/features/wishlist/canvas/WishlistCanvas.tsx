@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Circle, Group, Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from 'react-konva';
+import { Circle, Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import {
@@ -16,6 +16,7 @@ import {
   CanvasStroke,
   CanvasTextItem,
 } from './canvasDocument';
+import StrokeShape from './StrokeShape';
 import { useAuthorizedImage } from './useAuthorizedImage';
 import type { Point } from './useCanvasEngine';
 import type { StageViewport } from './useStageViewport';
@@ -233,18 +234,7 @@ function WishlistCanvas({
       <Layer listening={false}>
         <Group clipX={0} clipY={0} clipWidth={CANVAS_WIDTH} clipHeight={CANVAS_HEIGHT}>
           {[...strokes, ...(liveStroke ? [liveStroke] : [])].map((stroke) => (
-            <Line
-              key={stroke.id}
-              points={stroke.points}
-              stroke={stroke.color}
-              strokeWidth={stroke.width}
-              lineCap="round"
-              lineJoin="round"
-              tension={0.4}
-              globalCompositeOperation={
-                stroke.tool === 'eraser' ? 'destination-out' : 'source-over'
-              }
-            />
+            <StrokeShape key={stroke.id} stroke={stroke} />
           ))}
         </Group>
       </Layer>

@@ -85,8 +85,22 @@ namespace CyberLosowanie.Test
                 items = items ?? Array.Empty<object>(),
             };
 
-        private static object Stroke(string tool = "pen", string color = "#e11d48", double width = 6, double[]? points = null) =>
-            new { id = Guid.NewGuid().ToString("N"), tool, color, width, points = points ?? new double[] { 1, 2, 3, 4 } };
+        private static object Stroke(string tool = "pen", string color = "#e11d48", double width = 6, double[]? points = null, string? kind = null) =>
+            kind == null
+                ? new { id = Guid.NewGuid().ToString("N"), tool, color, width, points = points ?? new double[] { 1, 2, 3, 4 } }
+                : new { id = Guid.NewGuid().ToString("N"), tool, kind, color, width, points = points ?? new double[] { 1, 2, 3, 4 } };
+
+        // Captures the wishlist the service hands to the repository on a first save.
+        private Func<Wishlist?> CaptureAddedWishlist()
+        {
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(OwnCyberekId)).ReturnsAsync((Wishlist?)null);
+            Wishlist? added = null;
+            _wishlistRepo.Setup(r => r.AddAsync(It.IsAny<Wishlist>()))
+                .Callback<Wishlist>(w => added = w)
+                .Returns(Task.CompletedTask);
+            _storage.Setup(s => s.ListPathsAsync(It.IsAny<string>())).ReturnsAsync(new List<string>());
+            return () => added;
+        }
 
         private static object TextItem(string text = "Lego Technic", double fontSize = 36) =>
             new { id = Guid.NewGuid().ToString("N"), type = "text", text, x = 10.0, y = 20.0, rotation = 0.0, fontSize, fill = "#111827", width = 400.0 };
@@ -230,6 +244,58 @@ namespace CyberLosowanie.Test
 
             added!.CanvasJson.Should().NotContain("evil");
             added.CanvasJson.Should().Contain("\"version\":2");
+        }
+
+        [Theory]
+        [InlineData("pen")]
+        [InlineData("marker")]
+        [InlineData("highlighter")]
+        [InlineData("crayon")]
+        [InlineData("glossy")]
+        [InlineData("neon")]
+        [InlineData("glitter")]
+        public async Task SaveMyWishlistAsync_KnownStrokeKind_IsStored(string kind)
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(strokes: new[] { Stroke(kind: kind) }));
+
+            added()!.CanvasJson.Should().Contain($"\"kind\":\"{kind}\"");
+        }
+
+        [Theory]
+        [InlineData("lipstick")]
+        [InlineData("")]
+        [InlineData("PEN")]                 // case-sensitive vocabulary
+        public async Task SaveMyWishlistAsync_UnknownStrokeKind_ThrowsBusinessValidation(string kind)
+        {
+            var json = BuildCanvasJson(strokes: new[] { Stroke(kind: kind) });
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        // Documents saved before pen styles existed carry no kind; the canonical
+        // form makes the default explicit so the stored JSON has one shape.
+        [Fact]
+        public async Task SaveMyWishlistAsync_PenStrokeWithoutKind_IsStoredAsPlainPen()
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(strokes: new[] { Stroke() }));
+
+            added()!.CanvasJson.Should().Contain("\"kind\":\"pen\"");
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_EraserStroke_NeverStoresAKind()
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(
+                UserName, BuildCanvasJson(strokes: new[] { Stroke(tool: "eraser", kind: "glitter") }));
+
+            added()!.CanvasJson.Should().NotContain("\"kind\"");
         }
 
         [Fact]

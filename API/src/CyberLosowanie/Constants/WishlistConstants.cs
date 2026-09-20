@@ -32,6 +32,13 @@ namespace CyberLosowanie.Constants
         // Document vocabulary (mirrored by the frontend document types)
         public const string TOOL_PEN = "pen";
         public const string TOOL_ERASER = "eraser";
+        // Pen styles (stroke "kind"): only meaningful for TOOL_PEN. A pen stroke
+        // without a kind is a plain pen — documents saved before styles existed.
+        public const string STROKE_KIND_PEN = "pen";
+        public static readonly IReadOnlySet<string> STROKE_KINDS = new HashSet<string>(StringComparer.Ordinal)
+        {
+            STROKE_KIND_PEN, "marker", "highlighter", "crayon", "glossy", "neon", "glitter"
+        };
         public const string ITEM_TYPE_TEXT = "text";
         public const string ITEM_TYPE_IMAGE = "image";
 
