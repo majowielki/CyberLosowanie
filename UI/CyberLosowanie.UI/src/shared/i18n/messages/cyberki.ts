@@ -37,7 +37,11 @@ const pl = {
   'cyberki.final.imageAlt': 'Wylosowany cyberek: {cyberekName}',
   'cyberki.final.unknownName': 'Nieznany',
   'cyberki.final.secretHint': 'Psst — to tajemnica. Nie zdradzaj nikomu, kogo wylosowałeś.',
-  'cyberki.proceed.continue': 'Kontynuuj losowanie',
+  'cyberki.proceed.pickYourself': 'Wybierz siebie',
+  'cyberki.proceed.openBox': 'Otwórz swoje pudełko',
+  'cyberki.proceed.seeResult': 'Zobacz, kogo obdarowujesz',
+  'cyberki.proceed.step': 'Krok {step} z 3',
+  'cyberki.proceed.done': 'Losowanie zakończone 🎁',
   'cyberki.proceed.signIn': 'Zaloguj się, aby zacząć',
 } as const;
 
@@ -81,7 +85,11 @@ export const cyberki: MessageCatalog<CyberkiKey> = {
     'cyberki.final.imageAlt': 'Your draw: {cyberekName}',
     'cyberki.final.unknownName': 'Unknown',
     'cyberki.final.secretHint': "Psst — it's a secret. Don't tell anyone who you drew.",
-    'cyberki.proceed.continue': 'Continue the draw',
+    'cyberki.proceed.pickYourself': 'Pick yourself',
+    'cyberki.proceed.openBox': 'Open your box',
+    'cyberki.proceed.seeResult': "See who you're gifting",
+    'cyberki.proceed.step': 'Step {step} of 3',
+    'cyberki.proceed.done': 'Draw complete 🎁',
     'cyberki.proceed.signIn': 'Sign in to start',
   },
 };
