@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Pencil } from 'lucide-react';
+import { RootState } from '@/app/store';
 import { Button } from '@/shared/ui/button';
 import { Loading, PageHeader, StatusMessage } from '@/shared/components';
 import { useTranslation } from '@/shared/i18n';
@@ -19,11 +21,14 @@ const isConflictError = (error: unknown): boolean =>
 /**
  * /wishlist — my own wishlist. No saved wishlist opens the editor straight
  * away; a saved one shows a read-only preview with an "Edytuj" button (doc 5.1).
+ * Without a cyberek there is no wishlist yet, so the user is sent to pick one.
  */
 function MyWishlistPage() {
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { data, isLoading, error } = useGetMyWishlistQuery();
+  const hasCyberek = useSelector((state: RootState) => state.userAuthStore.cyberekId != null);
+  // Skipping the request avoids a guaranteed 409 from the backend.
+  const { data, isLoading, error } = useGetMyWishlistQuery(undefined, { skip: !hasCyberek });
   const [isEditing, setIsEditing] = useState(false);
 
   const saved = data?.data ?? null;
@@ -32,12 +37,17 @@ function MyWishlistPage() {
     [saved],
   );
 
+  if (!hasCyberek) {
+    return <Navigate to="/select-your-cyberek" replace />;
+  }
+
   if (isLoading) {
     return <Loading />;
   }
 
   if (error) {
-    // 409 = no cyberek selected yet — the wishlist belongs to a cyberek.
+    // 409 = no cyberek selected yet — the wishlist belongs to a cyberek. Only
+    // reachable when the persisted session is stale (picked on another device).
     if (isConflictError(error)) {
       return (
         <StatusMessage

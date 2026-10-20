@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Route, Routes } from 'react-router-dom';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import type { Language } from '@/shared/i18n';
 import type { apiResponseBody, wishlistModel } from '@/types';
@@ -38,7 +39,7 @@ type QueryState = {
 const setQueryState = (state: QueryState) => useGetMyWishlistQueryMock.mockReturnValue(state);
 
 const renderPage = (language: Language = 'pl') =>
-  renderWithProviders(<MyWishlistPage />, { language });
+  renderWithProviders(<MyWishlistPage />, { language, user: { id: 'u1', cyberekId: 1 } });
 
 const successBody = (data: wishlistModel | null): apiResponseBody<wishlistModel | null> => ({
   isSuccess: true,
@@ -79,7 +80,22 @@ describe('MyWishlistPage', () => {
     expect(screen.getByText('MOCK_EDITOR')).toBeInTheDocument();
   });
 
-  it('points the user to cyberek selection on a 409 (no cyberek yet)', () => {
+  it('redirects to cyberek selection without querying when no cyberek is picked', () => {
+    setQueryState({ isLoading: false, data: successBody(null) });
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/wishlist" element={<MyWishlistPage />} />
+        <Route path="/select-your-cyberek" element={<div>SELECT_PAGE</div>} />
+      </Routes>,
+      { route: '/wishlist', user: { id: 'u1' } },
+    );
+
+    expect(screen.getByText('SELECT_PAGE')).toBeInTheDocument();
+    expect(useGetMyWishlistQueryMock).toHaveBeenCalledWith(undefined, { skip: true });
+  });
+
+  it('points the user to cyberek selection on a 409 (stale session)', () => {
     setQueryState({ isLoading: false, error: { status: 409 } });
 
     renderPage();
