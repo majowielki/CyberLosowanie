@@ -99,6 +99,13 @@ namespace CyberLosowanie.Test
                 ? new { id = Guid.NewGuid().ToString("N"), tool, color, width, points = points ?? new double[] { 1, 2, 3, 4 } }
                 : new { id = Guid.NewGuid().ToString("N"), tool, kind, color, width, points = points ?? new double[] { 1, 2, 3, 4 } };
 
+        private static object Fill(string color = "#22c55e", double[][]? rings = null, double? width = null) =>
+            width == null
+                ? new { id = Guid.NewGuid().ToString("N"), tool = "fill", color, rings = rings ?? new[] { Square } }
+                : new { id = Guid.NewGuid().ToString("N"), tool = "fill", color, rings = rings ?? new[] { Square }, width = width.Value };
+
+        private static readonly double[] Square = { 0, 0, 10, 0, 10, 10, 0, 10 };
+
         // Captures the wishlist the service hands to the repository on a first save.
         private Func<Wishlist?> CaptureAddedWishlist()
         {
@@ -310,6 +317,68 @@ namespace CyberLosowanie.Test
                 UserName, BuildCanvasJson(strokes: new[] { Stroke(tool: "eraser", kind: "glitter") }));
 
             added()!.CanvasJson.Should().NotContain("\"kind\"");
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_AreaFillBetweenStrokes_IsStoredInDrawingOrder()
+        {
+            var added = CaptureAddedWishlist();
+            var hole = new double[] { 2, 2, 4, 2, 4, 4 };
+
+            await CreateService().SaveMyWishlistAsync(
+                UserName, BuildCanvasJson(strokes: new[] { Stroke(), Fill(rings: new[] { Square, hole }), Stroke(tool: "eraser") }));
+
+            var json = added()!.CanvasJson;
+            json.Should().Contain("\"tool\":\"fill\"");
+            json.Should().Contain("\"rings\":[[0,0,10,0,10,10,0,10],[2,2,4,2,4,4]]");
+            json.IndexOf("\"fill\"", StringComparison.Ordinal).Should()
+                .BeLessThan(json.IndexOf("\"eraser\"", StringComparison.Ordinal));
+        }
+
+        // Fills keep only colour and rings; strokes never carry rings.
+        [Fact]
+        public async Task SaveMyWishlistAsync_AreaFill_IsStoredWithoutStrokeFields()
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(strokes: new[] { Fill(width: 6) }));
+
+            var json = added()!.CanvasJson;
+            json.Should().NotContain("\"width\":6");
+            json.Should().NotContain("\"points\"");
+            json.Should().NotContain("\"kind\"");
+        }
+
+        public static IEnumerable<object[]> InvalidFills() => new[]
+        {
+            new object[] { Fill(color: "green") },
+            new object[] { Fill(rings: Array.Empty<double[]>()) },
+            new object[] { Fill(rings: new[] { new double[] { 0, 0, 5, 5 } }) },
+            new object[] { Fill(rings: new[] { new double[] { 0, 0, 5, 0, 5 } }) },
+            new object[] { Fill(rings: Enumerable.Repeat(Square, WishlistConstants.MAX_FILL_RINGS + 1).ToArray()) },
+            new object[] { Fill(rings: new[] { Enumerable.Range(0, WishlistConstants.MAX_POINTS_PER_STROKE + 2).Select(i => (double)i).ToArray() }) },
+        };
+
+        [Theory]
+        [MemberData(nameof(InvalidFills))]
+        public async Task SaveMyWishlistAsync_InvalidAreaFill_ThrowsBusinessValidation(object fill)
+        {
+            var json = BuildCanvasJson(strokes: new[] { fill });
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_PenStrokeWithoutWidth_ThrowsBusinessValidation()
+        {
+            var json = BuildCanvasJson(strokes: new object[]
+            {
+                new { id = "s1", tool = "pen", color = "#e11d48", points = new double[] { 1, 2, 3, 4 } },
+            });
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
         }
 
         [Theory]

@@ -11,6 +11,7 @@ import {
   StrokeKind,
   StrokeTool,
   createEmptyPage,
+  isCanvasFill,
 } from './canvasDocument';
 import {
   CANVAS_HEIGHT,
@@ -35,6 +36,9 @@ export interface Point {
   y: number;
 }
 
+/** Z-order moves: one step or all the way up/down. */
+export type ItemOrderMove = 'front' | 'forward' | 'backward' | 'back';
+
 const newElementId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID().replace(/-/g, '')
@@ -42,10 +46,15 @@ const newElementId = (): string =>
 
 // Deep copy with fresh ids — a duplicated page must not share element ids with
 // its source (ids must stay unique so selection/transform target one element).
+// Spreading the page keeps every page-level field (background, pattern, ...).
 const clonePageWithNewIds = (page: CanvasPage): CanvasPage => ({
+  ...page,
   id: newElementId(),
-  background: page.background,
-  strokes: page.strokes.map((stroke) => ({ ...stroke, id: newElementId(), points: [...stroke.points] })),
+  strokes: page.strokes.map((drawing) =>
+    isCanvasFill(drawing)
+      ? { ...drawing, id: newElementId(), rings: drawing.rings.map((ring) => [...ring]) }
+      : { ...drawing, id: newElementId(), points: [...drawing.points] },
+  ),
   items: page.items.map((item) => ({ ...item, id: newElementId() })),
 });
 
@@ -83,21 +92,34 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     setCurrentPageIndex((index) => Math.min(Math.max(index, 0), pages.length - 1));
   }, [pages.length]);
 
-  /** Pushes the present page list onto the undo stack and applies an update. */
-  const commitPages = useCallback((update: (pages: CanvasPage[]) => CanvasPage[]) => {
-    setHistory((current) => ({
-      past: [...current.past.slice(-(MAX_UNDO_STEPS - 1)), current.present],
-      present: update(current.present),
-      future: [],
-    }));
-    setIsDirty(true);
-  }, []);
+  // Key of the last commit that may be merged with the next one (see commitPages).
+  const coalesceKeyRef = useRef<string | null>(null);
+
+  /**
+   * Pushes the present page list onto the undo stack and applies an update.
+   * Consecutive commits with the same `coalesceKey` replace the present instead
+   * of stacking, so e.g. dragging through the colour picker is one undo step.
+   */
+  const commitPages = useCallback(
+    (update: (pages: CanvasPage[]) => CanvasPage[], coalesceKey?: string) => {
+      const merge = coalesceKey !== undefined && coalesceKeyRef.current === coalesceKey;
+      coalesceKeyRef.current = coalesceKey ?? null;
+      setHistory((current) => ({
+        past: merge ? current.past : [...current.past.slice(-(MAX_UNDO_STEPS - 1)), current.present],
+        present: update(current.present),
+        future: [],
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
 
   /** Commits a change to the current page only. */
   const updateCurrentPage = useCallback(
-    (update: (page: CanvasPage) => CanvasPage) => {
-      commitPages((current) =>
-        current.map((page, index) => (index === activeIndex ? update(page) : page)),
+    (update: (page: CanvasPage) => CanvasPage, coalesceKey?: string) => {
+      commitPages(
+        (current) => current.map((page, index) => (index === activeIndex ? update(page) : page)),
+        coalesceKey,
       );
     },
     [commitPages, activeIndex],
@@ -171,6 +193,17 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     setLiveStroke(null);
   }, []);
 
+  /** Appends an area fill (rings from areaFill.ts) on top of the drawing layer. */
+  const addFill = useCallback(
+    (color: string, rings: number[][]) => {
+      updateCurrentPage((page) => ({
+        ...page,
+        strokes: [...page.strokes, { id: newElementId(), tool: 'fill', color, rings }],
+      }));
+    },
+    [updateCurrentPage],
+  );
+
   // --- items (text / image) --------------------------------------------------
 
   const addTextItem = useCallback(
@@ -229,14 +262,19 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     [updateCurrentPage],
   );
 
+  /** `coalesceKey`: merge with the previous commit of the same key (see commitPages). */
   const updateItem = useCallback(
-    (id: string, patch: Partial<CanvasTextItem> & Partial<CanvasImageItem> & Partial<CanvasShapeItem>) => {
+    (
+      id: string,
+      patch: Partial<CanvasTextItem> & Partial<CanvasImageItem> & Partial<CanvasShapeItem>,
+      coalesceKey?: string,
+    ) => {
       updateCurrentPage((page) => ({
         ...page,
         items: page.items.map((item) =>
           item.id === id ? ({ ...item, ...patch } as CanvasItem) : item,
         ),
-      }));
+      }), coalesceKey);
     },
     [updateCurrentPage],
   );
@@ -250,6 +288,36 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
       setSelectedItemId((selected) => (selected === id ? null : selected));
     },
     [updateCurrentPage],
+  );
+
+  /**
+   * Moves an item along the z-axis (the items array order is the z-order).
+   * A move that would not change anything is not committed, so undo never
+   * gets a no-op step.
+   */
+  const reorderItem = useCallback(
+    (id: string, move: ItemOrderMove) => {
+      const from = currentPage.items.findIndex((item) => item.id === id);
+      const last = currentPage.items.length - 1;
+      if (from < 0) {
+        return;
+      }
+      const to =
+        move === 'front' ? last
+          : move === 'back' ? 0
+            : move === 'forward' ? Math.min(from + 1, last)
+              : Math.max(from - 1, 0);
+      if (to === from) {
+        return;
+      }
+      updateCurrentPage((page) => {
+        const items = [...page.items];
+        const [moved] = items.splice(from, 1);
+        items.splice(to, 0, moved);
+        return { ...page, items };
+      });
+    },
+    [currentPage.items, updateCurrentPage],
   );
 
   /** Clears the current page (strokes + items); other pages are untouched. */
@@ -337,6 +405,7 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
   // --- undo / redo -----------------------------------------------------------
 
   const undo = useCallback(() => {
+    coalesceKeyRef.current = null;
     cancelStroke();
     setSelectedItemId(null);
     setHistory((current) => {
@@ -353,6 +422,7 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
   }, [cancelStroke]);
 
   const redo = useCallback(() => {
+    coalesceKeyRef.current = null;
     cancelStroke();
     setSelectedItemId(null);
     setHistory((current) => {
@@ -371,6 +441,7 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
   // --- document io -----------------------------------------------------------
 
   const loadDocument = useCallback((document: CanvasDocument) => {
+    coalesceKeyRef.current = null;
     cancelStroke();
     setSelectedItemId(null);
     setHistory({ past: [], present: document.pages, future: [] });
@@ -405,12 +476,14 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
     extendStroke,
     endStroke,
     cancelStroke,
+    addFill,
     // items
     addTextItem,
     addImageItem,
     addShapeItem,
     updateItem,
     removeItem,
+    reorderItem,
     clearPage,
     setPageBackground,
     setPagePattern,

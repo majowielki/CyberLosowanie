@@ -19,7 +19,9 @@ export const DOCUMENT_LIMITS = {
   maxJsonBytes: 512 * 1024,
   maxPages: 10,
   maxStrokesPerPage: 4_000,
+  // Also the budget for all rings of one area fill together.
   maxPointsPerStroke: 20_000,
+  maxFillRings: 256,
   maxItemsPerPage: 120,
   maxImageItems: 10,
   maxTextLength: 500,
@@ -43,7 +45,7 @@ export const PEN_COLORS = [
   '#92400e', // brown
 ] as const;
 
-export const STROKE_WIDTHS = [3, 6, 12, 24] as const;
+export const STROKE_WIDTHS = [3, 6, 12, 24, 40, 64] as const;
 
 // Pen styles (stroke `kind`, pen tool only). Mirrors API WishlistConstants
 // STROKE_KIND_*; a stroke without a kind is a plain pen (documents saved
@@ -69,6 +71,16 @@ export const EMOJI_INSERT_FONT_SIZE = 120;
 export const DEFAULT_TEXT_WIDTH = 420;
 export const DEFAULT_TEXT_PLACEHOLDER = 'Wpisz tekst...';
 export const MIN_TEXT_WIDTH = 40;
+
+// Editor tools and the key that picks each one (single letter, no modifier).
+export const TOOL_SHORTCUTS = {
+  select: 'V',
+  pen: 'P',
+  eraser: 'E',
+  text: 'T',
+  shape: 'S',
+  fill: 'F',
+} as const;
 
 // Viewport (decision D4: full zoom/pan/pinch). User zoom multiplies the
 // fit-to-width base scale.
@@ -104,6 +116,18 @@ export const PAGE_PATTERNS = [
   'glossy',
   'paper',
 ] as const;
+
+// Area fill (fill tool on a drawn region). Gaps in a hand-drawn outline up to
+// about twice the radius (document units) are closed before the colour floods;
+// the level is an editor setting, not stored in the document.
+export const FILL_GAP_LEVELS = ['none', 'small', 'large'] as const;
+export type FillGapLevel = (typeof FILL_GAP_LEVELS)[number];
+export const FILL_GAP_RADIUS: Record<FillGapLevel, number> = { none: 0, small: 3, large: 7 };
+export const DEFAULT_FILL_GAP: FillGapLevel = 'small';
+// A click on empty paper whose region touches the page edge and covers at
+// least this share of the page recolours the page background (keeping its
+// pattern) instead of adding an area fill.
+export const OPEN_BACKGROUND_SHARE = 0.4;
 
 // Shape items (shape tool). Mirrors API WishlistConstants SHAPE_KINDS. A shape
 // is drawn by dragging its bounding box; a plain click inserts one at

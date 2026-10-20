@@ -19,7 +19,9 @@ namespace CyberLosowanie.Constants
         // Strokes and items are counted per page; the total document size is
         // additionally bounded by MAX_CANVAS_JSON_BYTES.
         public const int MAX_STROKES_PER_PAGE = 4_000;
+        // Also the budget for all rings of one area fill together.
         public const int MAX_POINTS_PER_STROKE = 20_000;
+        public const int MAX_FILL_RINGS = 256;
         public const int MAX_ITEMS_PER_PAGE = 120;
         // Images are capped across the whole document (each one is a stored blob).
         public const int MAX_IMAGE_ITEMS = 10;
@@ -32,6 +34,8 @@ namespace CyberLosowanie.Constants
         // Document vocabulary (mirrored by the frontend document types)
         public const string TOOL_PEN = "pen";
         public const string TOOL_ERASER = "eraser";
+        // Area fill on the drawing layer: polygons ("rings") instead of a path.
+        public const string TOOL_FILL = "fill";
         // Pen styles (stroke "kind"): only meaningful for TOOL_PEN. A pen stroke
         // without a kind is a plain pen — documents saved before styles existed.
         public const string STROKE_KIND_PEN = "pen";

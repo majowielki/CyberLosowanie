@@ -1,6 +1,9 @@
 import { ReactNode, useState } from 'react';
 import {
   ArrowBigRight,
+  ArrowDown,
+  ArrowUp,
+  BringToFront,
   ChevronDown,
   Circle,
   Diamond,
@@ -9,9 +12,11 @@ import {
   Heart,
   ImagePlus,
   MousePointer2,
+  Layers,
   PaintBucket,
   Pen,
   Redo2,
+  SendToBack,
   Shapes,
   Smile,
   Square,
@@ -26,18 +31,29 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover';
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import { cn } from '@/shared/lib/utils';
 import { useTranslation, TranslationKey } from '@/shared/i18n';
-import { PAGE_PATTERNS, PEN_COLORS, STROKE_KINDS, STROKE_WIDTHS } from './canvasConstants';
+import {
+  FILL_GAP_LEVELS,
+  FillGapLevel,
+  PAGE_PATTERNS,
+  TOOL_SHORTCUTS,
+  PEN_COLORS,
+  STROKE_KINDS,
+  STROKE_WIDTHS,
+} from './canvasConstants';
 import { PagePattern, ShapeKind, StrokeKind } from './canvasDocument';
+import type { ItemOrderMove } from './useCanvasEngine';
 import PagePatternPreview from './PagePatternPreview';
 import StrokeKindPreview from './StrokeKindPreview';
 
-export type EditorTool = 'select' | 'pen' | 'eraser' | 'text' | 'shape' | 'fill';
+export type EditorTool = keyof typeof TOOL_SHORTCUTS;
 
 interface CanvasToolbarProps {
   tool: EditorTool;
   onToolChange: (tool: EditorTool) => void;
   color: string;
   onColorChange: (color: string) => void;
+  /** Pointer tool with a recolourable item selected: show the palette for it. */
+  showSelectionColor: boolean;
   strokeWidth: number;
   onStrokeWidthChange: (width: number) => void;
   strokeKind: StrokeKind;
@@ -50,11 +66,17 @@ interface CanvasToolbarProps {
   pageBackground: string;
   pagePattern: PagePattern | undefined;
   onPagePatternChange: (pattern: PagePattern | undefined) => void;
+  fillGap: FillGapLevel;
+  onFillGapChange: (level: FillGapLevel) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
   hasSelection: boolean;
+  /** Whether the selected item can still move up / down the z-order. */
+  canMoveSelectionForward: boolean;
+  canMoveSelectionBackward: boolean;
+  onReorderSelection: (move: ItemOrderMove) => void;
   onDeleteSelection: () => void;
   onClearAll: () => void;
   onPickImage: () => void;
@@ -70,6 +92,19 @@ const TOOLS: Array<{ id: EditorTool; labelKey: TranslationKey; icon: typeof Pen 
   { id: 'shape', labelKey: 'wishlist.toolbar.shape', icon: Shapes },
   { id: 'fill', labelKey: 'wishlist.toolbar.fill', icon: PaintBucket },
 ];
+
+const ORDER_OPTIONS: Array<{ move: ItemOrderMove; labelKey: TranslationKey; icon: typeof Pen; shortcut: string }> = [
+  { move: 'front', labelKey: 'wishlist.toolbar.order.front', icon: BringToFront, shortcut: 'Ctrl+Shift+]' },
+  { move: 'forward', labelKey: 'wishlist.toolbar.order.forward', icon: ArrowUp, shortcut: 'Ctrl+]' },
+  { move: 'backward', labelKey: 'wishlist.toolbar.order.backward', icon: ArrowDown, shortcut: 'Ctrl+[' },
+  { move: 'back', labelKey: 'wishlist.toolbar.order.back', icon: SendToBack, shortcut: 'Ctrl+Shift+[' },
+];
+
+const FILL_GAP_LABEL_KEYS: Record<FillGapLevel, TranslationKey> = {
+  none: 'wishlist.toolbar.fillGap.none',
+  small: 'wishlist.toolbar.fillGap.small',
+  large: 'wishlist.toolbar.fillGap.large',
+};
 
 const SHAPE_OPTIONS: Array<{ id: ShapeKind; labelKey: TranslationKey; icon: typeof Square }> = [
   { id: 'rect', labelKey: 'wishlist.toolbar.shape.rect', icon: Square },
@@ -164,6 +199,7 @@ function CanvasToolbar({
   onToolChange,
   color,
   onColorChange,
+  showSelectionColor,
   strokeWidth,
   onStrokeWidthChange,
   strokeKind,
@@ -175,11 +211,16 @@ function CanvasToolbar({
   pageBackground,
   pagePattern,
   onPagePatternChange,
+  fillGap,
+  onFillGapChange,
   canUndo,
   canRedo,
   onUndo,
   onRedo,
   hasSelection,
+  canMoveSelectionForward,
+  canMoveSelectionBackward,
+  onReorderSelection,
   onDeleteSelection,
   onClearAll,
   onPickImage,
@@ -187,8 +228,11 @@ function CanvasToolbar({
   isUploadingImage,
 }: CanvasToolbarProps) {
   const { t } = useTranslation();
+  const withShortcut = (label: string, shortcut: string) =>
+    t('wishlist.toolbar.withShortcut', { label, shortcut });
   const showStrokeOptions = tool === 'pen' || tool === 'eraser' || tool === 'shape';
-  const showColorOptions = tool === 'pen' || tool === 'text' || tool === 'shape' || tool === 'fill';
+  const showColorOptions =
+    tool === 'pen' || tool === 'text' || tool === 'shape' || tool === 'fill' || showSelectionColor;
   const showKindOptions = tool === 'pen';
   const showShapeOptions = tool === 'shape';
   const showPatternOptions = tool === 'fill';
@@ -210,8 +254,9 @@ function CanvasToolbar({
             type="button"
             size="icon"
             variant={tool === id ? 'default' : 'ghost'}
-            title={t(labelKey)}
+            title={withShortcut(t(labelKey), TOOL_SHORTCUTS[id])}
             aria-label={t(labelKey)}
+            aria-keyshortcuts={TOOL_SHORTCUTS[id]}
             aria-pressed={tool === id}
             onClick={() => onToolChange(id)}
           >
@@ -447,6 +492,40 @@ function CanvasToolbar({
 
             {showPatternOptions && (
               <ToolbarFlyout
+                label={t('wishlist.toolbar.fillGap', { name: t(FILL_GAP_LABEL_KEYS[fillGap]) })}
+                side={flyoutSide}
+                trigger={<FillGapPreview level={fillGap} />}
+              >
+                {(close) => (
+                  <div className="flex w-56 flex-col gap-2">
+                    <p className="text-xs text-gray-600">{t('wishlist.toolbar.fillGapHint')}</p>
+                    <div className="grid grid-cols-3 gap-1" role="group" aria-label={t('wishlist.toolbar.fillGapGroup')}>
+                      {FILL_GAP_LEVELS.map((level) => (
+                        <button
+                          key={level}
+                          type="button"
+                          aria-pressed={fillGap === level}
+                          onClick={() => {
+                            onFillGapChange(level);
+                            close();
+                          }}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-[0.65rem] font-medium text-gray-600 hover:bg-gray-100',
+                            fillGap === level && 'bg-gray-200 text-gray-900 ring-1 ring-sky-500',
+                          )}
+                        >
+                          <FillGapPreview level={level} />
+                          {t(FILL_GAP_LABEL_KEYS[level])}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </ToolbarFlyout>
+            )}
+
+            {showPatternOptions && (
+              <ToolbarFlyout
                 label={t('wishlist.toolbar.patternCurrent', { name: t(PATTERN_LABEL_KEYS[pagePattern ?? 'none']) })}
                 side={flyoutSide}
                 trigger={<PagePatternPreview pattern={pagePattern} background={pageBackground} />}
@@ -491,7 +570,8 @@ function CanvasToolbar({
           type="button"
           size="icon"
           variant="ghost"
-          title={t('wishlist.toolbar.undo')}
+          title={withShortcut(t('wishlist.toolbar.undo'), 'Ctrl+Z')}
+          aria-keyshortcuts="Control+Z"
           aria-label={t('wishlist.toolbar.undo')}
           disabled={!canUndo}
           onClick={onUndo}
@@ -502,18 +582,47 @@ function CanvasToolbar({
           type="button"
           size="icon"
           variant="ghost"
-          title={t('wishlist.toolbar.redo')}
+          title={withShortcut(t('wishlist.toolbar.redo'), 'Ctrl+Y')}
+          aria-keyshortcuts="Control+Y Control+Shift+Z"
           aria-label={t('wishlist.toolbar.redo')}
           disabled={!canRedo}
           onClick={onRedo}
         >
           <Redo2 />
         </Button>
+        {hasSelection && (
+          <ToolbarFlyout label={t('wishlist.toolbar.order')} side={flyoutSide} trigger={<Layers className="h-5 w-5" aria-hidden />}>
+            {(close) => (
+              <div className="flex flex-col gap-0.5" role="group" aria-label={t('wishlist.toolbar.orderGroup')}>
+                {ORDER_OPTIONS.map(({ move, labelKey, icon: Icon, shortcut }) => {
+                  const enabled = move === 'front' || move === 'forward' ? canMoveSelectionForward : canMoveSelectionBackward;
+                  return (
+                    <button
+                      key={move}
+                      type="button"
+                      disabled={!enabled}
+                      onClick={() => {
+                        onReorderSelection(move);
+                        close();
+                      }}
+                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-40"
+                    >
+                      <Icon className="h-4 w-4" aria-hidden />
+                      <span className="flex-1">{t(labelKey)}</span>
+                      <kbd className="font-sans text-[0.65rem] text-gray-400">{shortcut}</kbd>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </ToolbarFlyout>
+        )}
         <Button
           type="button"
           size="icon"
           variant="ghost"
-          title={t('wishlist.toolbar.deleteSelection')}
+          title={withShortcut(t('wishlist.toolbar.deleteSelection'), 'Del')}
+          aria-keyshortcuts="Delete"
           aria-label={t('wishlist.toolbar.deleteSelection')}
           disabled={!hasSelection}
           onClick={onDeleteSelection}
@@ -533,6 +642,27 @@ function CanvasToolbar({
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Trigger/option preview for gap closing: an outline with a break of that size. */
+function FillGapPreview({ level }: { level: FillGapLevel }) {
+  // Wider break = more closing; "none" shows a closed, unfilled ring.
+  const gap = level === 'none' ? 0 : level === 'small' ? 4 : 9;
+  const circumference = 2 * Math.PI * 8;
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+      <circle
+        cx="12"
+        cy="12"
+        r="8"
+        fill={level === 'none' ? 'none' : '#7dd3fc'}
+        stroke="#1f2937"
+        strokeWidth="2"
+        strokeDasharray={gap ? `${circumference - gap} ${gap}` : undefined}
+        transform="rotate(-60 12 12)"
+      />
+    </svg>
   );
 }
 

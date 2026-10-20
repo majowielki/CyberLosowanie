@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CanvasDocument,
+  CanvasFill,
   CanvasImageItem,
   CanvasPage,
   CanvasShapeItem,
@@ -19,6 +20,14 @@ const stroke = (overrides: Partial<CanvasStroke> = {}): CanvasStroke => ({
   color: '#e11d48',
   width: 6,
   points: [1, 2, 3, 4],
+  ...overrides,
+});
+
+const fill = (overrides: Partial<CanvasFill> = {}): CanvasFill => ({
+  id: 'f1',
+  tool: 'fill',
+  color: '#22c55e',
+  rings: [[0, 0, 10, 0, 10, 10, 0, 10], [2, 2, 4, 2, 4, 4]],
   ...overrides,
 });
 
@@ -77,6 +86,23 @@ const documentWith = (partial: Partial<CanvasDocument>): CanvasDocument => ({
 describe('validateCanvasDocument', () => {
   it('accepts an empty (single blank page) document', () => {
     expect(validateCanvasDocument(createEmptyCanvasDocument())).toEqual([]);
+  });
+
+  it('accepts area fills between strokes on the drawing layer', () => {
+    const strokes = [stroke(), fill(), stroke({ id: 's2', tool: 'eraser' })];
+    expect(validateCanvasDocument(documentWith({ pages: [page({ strokes })] }))).toEqual([]);
+  });
+
+  it.each([
+    ['bad colour', fill({ color: 'green' }), 'wishlist.validation.strokeColor'],
+    ['no rings', fill({ rings: [] }), 'wishlist.validation.fillRings'],
+    ['a ring of two points', fill({ rings: [[0, 0, 5, 5]] }), 'wishlist.validation.fillRings'],
+    ['an odd coordinate count', fill({ rings: [[0, 0, 5, 0, 5]] }), 'wishlist.validation.fillRings'],
+    ['too many rings', fill({ rings: Array.from({ length: DOCUMENT_LIMITS.maxFillRings + 1 }, () => [0, 0, 1, 0, 1, 1]) }), 'wishlist.validation.fillRings'],
+    ['too many points', fill({ rings: [Array.from({ length: DOCUMENT_LIMITS.maxPointsPerStroke + 2 }, (_, i) => i)] }), 'wishlist.validation.fillTooManyPoints'],
+  ])('rejects a fill with %s', (_case, badFill, key) => {
+    const errors = validateCanvasDocument(documentWith({ pages: [page({ strokes: [badFill] })] }));
+    expect(errors.map((error) => error.key)).toContain(key);
   });
 
   it('accepts a multi-page document with strokes, text and images', () => {
@@ -238,7 +264,7 @@ describe('serialize/parse round trip', () => {
   it('round-trips a multi-page document', () => {
     const original = documentWith({
       pages: [
-        page({ strokes: [stroke(), stroke({ id: 's2', tool: 'eraser' }), stroke({ id: 's3', kind: 'glitter' })] }),
+        page({ strokes: [stroke(), stroke({ id: 's2', tool: 'eraser' }), stroke({ id: 's3', kind: 'glitter' }), fill()] }),
         page({ id: 'p2', items: [textItem(), imageItem(), shapeItem(), shapeItem({ id: 'sh2', fill: '#22c55e' })], pattern: 'snowflakes' }),
       ],
     });

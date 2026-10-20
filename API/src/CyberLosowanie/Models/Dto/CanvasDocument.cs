@@ -38,8 +38,11 @@ namespace CyberLosowanie.Models.Dto
     }
 
     /// <summary>
-    /// A freehand stroke. Rendered on a layer below the items, because the eraser
-    /// works via destination-out compositing and may only affect the drawing layer.
+    /// An entry of the drawing layer, in drawing order: a freehand stroke (pen /
+    /// eraser) or an area fill. Rendered on a layer below the items, because the
+    /// eraser works via destination-out compositing and may only affect the
+    /// drawing layer — fills included. One class for both keeps the list
+    /// homogeneous; per-tool fields are enforced by the validator.
     /// </summary>
     public class CanvasStroke
     {
@@ -48,8 +51,13 @@ namespace CyberLosowanie.Models.Dto
         /// <summary>Pen style (WishlistConstants.STROKE_KINDS); pen tool only, defaults to "pen".</summary>
         public string? Kind { get; set; }
         public string? Color { get; set; }
-        public double Width { get; set; }
+
+        // Pen / eraser fields
+        public double? Width { get; set; }
         public List<double>? Points { get; set; }
+
+        /// <summary>Fill only: closed polygons as flat x,y lists (outer outline and holes, even-odd).</summary>
+        public List<List<double>>? Rings { get; set; }
     }
 
     /// <summary>

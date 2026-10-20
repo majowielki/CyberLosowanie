@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useCanvasEngine } from './useCanvasEngine';
 import {
   CanvasDocument,
+  CanvasFill,
   CanvasShapeItem,
   CanvasTextItem,
   createEmptyCanvasDocument,
@@ -197,6 +198,86 @@ describe('useCanvasEngine — pages', () => {
     const copyItem = result.current.items[0] as CanvasTextItem;
     expect(copyItem.text).toBe(sourceItem.text);
     expect(copyItem.id).not.toBe(sourceItem.id);
+  });
+
+  it('reorderItem moves an item along the z-order and skips no-op moves', () => {
+    const { result } = renderEngine();
+    const ids: string[] = [];
+    for (const x of [1, 2, 3]) {
+      act(() => {
+        ids.push(result.current.addTextItem(x, x, '#111827').id);
+      });
+    }
+    const order = () => result.current.items.map((item) => item.id);
+
+    act(() => result.current.reorderItem(ids[0], 'forward'));
+    expect(order()).toEqual([ids[1], ids[0], ids[2]]);
+
+    act(() => result.current.reorderItem(ids[0], 'front'));
+    expect(order()).toEqual([ids[1], ids[2], ids[0]]);
+
+    act(() => result.current.reorderItem(ids[0], 'back'));
+    expect(order()).toEqual([ids[0], ids[1], ids[2]]);
+
+    // Already at the bottom: nothing changes and no undo step is added.
+    act(() => result.current.reorderItem(ids[0], 'backward'));
+    act(() => result.current.undo());
+    expect(order()).toEqual([ids[1], ids[2], ids[0]]);
+  });
+
+  it('merges consecutive updates with the same coalesce key into one undo step', () => {
+    const { result } = renderEngine();
+    let id = '';
+    act(() => {
+      id = result.current.addTextItem(1, 1, '#111827').id;
+    });
+
+    act(() => result.current.updateItem(id, { fill: '#e11d48' }, `recolor:${id}`));
+    act(() => result.current.updateItem(id, { fill: '#22c55e' }, `recolor:${id}`));
+    act(() => result.current.updateItem(id, { fill: '#0ea5e9' }, `recolor:${id}`));
+    expect((result.current.items[0] as CanvasTextItem).fill).toBe('#0ea5e9');
+
+    act(() => result.current.undo());
+    expect((result.current.items[0] as CanvasTextItem).fill).toBe('#111827');
+  });
+
+  it('addFill appends an undoable fill that duplicatePage deep-copies', () => {
+    const { result } = renderEngine();
+    const rings = [[0, 0, 10, 0, 10, 10, 0, 10]];
+
+    act(() => result.current.addFill('#22c55e', rings));
+    expect(result.current.strokes).toEqual([
+      { id: expect.any(String), tool: 'fill', color: '#22c55e', rings },
+    ]);
+
+    act(() => result.current.duplicatePage());
+    const [copy] = result.current.strokes as CanvasFill[];
+    const [source] = result.current.pages[0].strokes as CanvasFill[];
+    expect(copy.rings).toEqual(source.rings);
+    expect(copy.rings[0]).not.toBe(source.rings[0]);
+    expect(copy.id).not.toBe(source.id);
+
+    act(() => result.current.undo());
+    act(() => result.current.undo());
+    expect(result.current.strokes).toHaveLength(0);
+  });
+
+  it('duplicatePage keeps the page background and pattern', () => {
+    const { result } = renderEngine();
+
+    act(() => {
+      result.current.setPageBackground('#0ea5e9');
+    });
+    act(() => {
+      result.current.setPagePattern('snowflakes');
+    });
+    act(() => {
+      result.current.duplicatePage();
+    });
+
+    expect(result.current.background).toBe('#0ea5e9');
+    expect(result.current.pattern).toBe('snowflakes');
+    expect(result.current.pageId).not.toBe(result.current.pages[0].id);
   });
 
   it('editing one page does not affect another', () => {

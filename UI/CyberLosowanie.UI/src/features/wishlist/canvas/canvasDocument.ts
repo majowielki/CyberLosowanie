@@ -88,6 +88,25 @@ export interface CanvasShapeItem {
   fill?: string;
 }
 
+/**
+ * Area fill made with the fill tool on a drawn region: polygons (an outer
+ * outline plus holes, even-odd rule) in document coordinates. It lives in the
+ * page's drawing list, in order with the strokes — later strokes draw over
+ * it and the eraser cuts it like ink.
+ */
+export interface CanvasFill {
+  id: string;
+  tool: 'fill';
+  color: string;
+  /** Closed rings as flat x,y lists. */
+  rings: number[][];
+}
+
+/** One entry of the drawing layer, in drawing order. */
+export type CanvasDrawing = CanvasStroke | CanvasFill;
+
+export const isCanvasFill = (drawing: CanvasDrawing): drawing is CanvasFill => drawing.tool === 'fill';
+
 /** Order in the items array is the z-order. */
 export type CanvasItem = CanvasTextItem | CanvasImageItem | CanvasShapeItem;
 
@@ -100,7 +119,8 @@ export interface CanvasPage {
   background: string;
   /** Absent = plain colour. The ink colour is derived from `background`. */
   pattern?: PagePattern;
-  strokes: CanvasStroke[];
+  /** Drawing layer: strokes and area fills, in drawing order. */
+  strokes: CanvasDrawing[];
   items: CanvasItem[];
 }
 
@@ -221,7 +241,7 @@ function validatePages(
   }
 }
 
-function validateStrokes(strokes: CanvasStroke[], errors: CanvasValidationError[]): void {
+function validateStrokes(strokes: CanvasDrawing[], errors: CanvasValidationError[]): void {
   if (strokes.length > DOCUMENT_LIMITS.maxStrokesPerPage) {
     errors.push({
       key: 'wishlist.validation.tooManyStrokes',
@@ -233,6 +253,10 @@ function validateStrokes(strokes: CanvasStroke[], errors: CanvasValidationError[
   for (const stroke of strokes) {
     if (!stroke.id) {
       errors.push({ key: 'wishlist.validation.strokeNoId' });
+    }
+    if (isCanvasFill(stroke)) {
+      validateFill(stroke, errors);
+      continue;
     }
     if (stroke.tool !== 'pen' && stroke.tool !== 'eraser') {
       errors.push({ key: 'wishlist.validation.strokeTool' });
@@ -264,6 +288,26 @@ function validateStrokes(strokes: CanvasStroke[], errors: CanvasValidationError[
     if (stroke.points.some((value) => !Number.isFinite(value))) {
       errors.push({ key: 'wishlist.validation.strokePointsNumbers' });
     }
+  }
+}
+
+function validateFill(fill: CanvasFill, errors: CanvasValidationError[]): void {
+  if (!HEX_COLOR_PATTERN.test(fill.color)) {
+    errors.push({ key: 'wishlist.validation.strokeColor' });
+  }
+  if (
+    fill.rings.length === 0 ||
+    fill.rings.length > DOCUMENT_LIMITS.maxFillRings ||
+    fill.rings.some((ring) => ring.length < 6 || ring.length % 2 !== 0 || !ring.every(Number.isFinite))
+  ) {
+    errors.push({ key: 'wishlist.validation.fillRings', params: { limit: DOCUMENT_LIMITS.maxFillRings } });
+  }
+  const pointCount = fill.rings.reduce((sum, ring) => sum + ring.length, 0);
+  if (pointCount > DOCUMENT_LIMITS.maxPointsPerStroke) {
+    errors.push({
+      key: 'wishlist.validation.fillTooManyPoints',
+      params: { limit: DOCUMENT_LIMITS.maxPointsPerStroke },
+    });
   }
 }
 
@@ -403,7 +447,7 @@ function toPage(value: Record<string, unknown>): CanvasPage {
     id: typeof value.id === 'string' ? value.id : generateCanvasId(),
     background: typeof value.background === 'string' ? value.background : CANVAS_BACKGROUND,
     ...(typeof value.pattern === 'string' ? { pattern: value.pattern as PagePattern } : {}),
-    strokes: Array.isArray(value.strokes) ? value.strokes.filter(isStrokeShape) : [],
+    strokes: Array.isArray(value.strokes) ? value.strokes.filter(isDrawingShape) : [],
     items: Array.isArray(value.items) ? value.items.filter(isItemShape) : [],
   };
 }
@@ -418,7 +462,17 @@ export const isStrokeKind = (value: unknown): value is StrokeKind =>
   typeof value === 'string' && (STROKE_KINDS as readonly string[]).includes(value);
 
 // An unknown kind is kept as-is here so validateCanvasDocument reports it.
-function isStrokeShape(value: unknown): value is CanvasStroke {
+function isDrawingShape(value: unknown): value is CanvasDrawing {
+  if (isRecord(value) && value.tool === 'fill') {
+    return (
+      typeof value.id === 'string' &&
+      typeof value.color === 'string' &&
+      Array.isArray(value.rings) &&
+      value.rings.every(
+        (ring) => Array.isArray(ring) && ring.every((point) => typeof point === 'number'),
+      )
+    );
+  }
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&

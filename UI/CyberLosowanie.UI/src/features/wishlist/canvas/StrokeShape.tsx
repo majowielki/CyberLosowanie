@@ -1,8 +1,38 @@
 import { memo } from 'react';
-import { Circle, Group, Line, Star } from 'react-konva';
-import { CanvasStroke, StrokeKind } from './canvasDocument';
+import { Circle, Group, Line, Shape, Star } from 'react-konva';
+import type Konva from 'konva';
+import { CanvasDrawing, CanvasFill, CanvasStroke, StrokeKind, isCanvasFill } from './canvasDocument';
 import { DEFAULT_STROKE_KIND } from './canvasConstants';
 import { darken, jitterOffset, lighten, sampleSparkles } from './strokeStyles';
+
+/**
+ * Renders one entry of the drawing layer: an area fill, or a stroke in its pen
+ * style. Memoised, so committed entries skip re-rendering while a new stroke
+ * is drawn.
+ */
+function DrawingShapeComponent({ stroke }: { stroke: CanvasDrawing }) {
+  return isCanvasFill(stroke) ? <FillShape fill={stroke} /> : <StrokeShapeComponent stroke={stroke} />;
+}
+
+/**
+ * Area fill: all rings in one path filled with the even-odd rule, so inner
+ * rings cut holes (an island inside the region stays unpainted).
+ */
+function FillShape({ fill }: { fill: CanvasFill }) {
+  const drawRings = (context: Konva.Context, shape: Konva.Shape) => {
+    context.beginPath();
+    for (const ring of fill.rings) {
+      context.moveTo(ring[0], ring[1]);
+      for (let i = 2; i < ring.length; i += 2) {
+        context.lineTo(ring[i], ring[i + 1]);
+      }
+      context.closePath();
+    }
+    context.fillStrokeShape(shape);
+  };
+
+  return <Shape sceneFunc={drawRings} fill={fill.color} fillRule="evenodd" listening={false} perfectDrawEnabled={false} />;
+}
 
 /**
  * Renders one stroke according to its pen style. Shared by the editor (live
@@ -153,5 +183,5 @@ function StrokeShapeComponent({ stroke }: { stroke: CanvasStroke }) {
   }
 }
 
-const StrokeShape = memo(StrokeShapeComponent);
+const StrokeShape = memo(DrawingShapeComponent);
 export default StrokeShape;

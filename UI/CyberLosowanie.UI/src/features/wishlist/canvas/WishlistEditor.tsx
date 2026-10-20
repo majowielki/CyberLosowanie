@@ -15,11 +15,17 @@ import {
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
+  DEFAULT_FILL_GAP,
   DEFAULT_PEN_COLOR,
+  DOCUMENT_LIMITS,
+  FILL_GAP_RADIUS,
+  OPEN_BACKGROUND_SHARE,
   DEFAULT_SHAPE_SIZE,
+  FillGapLevel,
   DEFAULT_STROKE_KIND,
   DEFAULT_STROKE_WIDTH,
   SHAPE_DRAG_THRESHOLD,
+  TOOL_SHORTCUTS,
   EMOJI_INSERT_FONT_SIZE,
   IMAGE_INSERT_MAX_WIDTH_RATIO,
 } from './canvasConstants';
@@ -33,9 +39,10 @@ import {
   validateCanvasDocument,
 } from './canvasDocument';
 import { IMAGE_FILE_ACCEPT, prepareImageForUpload } from './imageUtils';
+import { RasterImage, computeAreaFill } from './areaFill';
 import CanvasToolbar, { EditorTool } from './CanvasToolbar';
 import TextEditOverlay from './TextEditOverlay';
-import { useCanvasEngine, Point } from './useCanvasEngine';
+import { useCanvasEngine, ItemOrderMove, Point } from './useCanvasEngine';
 import { useStageViewport } from './useStageViewport';
 import WishlistCanvas from './WishlistCanvas';
 import ZoomControls from './ZoomControls';
@@ -79,9 +86,16 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
   const [backRequested, setBackRequested] = useState(false);
   // Destructive actions (clear page, delete page) ask first, in-app.
   const [confirmation, setConfirmation] = useState<PendingConfirmation | null>(null);
+  const [fillGap, setFillGap] = useState<FillGapLevel>(DEFAULT_FILL_GAP);
+  const drawingSnapshotRef = useRef<(() => RasterImage | null) | null>(null);
+  // Held Space turns the primary button into a hand tool (pan) with any tool.
+  const [isSpaceHeld, setIsSpaceHeld] = useState(false);
+  const isSpaceHeldRef = useRef(false);
+  isSpaceHeldRef.current = isSpaceHeld;
 
   const viewport = useStageViewport({
     panEnabled: tool === 'select',
+    isHandPanActive: () => isSpaceHeldRef.current,
     // A pinch that starts mid-stroke means the finger was zooming, not drawing.
     onPinchStart: engine.cancelStroke,
   });
@@ -116,27 +130,101 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDirty]);
 
-  // Delete/Backspace removes the selection (unless the user is typing).
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Delete' && event.key !== 'Backspace') {
-        return;
+  // Keyboard shortcuts (shown in the toolbar tooltips). A ref to the latest
+  // handler keeps one window listener for the editor's lifetime.
+  const shortcutsBlocked =
+    Boolean(editingTextId) || showEmojiPicker || confirmation !== null ||
+    blocker.state === 'blocked' || backRequested;
+  const handleShortcutRef = useRef<(event: KeyboardEvent) => void>(() => undefined);
+  handleShortcutRef.current = (event: KeyboardEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (shortcutsBlocked || target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable) {
+      return;
+    }
+    const mod = event.ctrlKey || event.metaKey;
+    // Physical key codes, so layouts where ] / [ / Z sit elsewhere still work.
+    if (mod && event.code === 'KeyZ') {
+      event.preventDefault();
+      if (event.shiftKey) {
+        engine.redo();
+      } else {
+        engine.undo();
       }
-      const target = event.target as HTMLElement | null;
-      if (editingTextId || !selectedItemId ||
-          target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') {
-        return;
+    } else if (mod && event.code === 'KeyY') {
+      event.preventDefault();
+      engine.redo();
+    } else if (mod && (event.code === 'BracketRight' || event.code === 'BracketLeft')) {
+      if (selectedItemId) {
+        event.preventDefault();
+        const up = event.code === 'BracketRight';
+        reorderSelection(event.shiftKey ? (up ? 'front' : 'back') : (up ? 'forward' : 'backward'));
       }
+    } else if ((event.key === 'Delete' || event.key === 'Backspace') && selectedItemId) {
+      event.preventDefault();
       removeItem(selectedItemId);
+    } else if (event.key === 'Escape') {
+      engine.setSelectedItemId(null);
+    } else if (event.code === 'Space') {
+      // Hold to pan; preventDefault stops the page from scrolling.
+      event.preventDefault();
+      if (!event.repeat) {
+        setIsSpaceHeld(true);
+      }
+    } else if (!mod && !event.altKey && event.key.length === 1) {
+      const picked = (Object.keys(TOOL_SHORTCUTS) as EditorTool[]).find(
+        (candidate) => TOOL_SHORTCUTS[candidate] === event.key.toUpperCase(),
+      );
+      if (picked) {
+        setTool(picked);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => handleShortcutRef.current(event);
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.code === 'Space') {
+        setIsSpaceHeld(false);
+      }
     };
+    // A Space released while the window is in the background never sends keyup.
+    const handleBlur = () => setIsSpaceHeld(false);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingTextId, selectedItemId, removeItem]);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  // --- selection --------------------------------------------------------------
+
+  const selectedItem = engine.items.find((item) => item.id === selectedItemId) ?? null;
+  const selectedIndex = selectedItem ? engine.items.indexOf(selectedItem) : -1;
+  // With the pointer tool, the palette recolours the selected text or shape.
+  const recolorsSelection =
+    tool === 'select' && (selectedItem?.type === 'text' || selectedItem?.type === 'shape');
+  const paletteColor = !recolorsSelection
+    ? color
+    : selectedItem?.type === 'text'
+      ? selectedItem.fill
+      : selectedItem?.type === 'shape'
+        ? selectedItem.stroke
+        : color;
+
+  const reorderSelection = (move: ItemOrderMove) => {
+    if (selectedItemId) {
+      engine.reorderItem(selectedItemId, move);
+    }
+  };
 
   // --- pointer routing per tool ----------------------------------------------
 
   const handlePointerDown = (position: Point, isBackground: boolean) => {
-    if (viewport.isPinching()) {
+    if (viewport.isPinching() || viewport.isHandPanning()) {
       return;
     }
     if (tool === 'pen' || tool === 'eraser') {
@@ -149,8 +237,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       shapeOriginRef.current = position;
       setShapeDraft(shapeAt(position, position));
     } else if (tool === 'fill' && isBackground) {
-      // Fill the current page background with the selected color.
-      engine.setPageBackground(color);
+      fillAt(position);
     } else if (tool === 'select' && isBackground) {
       engine.setSelectedItemId(null);
     }
@@ -205,6 +292,20 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     engine.endStroke();
   };
 
+  // A stroke or shape drag outlives the pointer leaving the canvas; it ends when
+  // the button is released anywhere. Ending twice (canvas + window) is a no-op.
+  const handlePointerUpRef = useRef(handlePointerUp);
+  handlePointerUpRef.current = handlePointerUp;
+  const isGesturing = engine.isDrawing || shapeDraft !== null;
+  useEffect(() => {
+    if (!isGesturing) {
+      return;
+    }
+    const handleWindowPointerUp = () => handlePointerUpRef.current();
+    window.addEventListener('pointerup', handleWindowPointerUp);
+    return () => window.removeEventListener('pointerup', handleWindowPointerUp);
+  }, [isGesturing]);
+
   /** Bounding box between two corners, normalised so width/height are positive. */
   const shapeAt = (from: Point, to: Point): CanvasShapeItem => ({
     id: 'draft',
@@ -219,6 +320,38 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     strokeWidth,
     ...(shapeFilled ? { fill: color } : {}),
   });
+
+  /**
+   * Fill tool on the page: flood the clicked region of the drawing. Open paper
+   * (a large region reaching the page edge) recolours the page background as
+   * before; anything enclosed — or a drawn line or an earlier fill — gets an
+   * area fill.
+   */
+  const fillAt = (position: Point) => {
+    const raster = engine.strokes.length > 0 ? drawingSnapshotRef.current?.() : null;
+    if (!raster) {
+      engine.setPageBackground(color);
+      return;
+    }
+    const result = computeAreaFill(raster, position, {
+      gapRadius: FILL_GAP_RADIUS[fillGap],
+      maxPoints: DOCUMENT_LIMITS.maxPointsPerStroke,
+      maxRings: DOCUMENT_LIMITS.maxFillRings,
+    });
+    if (!result) {
+      toast({ title: t('wishlist.editor.fillTooComplex'), variant: 'destructive' });
+      return;
+    }
+    const isOpenBackground =
+      result.seedEmpty &&
+      result.touchesBorder &&
+      result.area >= OPEN_BACKGROUND_SHARE * CANVAS_WIDTH * CANVAS_HEIGHT;
+    if (isOpenBackground) {
+      engine.setPageBackground(color);
+    } else {
+      engine.addFill(color, result.rings);
+    }
+  };
 
   // Fill tool on an item: recolour a shape's fill or a text's colour.
   const handleFillItem = (id: string) => {
@@ -321,8 +454,20 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
   };
 
   // Picking a colour never paints by itself — with the fill tool the click on
-  // the page or on a shape decides what gets the colour.
-  const handleColorChange = (nextColor: string) => setColor(nextColor);
+  // the page or on a shape decides what gets the colour. The exception is the
+  // pointer tool with a text or shape selected: then the palette recolours it
+  // (a filled shape keeps outline and fill in one colour, as when drawn), and
+  // a drag through the colour picker is a single undo step.
+  const handleColorChange = (nextColor: string) => {
+    if (!recolorsSelection || !selectedItem) {
+      setColor(nextColor);
+      return;
+    }
+    const patch = selectedItem.type === 'text'
+      ? { fill: nextColor }
+      : { stroke: nextColor, ...(selectedItem.type === 'shape' && selectedItem.fill ? { fill: nextColor } : {}) };
+    engine.updateItem(selectedItem.id, patch, `recolor:${selectedItem.id}`);
+  };
 
   const handleEmojiSelect = (emoji: string) => {
     // Emojis are text items, so they are movable/scalable/rotatable like text.
@@ -434,8 +579,9 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
         <CanvasToolbar
           tool={tool}
           onToolChange={setTool}
-          color={color}
+          color={paletteColor}
           onColorChange={handleColorChange}
+          showSelectionColor={recolorsSelection}
           strokeWidth={strokeWidth}
           onStrokeWidthChange={setStrokeWidth}
           strokeKind={strokeKind}
@@ -447,11 +593,16 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           pageBackground={engine.background}
           pagePattern={engine.pattern}
           onPagePatternChange={engine.setPagePattern}
+          fillGap={fillGap}
+          onFillGapChange={setFillGap}
           canUndo={engine.canUndo}
           canRedo={engine.canRedo}
           onUndo={engine.undo}
           onRedo={engine.redo}
-          hasSelection={engine.selectedItemId !== null}
+          hasSelection={selectedItem !== null}
+          canMoveSelectionForward={selectedIndex >= 0 && selectedIndex < engine.items.length - 1}
+          canMoveSelectionBackward={selectedIndex > 0}
+          onReorderSelection={reorderSelection}
           onDeleteSelection={() => selectedItemId && removeItem(selectedItemId)}
           onClearAll={() =>
             setConfirmation({
@@ -471,10 +622,12 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           className={cn(
             'relative flex-1 touch-none overflow-hidden rounded-md shadow-lg',
             // Pen/eraser hide the native cursor — the on-canvas brush circle is the cursor.
-            (tool === 'pen' || tool === 'eraser') && 'cursor-none',
-            tool === 'text' && 'cursor-text',
-            tool === 'shape' && 'cursor-crosshair',
-            tool === 'fill' && 'cursor-pointer',
+            isSpaceHeld ? 'cursor-grab active:cursor-grabbing' : [
+              (tool === 'pen' || tool === 'eraser') && 'cursor-none',
+              tool === 'text' && 'cursor-text',
+              tool === 'shape' && 'cursor-crosshair',
+              tool === 'fill' && 'cursor-pointer',
+            ],
           )}
         >
           {viewport.isMeasured && (
@@ -483,6 +636,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
               liveStroke={engine.liveStroke}
               previewShape={shapeDraft}
               onFillItem={tool === 'fill' ? handleFillItem : undefined}
+              drawingSnapshotRef={drawingSnapshotRef}
               items={engine.items}
               background={engine.background}
               pattern={engine.pattern}

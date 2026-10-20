@@ -12,6 +12,11 @@ import {
 export interface StageViewportOptions {
   /** Whether dragging the stage background should pan (viewer: always; editor: select tool). */
   panEnabled: boolean;
+  /**
+   * Hand-tool pan with any tool: the middle mouse button always pans, the
+   * primary button pans while this returns true (the editor's held Space).
+   */
+  isHandPanActive?: () => boolean;
   /** Called when a two-finger gesture starts — the editor cancels the in-progress stroke. */
   onPinchStart?: () => void;
 }
@@ -30,12 +35,16 @@ const clamp = (value: number, min: number, max: number): number =>
  * clamped panning. Konva-specific — the stage is transformed, layers stay in
  * document coordinates.
  */
-export function useStageViewport({ panEnabled, onPinchStart }: StageViewportOptions) {
+export function useStageViewport({ panEnabled, isHandPanActive, onPinchStart }: StageViewportOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [zoom, setZoom] = useState(MIN_USER_ZOOM);
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
   const pinchRef = useRef<PinchState | null>(null);
+  // Last pointer position (client px) of an active hand-tool pan.
+  const handPanRef = useRef<{ x: number; y: number } | null>(null);
+  const isHandPanActiveRef = useRef(isHandPanActive);
+  isHandPanActiveRef.current = isHandPanActive;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -66,6 +75,12 @@ export function useStageViewport({ panEnabled, onPinchStart }: StageViewportOpti
     },
     [baseScale, stageWidth, stageHeight],
   );
+
+  // Latest values for the long-lived DOM listeners of the hand-tool pan.
+  const clampPositionRef = useRef(clampPosition);
+  clampPositionRef.current = clampPosition;
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   // Re-clamp after container resizes (e.g. rotation) so content never drifts away.
   useEffect(() => {
@@ -183,6 +198,50 @@ export function useStageViewport({ panEnabled, onPinchStart }: StageViewportOpti
 
   const isPinching = useCallback(() => pinchRef.current !== null, []);
 
+  // Hand-tool pan, on the container's DOM events: pointerdown fires before the
+  // mousedown Konva reacts to, so the editor can check isHandPanning() and skip
+  // starting a stroke. Window listeners keep the pan going outside the canvas.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      const wantsPan = event.button === 1 || (event.button === 0 && isHandPanActiveRef.current?.());
+      if (!wantsPan || event.pointerType === 'touch') {
+        return;
+      }
+      event.preventDefault(); // no middle-click autoscroll
+      handPanRef.current = { x: event.clientX, y: event.clientY };
+    };
+    const handlePointerMove = (event: PointerEvent) => {
+      const last = handPanRef.current;
+      if (!last) {
+        return;
+      }
+      handPanRef.current = { x: event.clientX, y: event.clientY };
+      setStagePosition((position) =>
+        clampPositionRef.current(
+          { x: position.x + event.clientX - last.x, y: position.y + event.clientY - last.y },
+          zoomRef.current,
+        ),
+      );
+    };
+    const handlePointerUp = () => {
+      handPanRef.current = null;
+    };
+    container.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      container.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, []);
+
+  const isHandPanning = useCallback(() => handPanRef.current !== null, []);
+
   // Dragging the stage pans; item drags bubble here too, so only accept the
   // stage itself as the drag target.
   const handleDragEnd = useCallback(
@@ -240,6 +299,7 @@ export function useStageViewport({ panEnabled, onPinchStart }: StageViewportOpti
     zoomOut,
     resetView,
     isPinching,
+    isHandPanning,
     stageProps,
   };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { MutableRefObject, useCallback, useEffect, useRef, useState } from 'react';
 import { Circle, Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
@@ -13,6 +13,7 @@ import {
 import {
   CanvasImageItem,
   CanvasItem,
+  CanvasDrawing,
   CanvasShapeItem,
   CanvasStroke,
   CanvasTextItem,
@@ -22,6 +23,7 @@ import CanvasShapeNode from './CanvasShapeNode';
 import PagePatternLayer from './PagePatternLayer';
 import StrokeShape from './StrokeShape';
 import { useAuthorizedImage } from './useAuthorizedImage';
+import type { RasterImage } from './areaFill';
 import type { Point } from './useCanvasEngine';
 import type { StageViewport } from './useStageViewport';
 
@@ -30,7 +32,8 @@ export type CanvasItemPatch = Partial<Omit<CanvasTextItem, 'id' | 'type'>> &
   Partial<Omit<CanvasShapeItem, 'id' | 'type'>>;
 
 export interface WishlistCanvasProps {
-  strokes: CanvasStroke[];
+  /** Drawing layer: strokes and area fills, in drawing order. */
+  strokes: CanvasDrawing[];
   items: CanvasItem[];
   stageProps: StageViewport['stageProps'];
   /** Page background color (#rrggbb). */
@@ -48,6 +51,11 @@ export interface WishlistCanvasProps {
    * otherwise interactive.
    */
   onFillItem?: (id: string) => void;
+  /**
+   * Filled with a function that rasterizes the drawing layer (strokes + fills,
+   * nothing else) at document resolution — the input of the area fill.
+   */
+  drawingSnapshotRef?: MutableRefObject<(() => RasterImage | null) | null>;
   /** Brush-size preview cursor for pen/eraser (radius in document units). */
   brushCursor?: { radius: number; color: string } | null;
   editable?: boolean;
@@ -68,6 +76,26 @@ export interface WishlistCanvasProps {
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
 
+// Hoisted so the Transformer's props stay referentially stable — a new array or
+// function on every render makes react-konva redraw the items layer each frame
+// of a stroke.
+const TRANSFORMER_ANCHORS = [
+  'top-left',
+  'top-right',
+  'bottom-left',
+  'bottom-right',
+  'middle-left',
+  'middle-right',
+];
+const keepMinimumBox = (oldBox: TransformerBox, newBox: TransformerBox): TransformerBox =>
+  newBox.width < 5 || newBox.height < 5 ? oldBox : newBox;
+type TransformerBox = Parameters<NonNullable<Konva.TransformerConfig['boundBoxFunc']>>[0];
+
+// While a stroke is drawn the committed strokes are cached as one bitmap, so
+// each frame redraws a single image plus the live stroke instead of every
+// stroke. The cap keeps the bitmap at most ~3x the document (≈15 MP) on deep zoom.
+const MAX_STROKE_CACHE_PIXEL_RATIO = 3;
+
 /**
  * Shared Stage renderer for the editor and the read-only viewer. Layer order
  * matters: strokes live on their own layer below the items, because the eraser
@@ -84,6 +112,7 @@ function WishlistCanvas({
   liveStroke = null,
   previewShape = null,
   onFillItem,
+  drawingSnapshotRef,
   brushCursor = null,
   editable = false,
   itemsInteractive = false,
@@ -98,6 +127,8 @@ function WishlistCanvas({
 }: WishlistCanvasProps) {
   const itemNodesRef = useRef<Map<string, Konva.Node>>(new Map());
   const transformerRef = useRef<Konva.Transformer>(null);
+  const committedStrokesRef = useRef<Konva.Group>(null);
+  const isDrawing = liveStroke !== null;
   // Pointer position (document coords) for the brush-size preview cursor.
   const [cursorPos, setCursorPos] = useState<Point | null>(null);
 
@@ -119,6 +150,56 @@ function WishlistCanvas({
     transformer.nodes(node && selectedItemId !== editingItemId ? [node] : []);
     transformer.getLayer()?.batchDraw();
   }, [selectedItemId, editingItemId, items]);
+
+  // Cache on stroke start, drop on stroke end (the next frame shows live vectors
+  // again). Strokes cannot change mid-stroke, so one snapshot per stroke is enough.
+  useEffect(() => {
+    const group = committedStrokesRef.current;
+    if (!group) {
+      return;
+    }
+    if (isDrawing && strokes.length > 0) {
+      const pixelRatio = Math.min(
+        (stageProps.scaleX || 1) * (window.devicePixelRatio || 1),
+        MAX_STROKE_CACHE_PIXEL_RATIO,
+      );
+      group.cache({ x: 0, y: 0, width: CANVAS_WIDTH, height: CANVAS_HEIGHT, pixelRatio });
+    } else {
+      group.clearCache();
+    }
+    group.getLayer()?.batchDraw();
+    // Only the drawing state matters: re-caching on every scale change mid-stroke is wasted work.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDrawing]);
+
+  useEffect(() => {
+    if (!drawingSnapshotRef) {
+      return;
+    }
+    drawingSnapshotRef.current = () => {
+      const group = committedStrokesRef.current;
+      const stage = group?.getStage();
+      if (!group || !stage) {
+        return null;
+      }
+      // toCanvas works in stage (screen) coordinates: crop to the page and
+      // undo the zoom, so one pixel is one document unit. The extra half unit
+      // keeps float rounding from cutting the last pixel column/row.
+      const scale = stage.scaleX() || 1;
+      const canvas = group.toCanvas({
+        x: stage.x(),
+        y: stage.y(),
+        width: (CANVAS_WIDTH + 0.5) * scale,
+        height: (CANVAS_HEIGHT + 0.5) * scale,
+        pixelRatio: 1 / scale,
+      });
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      return context ? context.getImageData(0, 0, canvas.width, canvas.height) : null;
+    };
+    return () => {
+      drawingSnapshotRef.current = null;
+    };
+  }, [drawingSnapshotRef]);
 
   const getDocumentPosition = (event: KonvaEventObject<MouseEvent | TouchEvent>): Point | null => {
     const stage = event.target.getStage();
@@ -143,10 +224,10 @@ function WishlistCanvas({
     }
   };
 
-  const handleMouseLeave = () => {
-    setCursorPos(null);
-    onPointerUp?.();
-  };
+  // Leaving the canvas only hides the brush cursor: the stroke goes on when the
+  // pointer comes back with the button still held (the editor ends it on the
+  // window's pointerup).
+  const handleMouseLeave = () => setCursorPos(null);
 
   const handleTouchStart = (event: KonvaEventObject<TouchEvent>) => {
     if (event.evt.touches.length === 1) {
@@ -258,9 +339,14 @@ function WishlistCanvas({
       {/* Freehand drawing — the only layer destination-out may touch. */}
       <Layer listening={false}>
         <Group clipX={0} clipY={0} clipWidth={CANVAS_WIDTH} clipHeight={CANVAS_HEIGHT}>
-          {[...strokes, ...(liveStroke ? [liveStroke] : [])].map((stroke) => (
-            <StrokeShape key={stroke.id} stroke={stroke} />
-          ))}
+          <Group ref={committedStrokesRef}>
+            {strokes.map((stroke) => (
+              <StrokeShape key={stroke.id} stroke={stroke} />
+            ))}
+          </Group>
+          {/* Same layer as the committed strokes, so a live eraser stroke
+              (destination-out) still cuts through them while drawing. */}
+          {liveStroke && <StrokeShape stroke={liveStroke} />}
         </Group>
       </Layer>
 
@@ -310,17 +396,8 @@ function WishlistCanvas({
           <Transformer
             ref={transformerRef}
             rotateEnabled
-            enabledAnchors={[
-              'top-left',
-              'top-right',
-              'bottom-left',
-              'bottom-right',
-              'middle-left',
-              'middle-right',
-            ]}
-            boundBoxFunc={(oldBox, newBox) =>
-              newBox.width < 5 || newBox.height < 5 ? oldBox : newBox
-            }
+            enabledAnchors={TRANSFORMER_ANCHORS}
+            boundBoxFunc={keepMinimumBox}
           />
         )}
       </Layer>

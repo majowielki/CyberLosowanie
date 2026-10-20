@@ -80,19 +80,29 @@ namespace CyberLosowanie.Services
                 return (null, errors);
             }
 
-            NormalizeStrokeKinds(document);
+            NormalizeStrokes(document);
             return (document, errors);
         }
 
         /// <summary>
-        /// Canonical form of the pen style: every pen stroke carries an explicit
-        /// kind (a missing one means "pen" — documents saved before styles existed)
-        /// and eraser strokes carry none, so the stored JSON has one shape.
+        /// Canonical form of the drawing layer, so the stored JSON has one shape
+        /// per tool: every pen stroke carries an explicit kind (a missing one means
+        /// "pen" — documents saved before styles existed), eraser strokes carry
+        /// none, and fills keep only their colour and rings.
         /// </summary>
-        private static void NormalizeStrokeKinds(CanvasDocument document)
+        private static void NormalizeStrokes(CanvasDocument document)
         {
             foreach (var stroke in (document.Pages ?? []).SelectMany(page => page.Strokes ?? []))
             {
+                if (stroke.Tool == WishlistConstants.TOOL_FILL)
+                {
+                    stroke.Kind = null;
+                    stroke.Width = null;
+                    stroke.Points = null;
+                    continue;
+                }
+
+                stroke.Rings = null;
                 stroke.Kind = stroke.Tool == WishlistConstants.TOOL_PEN
                     ? stroke.Kind ?? WishlistConstants.STROKE_KIND_PEN
                     : null;
@@ -207,9 +217,15 @@ namespace CyberLosowanie.Services
                     errors.Add($"{label}: id is required.");
                 }
 
+                if (stroke.Tool == WishlistConstants.TOOL_FILL)
+                {
+                    ValidateFill(stroke, label, errors);
+                    continue;
+                }
+
                 if (stroke.Tool != WishlistConstants.TOOL_PEN && stroke.Tool != WishlistConstants.TOOL_ERASER)
                 {
-                    errors.Add($"{label}: tool must be '{WishlistConstants.TOOL_PEN}' or '{WishlistConstants.TOOL_ERASER}'.");
+                    errors.Add($"{label}: tool must be '{WishlistConstants.TOOL_PEN}', '{WishlistConstants.TOOL_ERASER}' or '{WishlistConstants.TOOL_FILL}'.");
                 }
 
                 // Optional; the frontend always sends it for pen strokes. Rejecting an
@@ -224,7 +240,7 @@ namespace CyberLosowanie.Services
                     errors.Add($"{label}: color must be a #rrggbb color.");
                 }
 
-                if (stroke.Width is < WishlistConstants.MIN_STROKE_WIDTH or > WishlistConstants.MAX_STROKE_WIDTH)
+                if (stroke.Width is null or < WishlistConstants.MIN_STROKE_WIDTH or > WishlistConstants.MAX_STROKE_WIDTH)
                 {
                     errors.Add($"{label}: width must be between {WishlistConstants.MIN_STROKE_WIDTH} and {WishlistConstants.MAX_STROKE_WIDTH}.");
                 }
@@ -241,6 +257,36 @@ namespace CyberLosowanie.Services
                 {
                     errors.Add($"{label}: points must be a flat list of x,y pairs (even count).");
                 }
+            }
+        }
+
+        private static void ValidateFill(CanvasStroke fill, string label, List<string> errors)
+        {
+            if (fill.Color == null || !HexColorRegex.IsMatch(fill.Color))
+            {
+                errors.Add($"{label}: color must be a #rrggbb color.");
+            }
+
+            if (fill.Rings == null || fill.Rings.Count == 0)
+            {
+                errors.Add($"{label}: a fill needs at least one ring.");
+                return;
+            }
+
+            if (fill.Rings.Count > WishlistConstants.MAX_FILL_RINGS)
+            {
+                errors.Add($"{label}: a fill must not contain more than {WishlistConstants.MAX_FILL_RINGS} rings.");
+            }
+
+            if (fill.Rings.Any(ring => ring == null || ring.Count < 6 || ring.Count % 2 != 0))
+            {
+                errors.Add($"{label}: every ring must be a flat list of at least 3 x,y pairs (even count).");
+            }
+
+            var pointCount = fill.Rings.Sum(ring => ring?.Count ?? 0);
+            if (pointCount > WishlistConstants.MAX_POINTS_PER_STROKE)
+            {
+                errors.Add($"{label}: a fill must not contain more than {WishlistConstants.MAX_POINTS_PER_STROKE} points.");
             }
         }
 
