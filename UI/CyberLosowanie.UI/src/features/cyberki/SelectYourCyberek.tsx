@@ -150,7 +150,7 @@ function SelectYourCyberek() {
                 </span>
                 <span
                   className={cn(
-                    'font-display text-base font-medium leading-tight sm:text-lg',
+                    'font-display text-base font-semibold leading-tight sm:text-lg',
                     isSelected ? 'text-gold' : isTaken ? 'text-cream-muted' : 'text-cream',
                   )}
                 >

@@ -72,7 +72,7 @@ function FinalPage() {
             </div>
           )}
         </div>
-        <figcaption className="font-display text-3xl font-medium text-cream sm:text-4xl">
+        <figcaption className="font-display text-3xl font-semibold text-cream sm:text-4xl">
           {cyberekName}
         </figcaption>
       </figure>

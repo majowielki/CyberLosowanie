@@ -37,7 +37,7 @@ function Landing() {
           />
         </div>
 
-        <h1 className="font-display max-w-2xl text-balance text-4xl font-medium leading-[1.05] tracking-tight text-cream sm:text-5xl lg:text-6xl">
+        <h1 className="font-display max-w-2xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-cream sm:text-5xl lg:text-6xl">
           {t('landing.tagline')}
         </h1>
         <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-cream-muted sm:text-lg">
@@ -66,7 +66,7 @@ function Landing() {
                 <span className="font-display text-3xl text-cream/25">0{index + 1}</span>
               </div>
               <div>
-                <h3 className="font-display text-xl font-medium text-cream">{t(titleKey)}</h3>
+                <h3 className="font-display text-xl font-semibold text-cream">{t(titleKey)}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-cream-muted">{t(bodyKey)}</p>
               </div>
             </li>

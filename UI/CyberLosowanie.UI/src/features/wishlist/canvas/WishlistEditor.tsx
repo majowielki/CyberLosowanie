@@ -390,7 +390,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
               <ArrowLeft aria-hidden /> {t('common.action.back')}
             </Button>
           )}
-          <h1 className="font-display text-2xl font-medium tracking-tight text-cream sm:text-3xl">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-cream sm:text-3xl">
             {t('wishlist.my.title')}
           </h1>
         </div>

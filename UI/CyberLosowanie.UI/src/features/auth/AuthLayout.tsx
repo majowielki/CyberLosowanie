@@ -26,7 +26,7 @@ function AuthLayout({ title, subtitle, footer, children }: AuthLayoutProps) {
       <div className="flex flex-1 items-center justify-center py-10">
         <Card className="w-full max-w-md animate-fade-up">
           <CardHeader className="items-center gap-1 pb-4 text-center">
-            <CardTitle className="font-display text-3xl font-medium tracking-tight">{title}</CardTitle>
+            <CardTitle className="font-display text-3xl font-semibold tracking-tight">{title}</CardTitle>
             <CardDescription className="text-base">{subtitle}</CardDescription>
           </CardHeader>
           <CardContent>{children}</CardContent>

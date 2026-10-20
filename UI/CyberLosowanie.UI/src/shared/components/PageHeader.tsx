@@ -30,7 +30,7 @@ function PageHeader({ eyebrow, title, subtitle, align = 'center', size = 'lg', c
       {eyebrow && <span className="eyebrow">{eyebrow}</span>}
       <h1
         className={cn(
-          'font-display text-balance font-medium leading-[1.05] tracking-tight text-cream',
+          'font-display text-balance font-semibold leading-[1.05] tracking-tight text-cream',
           size === 'lg' ? 'text-4xl sm:text-5xl' : 'text-2xl sm:text-3xl',
         )}
       >

@@ -79,11 +79,9 @@
     @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
   }
 
-  /* Display typography — Fraunces for headings, with its optical-size axis
-     so large sizes get the finer, more elegant cut. */
+  /* Display typography — Cormorant Garamond for headings. */
   .font-display {
     font-family: theme('fontFamily.display');
-    font-variation-settings: 'opsz' 144, 'SOFT' 30;
   }
 
   /* Small letter-spaced label above a heading. */

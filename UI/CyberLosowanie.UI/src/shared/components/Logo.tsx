@@ -12,7 +12,7 @@ function Logo() {
       <span className="grid h-10 w-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow transition-transform group-hover:-translate-y-0.5">
         <TreePine className="h-5 w-5" aria-hidden />
       </span>
-      <span className="font-display hidden text-xl font-medium tracking-tight text-cream sm:block">
+      <span className="font-display hidden text-2xl font-semibold tracking-tight text-cream sm:block">
         Cyber<span className="text-gold">Losowanie</span>
       </span>
     </Link>

@@ -19,7 +19,7 @@ function Error() {
       <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
         {isNotFound ? (
           <>
-            <p className="font-display text-[8rem] font-medium leading-none text-gold/90 sm:text-[11rem]">404</p>
+            <p className="font-display text-[8rem] font-semibold leading-none text-gold/90 sm:text-[11rem]">404</p>
             <StatusMessage
               message={t('common.notFound.title')}
               hint={t('common.notFound.body')}
