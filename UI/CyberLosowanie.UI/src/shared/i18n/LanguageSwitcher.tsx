@@ -1,6 +1,8 @@
+import { ReactElement } from 'react';
 import { useDispatch } from 'react-redux';
-import { Button } from '@/shared/ui/button';
-import { toggleLanguage } from './localeSlice';
+import { cn } from '@/shared/lib/utils';
+import { Language } from './config';
+import { setLanguage } from './localeSlice';
 import { useTranslation } from './useTranslation';
 
 // Inline SVG flags — flag emoji do not render on Windows (doc §6.6), and
@@ -28,31 +30,53 @@ function UnitedKingdomFlag() {
   );
 }
 
+const OPTIONS: { language: Language; code: string; label: string; flag: ReactElement }[] = [
+  { language: 'pl', code: 'PL', label: 'Polski', flag: <PolandFlag /> },
+  { language: 'en', code: 'EN', label: 'English', flag: <UnitedKingdomFlag /> },
+];
+
 /**
- * Two-language toggle (doc §6.6): the flag shows the language a click switches
- * TO. Its label is deliberately in that target language (not translated) so the
- * person who needs it can recognise it.
+ * Two-language segmented switch (doc §6.6): both languages are always visible
+ * and the active one is highlighted, so there is no guessing whether a flag
+ * means "current" or "switch to". Labels stay in their own language (not
+ * translated) so the person who needs one can recognise it.
  */
 export function LanguageSwitcher() {
   const dispatch = useDispatch();
   const { language } = useTranslation();
-  const next =
-    language === 'pl'
-      ? { label: 'English', ariaLabel: 'Switch language to English', flag: <UnitedKingdomFlag /> }
-      : { label: 'Polski', ariaLabel: 'Zmień język na polski', flag: <PolandFlag /> };
 
   return (
-    <Button
-      type="button"
-      variant="glass"
-      size="icon"
-      onClick={() => dispatch(toggleLanguage())}
-      title={next.label}
-      aria-label={next.ariaLabel}
+    <div
+      role="group"
+      aria-label="Język / Language"
+      className="inline-flex h-10 shrink-0 items-center gap-0.5 rounded-full border border-white/15 bg-white/10 p-1 backdrop-blur-md"
     >
-      <span className="block h-4 w-6 overflow-hidden rounded-sm ring-1 ring-black/30">
-        {next.flag}
-      </span>
-    </Button>
+      {OPTIONS.map((option) => {
+        const isActive = option.language === language;
+        return (
+          <button
+            key={option.language}
+            type="button"
+            lang={option.language}
+            aria-pressed={isActive}
+            aria-label={option.label}
+            title={option.label}
+            onClick={() => dispatch(setLanguage(option.language))}
+            className={cn(
+              'flex h-full items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold tracking-wide transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              isActive
+                ? 'bg-cream text-pine-950 shadow-sm'
+                : 'text-cream-muted hover:bg-white/10 hover:text-cream',
+            )}
+          >
+            {/* Flags are decoration; the code carries the meaning, so phones get codes only. */}
+            <span className="hidden h-3 w-[18px] overflow-hidden rounded-[2px] ring-1 ring-black/20 sm:block">
+              {option.flag}
+            </span>
+            {option.code}
+          </button>
+        );
+      })}
+    </div>
   );
 }
