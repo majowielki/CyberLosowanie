@@ -37,7 +37,6 @@ import {
   FillGapLevel,
   PAGE_PATTERNS,
   TOOL_SHORTCUTS,
-  PEN_COLORS,
   STROKE_KINDS,
   STROKE_WIDTHS,
 } from './canvasConstants';
@@ -45,7 +44,7 @@ import { PagePattern, ShapeKind, StrokeKind } from './canvasDocument';
 import type { ItemOrderMove } from './useCanvasEngine';
 import PagePatternPreview from './PagePatternPreview';
 import StrokeKindPreview from './StrokeKindPreview';
-import { vivid } from './strokeStyles';
+import ColorPalettePanel from './ColorPalettePanel';
 
 export type EditorTool = keyof typeof TOOL_SHORTCUTS;
 
@@ -255,7 +254,6 @@ function CanvasToolbar({
   const showContextualOptions =
     showColorOptions || showStrokeOptions || showKindOptions || showShapeOptions || showPatternOptions;
   const CurrentShapeIcon = SHAPE_OPTIONS.find((option) => option.id === shapeKind)?.icon ?? Square;
-  const isCustomColor = !(PEN_COLORS as readonly string[]).includes(color);
   const dock = variant === 'dock';
   // Desktop: toolbar is a left column, so panels open to its right; on narrow
   // screens the panel is a strip above the canvas and panels drop below it;
@@ -437,54 +435,7 @@ function CanvasToolbar({
                   </span>
                 }
               >
-                {(close) => (
-                  <div className="grid grid-cols-6 gap-2" role="group" aria-label={t('wishlist.toolbar.colorGroup')}>
-                    {PEN_COLORS.map((penColor) => (
-                      <button
-                        key={penColor}
-                        type="button"
-                        title={t('wishlist.toolbar.colorOption', { color: penColor })}
-                        aria-label={t('wishlist.toolbar.colorOption', { color: penColor })}
-                        aria-pressed={color === penColor}
-                        onClick={() => {
-                          onColorChange(penColor);
-                          close();
-                        }}
-                        className={cn(
-                          'h-7 w-7 rounded-full border border-gray-300 transition-transform hover:scale-110',
-                          color === penColor && 'ring-2 ring-sky-500 ring-offset-1',
-                        )}
-                        style={{ backgroundColor: penColor }}
-                      />
-                    ))}
-                    {/* Any colour: the native picker (zero dependencies, works on
-                        phones) yields #rrggbb — the exact format the document
-                        schema validates. The swatch shows the picked colour, or a
-                        rainbow ring while a preset is active. */}
-                    <label
-                      title={t('wishlist.toolbar.customColor')}
-                      className={cn(
-                        'relative h-7 w-7 cursor-pointer rounded-full border border-gray-300 transition-transform hover:scale-110',
-                        isCustomColor && 'ring-2 ring-sky-500 ring-offset-1',
-                      )}
-                      style={
-                        isCustomColor
-                          ? { backgroundColor: color }
-                          : { background: 'conic-gradient(#f43f5e, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #f43f5e)' }
-                      }
-                    >
-                      <input
-                        type="color"
-                        // A preset opens the picker on its vivid twin, so dragging
-                        // the hue shows colours even when black is selected.
-                        value={isCustomColor ? color : vivid(color)}
-                        aria-label={t('wishlist.toolbar.customColor')}
-                        onChange={(event) => onColorChange(event.target.value)}
-                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                      />
-                    </label>
-                  </div>
-                )}
+                {(close) => <ColorPalettePanel color={color} onColorChange={onColorChange} onPicked={close} />}
               </ToolbarFlyout>
             )}
 

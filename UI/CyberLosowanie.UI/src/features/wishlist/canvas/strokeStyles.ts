@@ -32,12 +32,15 @@ export function darken(hex: string, amount: number): string {
   return rgbToHex([r * (1 - amount), g * (1 - amount), b * (1 - amount)]);
 }
 
-/**
- * The same hue at full saturation and at least `minValue` brightness (HSV).
- * Starting point for the custom colour picker: opened on black, grey or white
- * its hue slider would change nothing visible.
- */
-export function vivid(hex: string, minValue = 0.5): string {
+/** Hue 0–360°, saturation and value 0–1. */
+export interface HsvColor {
+  h: number;
+  s: number;
+  v: number;
+}
+
+/** #rrggbb → HSV. Hue-less colours (black, grey, white) get hue 0 (red). */
+export function hexToHsv(hex: string): HsvColor {
   const [r, g, b] = hexToRgb(hex).map((channel) => channel / 255);
   const max = Math.max(r, g, b);
   const delta = max - Math.min(r, g, b);
@@ -45,12 +48,13 @@ export function vivid(hex: string, minValue = 0.5): string {
   if (delta > 0) {
     hueSector = max === r ? (g - b) / delta : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
   }
-  hueSector = (hueSector + 6) % 6;
-  const value = Math.max(max, minValue);
-  // HSV → RGB with saturation 1 (each channel is `value`, 0 or on the ramp between).
+  return { h: ((hueSector + 6) % 6) * 60, s: max > 0 ? delta / max : 0, v: max };
+}
+
+export function hsvToHex({ h, s, v }: HsvColor): string {
   const channel = (n: number) => {
-    const k = (n + hueSector) % 6;
-    return value * (1 - Math.max(0, Math.min(k, 4 - k, 1))) * 255;
+    const k = (n + h / 60) % 6;
+    return (v - v * s * Math.max(0, Math.min(k, 4 - k, 1))) * 255;
   };
   return rgbToHex([channel(5), channel(3), channel(1)]);
 }

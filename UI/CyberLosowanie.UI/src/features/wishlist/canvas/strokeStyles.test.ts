@@ -4,10 +4,11 @@ import {
   createRandom,
   darken,
   hashString,
+  hexToHsv,
+  hsvToHex,
   jitterOffset,
   lighten,
   sampleSparkles,
-  vivid,
 } from './strokeStyles';
 
 describe('colour helpers', () => {
@@ -22,16 +23,22 @@ describe('colour helpers', () => {
     expect(lighten('red', 0.5)).toBe('#808080');
   });
 
-  it('makes a colour vivid: full saturation, brightness raised to the minimum', () => {
-    // Near-black blue keeps its hue (~221°) at 50% value.
-    expect(vivid('#111827')).toBe('#002980');
-    // Hue-less black/white/grey fall back to red.
-    expect(vivid('#000000')).toBe('#800000');
-    expect(vivid('#808080')).toBe('#800000');
-    expect(vivid('#ffffff')).toBe('#ff0000');
-    // Already bright colours keep their value and hue, only the saturation goes up.
-    expect(vivid('#e11d48')).toBe('#e10031');
-    expect(vivid('#22c55e')).toBe('#00c549');
+  it('converts between hex and HSV', () => {
+    expect(hexToHsv('#ff0000')).toEqual({ h: 0, s: 1, v: 1 });
+    expect(hexToHsv('#00ff00')).toEqual({ h: 120, s: 1, v: 1 });
+    expect(hexToHsv('#0000ff')).toEqual({ h: 240, s: 1, v: 1 });
+    // Hue-less colours fall back to red's hue.
+    expect(hexToHsv('#000000')).toEqual({ h: 0, s: 0, v: 0 });
+    expect(hexToHsv('#ffffff')).toEqual({ h: 0, s: 0, v: 1 });
+    expect(hsvToHex({ h: 60, s: 1, v: 1 })).toBe('#ffff00');
+    expect(hsvToHex({ h: 300, s: 0.5, v: 0.5 })).toBe('#804080');
+    expect(hsvToHex({ h: 0, s: 0, v: 1 })).toBe('#ffffff');
+  });
+
+  it('round-trips palette colours through HSV', () => {
+    for (const hex of ['#111827', '#e11d48', '#22c55e', '#0ea5e9', '#92400e']) {
+      expect(hsvToHex(hexToHsv(hex))).toBe(hex);
+    }
   });
 });
 
