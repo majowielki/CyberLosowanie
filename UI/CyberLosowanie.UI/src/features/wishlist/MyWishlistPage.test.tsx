@@ -28,6 +28,15 @@ vi.mock('./wishlistApi', async (importOriginal) => {
   };
 });
 
+// The page only reads the cyberek's name (caption of the enlarged child photo).
+vi.mock('@/features/cyberki/cyberLosowanieApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/cyberki/cyberLosowanieApi')>();
+  return {
+    ...actual,
+    useGetCyberekByIdQuery: () => ({ data: { data: { id: 1, name: 'Michał', surname: 'Majewski' } } }),
+  };
+});
+
 import MyWishlistPage from './MyWishlistPage';
 
 type QueryState = {

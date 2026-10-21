@@ -6,7 +6,8 @@ import { RootState } from '@/app/store';
 import { Button } from '@/shared/ui/button';
 import { Loading, PageHeader, StatusMessage } from '@/shared/components';
 import { useTranslation } from '@/shared/i18n';
-import CyberekPortrait from '@/features/cyberki/CyberekPortrait';
+import ZoomableCyberekPortrait from '@/features/cyberki/ZoomableCyberekPortrait';
+import { useGetCyberekByIdQuery } from '@/features/cyberki/cyberLosowanieApi';
 import { extractApiErrorMessage, useGetMyWishlistQuery } from './wishlistApi';
 import {
   createEmptyCanvasDocument,
@@ -32,6 +33,9 @@ function MyWishlistPage() {
   const hasCyberek = cyberekId != null;
   // Skipping the request avoids a guaranteed 409 from the backend.
   const { data, isLoading, error } = useGetMyWishlistQuery(undefined, { skip: !hasCyberek });
+  // Only for the caption of the enlarged child photo.
+  const { data: myCyberekData } = useGetCyberekByIdQuery(cyberekId ?? 0, { skip: !hasCyberek });
+  const myName = myCyberekData?.data?.name;
   const [isEditing, setIsEditing] = useState(false);
   // Set once the editor opened for a restored draft is left, so the page falls
   // back to the normal preview/edit flow.
@@ -100,11 +104,12 @@ function MyWishlistPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-center gap-4">
           {/* The wishlist is a letter to Santa — written by the child version of its owner. */}
-          <CyberekPortrait
+          <ZoomableCyberekPortrait
             cyberekId={cyberekId}
             kind="child"
             alt={t('wishlist.my.childAlt')}
-            className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-cream/80 sm:h-20 sm:w-20"
+            caption={myName ? t('wishlist.childCaption', { name: myName }) : t('wishlist.my.childAlt')}
+            className="h-16 w-16 ring-2 ring-cream/80 sm:h-20 sm:w-20"
           />
           <PageHeader
             align="left"
