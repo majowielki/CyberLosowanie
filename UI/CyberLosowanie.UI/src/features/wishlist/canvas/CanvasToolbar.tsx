@@ -15,12 +15,14 @@ import {
   Layers,
   PaintBucket,
   Pen,
+  Plus,
   Redo2,
   SendToBack,
   Shapes,
   Smile,
   Square,
   Star,
+  Sticker,
   TextCursorInput,
   Trash2,
   Triangle,
@@ -82,12 +84,14 @@ interface CanvasToolbarProps {
   onClearAll: () => void;
   onPickImage: () => void;
   onPickEmoji: () => void;
+  onPickSticker: () => void;
   isUploadingImage: boolean;
   /**
    * 'panel' (default): left column on desktop, wrapping strip on narrow
    * screens. 'dock': the full-screen phone editor's bottom bar — tools in one
-   * thumb-sized row, options and history in a row above; page-level actions
-   * (clear) live in the editor's top bar instead.
+   * thumb-sized row (photo/emoji/sticker behind one Insert button), options
+   * and history in a row above; page-level actions (clear) live in the
+   * editor's top bar instead.
    */
   variant?: 'panel' | 'dock';
   /** Dock only: shown while a text is selected (double-tap is not discoverable). */
@@ -164,6 +168,8 @@ interface ToolbarFlyoutProps {
   side: 'right' | 'bottom' | 'top';
   /** Bigger touch target for the phone dock. */
   large?: boolean;
+  /** Extra classes for the trigger (e.g. filling a grid cell). */
+  className?: string;
   /** Panel body; `close` lets an option collapse the panel after selection. */
   children: (close: () => void) => ReactNode;
 }
@@ -173,7 +179,7 @@ interface ToolbarFlyoutProps {
  * with the full palette in a popover beside the toolbar. Keeps the toolbar
  * short — only the tools and the three current values stay visible.
  */
-function ToolbarFlyout({ label, trigger, side, large, children }: ToolbarFlyoutProps) {
+function ToolbarFlyout({ label, trigger, side, large, className, children }: ToolbarFlyoutProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -188,6 +194,7 @@ function ToolbarFlyout({ label, trigger, side, large, children }: ToolbarFlyoutP
             large ? 'h-11' : 'h-9',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500',
             open && 'bg-gray-200',
+            className,
           )}
         >
           {trigger}
@@ -238,6 +245,7 @@ function CanvasToolbar({
   onClearAll,
   onPickImage,
   onPickEmoji,
+  onPickSticker,
   isUploadingImage,
   variant = 'panel',
   onEditSelectedText,
@@ -263,6 +271,14 @@ function CanvasToolbar({
   // Dock: 44px touch targets and 20px icons (the panel keeps the 36px desktop size).
   const toolButtonClass = dock ? 'h-11 w-full [&_svg]:size-5' : undefined;
   const actionButtonClass = dock ? 'h-11 w-11 shrink-0 [&_svg]:size-5' : undefined;
+  // Things dropped on the page rather than tools that stay active. The panel
+  // shows each as a button; the dock folds them into one Insert flyout, so
+  // the tool row keeps 44px-wide cells on a phone.
+  const insertActions: Array<{ labelKey: TranslationKey; icon: typeof Pen; onClick: () => void; disabled?: boolean }> = [
+    { labelKey: 'wishlist.toolbar.insertImage', icon: ImagePlus, onClick: onPickImage, disabled: isUploadingImage },
+    { labelKey: 'wishlist.toolbar.insertEmoji', icon: Smile, onClick: onPickEmoji },
+    { labelKey: 'wishlist.toolbar.insertSticker', icon: Sticker, onClick: onPickSticker },
+  ];
 
   return (
     <div
@@ -276,7 +292,7 @@ function CanvasToolbar({
       )}
     >
       {/* Tools */}
-      <div className={dock ? 'order-2 grid w-full grid-cols-8 gap-0.5' : 'flex flex-wrap items-center gap-1.5 md:flex-col'}>
+      <div className={dock ? 'order-2 grid w-full grid-cols-7 gap-0.5' : 'flex flex-wrap items-center gap-1.5 md:flex-col'}>
         {TOOLS.map(({ id, labelKey, icon: Icon }) => (
           <Button
             key={id}
@@ -293,29 +309,50 @@ function CanvasToolbar({
             <Icon />
           </Button>
         ))}
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          title={t('wishlist.toolbar.insertImage')}
-          aria-label={t('wishlist.toolbar.insertImage')}
-          disabled={isUploadingImage}
-          className={toolButtonClass}
-          onClick={onPickImage}
-        >
-          <ImagePlus />
-        </Button>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          title={t('wishlist.toolbar.insertEmoji')}
-          aria-label={t('wishlist.toolbar.insertEmoji')}
-          className={toolButtonClass}
-          onClick={onPickEmoji}
-        >
-          <Smile />
-        </Button>
+        {dock ? (
+          <ToolbarFlyout
+            label={t('wishlist.toolbar.insert')}
+            side={flyoutSide}
+            large
+            className="w-full"
+            trigger={<Plus className="h-5 w-5" aria-hidden />}
+          >
+            {(close) => (
+              <div className="flex flex-col gap-0.5" role="group" aria-label={t('wishlist.toolbar.insert')}>
+                {insertActions.map(({ labelKey, icon: Icon, onClick, disabled }) => (
+                  <button
+                    key={labelKey}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => {
+                      close();
+                      onClick();
+                    }}
+                    className="flex h-11 items-center gap-3 rounded-lg px-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-40"
+                  >
+                    <Icon className="h-5 w-5" aria-hidden />
+                    {t(labelKey)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </ToolbarFlyout>
+        ) : (
+          insertActions.map(({ labelKey, icon: Icon, onClick, disabled }) => (
+            <Button
+              key={labelKey}
+              type="button"
+              size="icon"
+              variant="ghost"
+              title={t(labelKey)}
+              aria-label={t(labelKey)}
+              disabled={disabled}
+              onClick={onClick}
+            >
+              <Icon />
+            </Button>
+          ))
+        )}
       </div>
 
       {showContextualOptions && (

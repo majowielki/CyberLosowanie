@@ -110,6 +110,24 @@ describe('useCanvasEngine — items', () => {
     });
   });
 
+  it('adds a sticker centered on the canvas and selects it', () => {
+    const { result } = renderEngine();
+
+    act(() => {
+      result.current.addStickerItem('prezent', 280, 280);
+    });
+
+    expect(result.current.items[0]).toMatchObject({
+      type: 'sticker',
+      stickerId: 'prezent',
+      x: (CANVAS_WIDTH - 280) / 2,
+      y: (CANVAS_HEIGHT - 280) / 2,
+      width: 280,
+      height: 280,
+    });
+    expect(result.current.selectedItemId).toBe(result.current.items[0].id);
+  });
+
   it('updates and removes items, clearing a stale selection', () => {
     const { result } = renderEngine();
 

@@ -328,8 +328,13 @@ namespace CyberLosowanie.Services
                     case WishlistConstants.ITEM_TYPE_SHAPE:
                         ValidateShapeItem(item, label, errors);
                         break;
+                    // Stickers are bundled artwork, not uploads: no blob, so they
+                    // do not count against MAX_IMAGE_ITEMS.
+                    case WishlistConstants.ITEM_TYPE_STICKER:
+                        ValidateStickerItem(item, label, errors);
+                        break;
                     default:
-                        errors.Add($"{label}: type must be '{WishlistConstants.ITEM_TYPE_TEXT}', '{WishlistConstants.ITEM_TYPE_IMAGE}' or '{WishlistConstants.ITEM_TYPE_SHAPE}'.");
+                        errors.Add($"{label}: type must be '{WishlistConstants.ITEM_TYPE_TEXT}', '{WishlistConstants.ITEM_TYPE_IMAGE}', '{WishlistConstants.ITEM_TYPE_SHAPE}' or '{WishlistConstants.ITEM_TYPE_STICKER}'.");
                         break;
                 }
             }
@@ -404,6 +409,21 @@ namespace CyberLosowanie.Services
             if (item.StrokeWidth is null or < WishlistConstants.MIN_STROKE_WIDTH or > WishlistConstants.MAX_STROKE_WIDTH)
             {
                 errors.Add($"{label}: strokeWidth must be between {WishlistConstants.MIN_STROKE_WIDTH} and {WishlistConstants.MAX_STROKE_WIDTH}.");
+            }
+
+            if (item.Width is null or <= 0 || item.Height is null or <= 0)
+            {
+                errors.Add($"{label}: width and height must be positive numbers.");
+            }
+        }
+
+        // A sticker references the built-in library by id; rejecting unknown ids
+        // keeps the viewer from ever meeting artwork it does not ship.
+        private static void ValidateStickerItem(CanvasItem item, string label, List<string> errors)
+        {
+            if (item.StickerId == null || !WishlistConstants.STICKER_IDS.Contains(item.StickerId))
+            {
+                errors.Add($"{label}: stickerId must be one of {string.Join(", ", WishlistConstants.STICKER_IDS.Select(s => $"'{s}'"))}.");
             }
 
             if (item.Width is null or <= 0 || item.Height is null or <= 0)

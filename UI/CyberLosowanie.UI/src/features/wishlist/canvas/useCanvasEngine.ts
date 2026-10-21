@@ -5,6 +5,7 @@ import {
   CanvasItem,
   CanvasPage,
   CanvasShapeItem,
+  CanvasStickerItem,
   CanvasStroke,
   CanvasTextItem,
   PagePattern,
@@ -23,6 +24,7 @@ import {
   CANVAS_DOCUMENT_VERSION,
   MAX_UNDO_STEPS,
 } from './canvasConstants';
+import type { StickerId } from './stickers';
 
 /** Undo/redo snapshot: the whole page list (page navigation is not undoable). */
 type EngineHistory = {
@@ -268,6 +270,26 @@ export function useCanvasEngine(
     [updateCurrentPage],
   );
 
+  /** Adds a library sticker centred on the page at the given size and selects it. */
+  const addStickerItem = useCallback(
+    (stickerId: StickerId, width: number, height: number): CanvasStickerItem => {
+      const item: CanvasStickerItem = {
+        id: newElementId(),
+        type: 'sticker',
+        stickerId,
+        x: (CANVAS_WIDTH - width) / 2,
+        y: (CANVAS_HEIGHT - height) / 2,
+        rotation: 0,
+        width,
+        height,
+      };
+      updateCurrentPage((page) => ({ ...page, items: [...page.items, item] }));
+      setSelectedItemId(item.id);
+      return item;
+    },
+    [updateCurrentPage],
+  );
+
   /** `coalesceKey`: merge with the previous commit of the same key (see commitPages). */
   const updateItem = useCallback(
     (
@@ -487,6 +509,7 @@ export function useCanvasEngine(
     addTextItem,
     addImageItem,
     addShapeItem,
+    addStickerItem,
     updateItem,
     removeItem,
     reorderItem,

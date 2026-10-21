@@ -16,6 +16,7 @@ import {
   CanvasItem,
   CanvasDrawing,
   CanvasShapeItem,
+  CanvasStickerItem,
   CanvasStroke,
   CanvasTextItem,
   PagePattern,
@@ -23,14 +24,17 @@ import {
 import CanvasShapeNode from './CanvasShapeNode';
 import PagePatternLayer from './PagePatternLayer';
 import StrokeShape from './StrokeShape';
+import { STICKERS } from './stickers';
 import { useAuthorizedImage } from './useAuthorizedImage';
+import { useStickerImage } from './useStickerImage';
 import type { RasterImage } from './areaFill';
 import type { Point } from './useCanvasEngine';
 import type { StageViewport } from './useStageViewport';
 
 export type CanvasItemPatch = Partial<Omit<CanvasTextItem, 'id' | 'type'>> &
   Partial<Omit<CanvasImageItem, 'id' | 'type'>> &
-  Partial<Omit<CanvasShapeItem, 'id' | 'type'>>;
+  Partial<Omit<CanvasShapeItem, 'id' | 'type'>> &
+  Partial<Omit<CanvasStickerItem, 'id' | 'type'>>;
 
 export interface WishlistCanvasProps {
   /** Drawing layer: strokes and area fills, in drawing order. */
@@ -385,6 +389,13 @@ function WishlistCanvas({
                 onDblClick={() => onTextEditRequest?.(item.id)}
                 onDblTap={() => onTextEditRequest?.(item.id)}
               />
+            ) : item.type === 'sticker' ? (
+              <CanvasStickerNode
+                key={item.id}
+                item={item}
+                nodeProps={sharedItemProps(item)}
+                registerNode={registerItemNode}
+              />
             ) : (
               <CanvasImageNode
                 key={item.id}
@@ -470,6 +481,43 @@ function CanvasImageNode({ item, nodeProps, registerNode }: CanvasImageNodeProps
         fill="#e5e7eb"
         stroke="#9ca3af"
         strokeWidth={1}
+      />
+    );
+  }
+
+  return (
+    <KonvaImage
+      ref={(node) => registerNode(item.id, node)}
+      {...nodeProps}
+      image={image}
+      width={item.width}
+      height={item.height}
+    />
+  );
+}
+
+interface CanvasStickerNodeProps {
+  item: CanvasStickerItem;
+  nodeProps: SharedItemNodeProps;
+  registerNode: (id: string, node: Konva.Node | null) => void;
+}
+
+/**
+ * Library sticker drawn from its bundled file. Until the file loads (or for an
+ * id this build does not know) an invisible box of the same size keeps the
+ * element selectable and transformable.
+ */
+function CanvasStickerNode({ item, nodeProps, registerNode }: CanvasStickerNodeProps) {
+  const image = useStickerImage(STICKERS[item.stickerId]?.src);
+
+  if (!image) {
+    return (
+      <Rect
+        ref={(node) => registerNode(item.id, node)}
+        {...nodeProps}
+        width={item.width}
+        height={item.height}
+        fill="transparent"
       />
     );
   }

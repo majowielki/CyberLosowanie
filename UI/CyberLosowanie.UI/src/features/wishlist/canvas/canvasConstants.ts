@@ -148,3 +148,9 @@ export const SHAPE_KINDS = ['rect', 'ellipse', 'triangle', 'diamond', 'star', 'h
 export const DEFAULT_SHAPE_SIZE = 220;
 // Drags shorter than this (document units) count as a click.
 export const SHAPE_DRAG_THRESHOLD = 6;
+
+// Built-in sticker library (sticker item `stickerId`). Mirrors API
+// WishlistConstants STICKER_IDS; the artwork and default size of each id live
+// in stickers.ts. Ids are stored in saved wishlists, so they are never renamed
+// or removed — see src/assets/stickers/README.md.
+export const STICKER_IDS = ['drogi-mikolaju', 'choinka', 'prezent'] as const;
