@@ -57,6 +57,8 @@ import WishlistCanvas from './WishlistCanvas';
 import ZoomControls from './ZoomControls';
 import PageCarousel from './PageCarousel';
 import EmojiPicker from './EmojiPicker';
+import StickerPicker from './StickerPicker';
+import { STICKERS, StickerId } from './stickers';
 import UnsavedChangesDialog from './UnsavedChangesDialog';
 import ConfirmDialog, { PendingConfirmation } from './ConfirmDialog';
 import { clearWishlistDraft, writeWishlistDraft } from './wishlistDraft';
@@ -105,6 +107,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const textSheetRef = useRef<MobileTextSheetHandle>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
   // Set when the in-editor Back button is pressed with unsaved changes; router
   // navigation is caught separately by the blocker below.
   const [backRequested, setBackRequested] = useState(false);
@@ -213,7 +216,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
   // Keyboard shortcuts (shown in the toolbar tooltips). A ref to the latest
   // handler keeps one window listener for the editor's lifetime.
   const shortcutsBlocked =
-    Boolean(editingTextId) || showEmojiPicker || confirmation !== null ||
+    Boolean(editingTextId) || showEmojiPicker || showStickerPicker || confirmation !== null ||
     blocker.state === 'blocked' || backRequested;
   const handleShortcutRef = useRef<(event: KeyboardEvent) => void>(() => undefined);
   handleShortcutRef.current = (event: KeyboardEvent) => {
@@ -598,6 +601,13 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
     setTool('select');
   };
 
+  const handleStickerSelect = (stickerId: StickerId) => {
+    const { width, height } = STICKERS[stickerId];
+    engine.addStickerItem(stickerId, width, height);
+    setShowStickerPicker(false);
+    setTool('select');
+  };
+
   // --- leaving with unsaved changes ------------------------------------------
 
   const unsavedDialogOpen = blocker.state === 'blocked' || backRequested;
@@ -613,6 +623,8 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
       setConfirmation(null);
     } else if (showEmojiPicker) {
       setShowEmojiPicker(false);
+    } else if (showStickerPicker) {
+      setShowStickerPicker(false);
     } else if (document.querySelector('[data-radix-popper-content-wrapper]')) {
       // An open toolbar flyout or menu (Radix closes its layers on Escape).
       document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -744,6 +756,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
       }
       onPickImage={() => fileInputRef.current?.click()}
       onPickEmoji={() => setShowEmojiPicker(true)}
+      onPickSticker={() => setShowStickerPicker(true)}
       isUploadingImage={isUploadingImage}
     />
   );
@@ -843,6 +856,9 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
 
       {showEmojiPicker && (
         <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />
+      )}
+      {showStickerPicker && (
+        <StickerPicker onSelect={handleStickerSelect} onClose={() => setShowStickerPicker(false)} />
       )}
 
       <UnsavedChangesDialog

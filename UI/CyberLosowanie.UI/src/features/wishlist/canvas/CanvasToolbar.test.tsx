@@ -30,6 +30,7 @@ const renderToolbar = (tool: EditorTool, overrides: Partial<React.ComponentProps
     onClearAll: vi.fn(),
     onPickImage: vi.fn(),
     onPickEmoji: vi.fn(),
+    onPickSticker: vi.fn(),
     isUploadingImage: false,
     ...overrides,
   };
@@ -68,6 +69,31 @@ describe('CanvasToolbar flyouts', () => {
     expect(screen.getByRole('button', { name: 'Pen style: Glitter' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Color: #e11d48' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Line width: 24' })).toBeInTheDocument();
+  });
+});
+
+describe('CanvasToolbar insert actions', () => {
+  it('shows the sticker button next to the emoji button in the panel', async () => {
+    const props = renderToolbar('pen');
+
+    expect(screen.getByRole('button', { name: 'Insert an emoji' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Insert a sticker' }));
+
+    expect(props.onPickSticker).toHaveBeenCalled();
+  });
+
+  it('folds photo, emoji and sticker into one Insert flyout in the phone dock', async () => {
+    const props = renderToolbar('pen', { variant: 'dock' });
+
+    expect(screen.queryByRole('button', { name: 'Insert a sticker' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Insert a photo, emoji or sticker' }));
+    expect(screen.getByRole('button', { name: 'Insert a photo' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Insert an emoji' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Insert a sticker' }));
+
+    expect(props.onPickSticker).toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Insert a sticker' })).not.toBeInTheDocument();
   });
 });
 

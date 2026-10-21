@@ -56,6 +56,14 @@ namespace CyberLosowanie.Constants
         {
             "rect", "ellipse", "triangle", "diamond", "star", "heart", "arrow"
         };
+        // Built-in sticker library (item "stickerId"). The artwork ships with the
+        // frontend (src/assets/stickers); the document stores only the id. Ids live
+        // in saved wishlists, so they are only ever added — never renamed or removed.
+        public const string ITEM_TYPE_STICKER = "sticker";
+        public static readonly IReadOnlySet<string> STICKER_IDS = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "drogi-mikolaju", "choinka", "prezent"
+        };
 
         // Image upload / storage
         public const long MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;

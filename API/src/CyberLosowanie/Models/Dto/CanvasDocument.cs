@@ -61,9 +61,9 @@ namespace CyberLosowanie.Models.Dto
     }
 
     /// <summary>
-    /// A transformable element (text or image). One class for both types keeps
-    /// (de)serialization simple; per-type required fields are enforced by the
-    /// validator. Order in the list is the z-order.
+    /// A transformable element (text, image, shape or sticker). One class for all
+    /// types keeps (de)serialization simple; per-type required fields are enforced
+    /// by the validator. Order in the list is the z-order.
     /// </summary>
     public class CanvasItem
     {
@@ -83,13 +83,16 @@ namespace CyberLosowanie.Models.Dto
         public string? Stroke { get; set; }
         public double? StrokeWidth { get; set; }
 
-        // Shared (text wrap width / image size / shape size)
+        // Shared (text wrap width / image, shape and sticker size)
         public double? Width { get; set; }
 
-        // Image fields
+        // Image / shape / sticker height
         public double? Height { get; set; }
 
         /// <summary>Blob path "{cyberekId}/{guid}.{ext}" — must belong to the author.</summary>
         public string? Path { get; set; }
+
+        /// <summary>Sticker only: an id from WishlistConstants.STICKER_IDS.</summary>
+        public string? StickerId { get; set; }
     }
 }

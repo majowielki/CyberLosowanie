@@ -126,6 +126,9 @@ namespace CyberLosowanie.Test
                 ? new { id = Guid.NewGuid().ToString("N"), type = "shape", shape, x = 10.0, y = 20.0, rotation = 0.0, width, height, stroke, strokeWidth }
                 : new { id = Guid.NewGuid().ToString("N"), type = "shape", shape, x = 10.0, y = 20.0, rotation = 0.0, width, height, stroke, strokeWidth, fill };
 
+        private static object StickerItem(string stickerId = "choinka", double width = 300, double height = 360) =>
+            new { id = Guid.NewGuid().ToString("N"), type = "sticker", stickerId, x = 390.0, y = 584.0, rotation = 15.0, width, height };
+
         private static object ImageItem(string path) =>
             new { id = Guid.NewGuid().ToString("N"), type = "image", path, x = 5.0, y = 5.0, rotation = 0.0, width = 300.0, height = 200.0 };
 
@@ -451,6 +454,65 @@ namespace CyberLosowanie.Test
 
             await Assert.ThrowsAsync<BusinessValidationException>(
                 () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        [Theory]
+        [InlineData("drogi-mikolaju")]
+        [InlineData("choinka")]
+        [InlineData("prezent")]
+        public async Task SaveMyWishlistAsync_StickerItem_IsStored(string stickerId)
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(
+                UserName, BuildCanvasJson(items: new[] { StickerItem(stickerId) }));
+
+            added()!.CanvasJson.Should()
+                .Contain("\"type\":\"sticker\"")
+                .And.Contain($"\"stickerId\":\"{stickerId}\"")
+                .And.Contain("\"rotation\":15");
+        }
+
+        [Theory]
+        [InlineData("unicorn", 300.0, 360.0)]     // unknown id
+        [InlineData("Choinka", 300.0, 360.0)]     // ids are case-sensitive
+        [InlineData("", 300.0, 360.0)]            // empty id
+        [InlineData("choinka", 0.0, 360.0)]       // zero width
+        [InlineData("choinka", 300.0, -1.0)]      // negative height
+        public async Task SaveMyWishlistAsync_InvalidStickerItem_ThrowsBusinessValidation(string stickerId, double width, double height)
+        {
+            var json = BuildCanvasJson(items: new[] { StickerItem(stickerId, width, height) });
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_StickerWithoutId_ThrowsBusinessValidation()
+        {
+            var json = BuildCanvasJson(items: new object[]
+            {
+                new { id = "s1", type = "sticker", x = 0.0, y = 0.0, rotation = 0.0, width = 100.0, height = 100.0 }
+            });
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, json));
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_StickersDoNotCountAgainstImageLimit()
+        {
+            // A full image quota plus many stickers is still a valid document.
+            var items = Enumerable.Range(0, WishlistConstants.MAX_IMAGE_ITEMS)
+                .Select(_ => ImageItem(OwnImagePath()))
+                .Concat(Enumerable.Range(0, 20).Select(_ => StickerItem()))
+                .ToArray();
+            _storage.Setup(s => s.ListPathsAsync(It.IsAny<string>())).ReturnsAsync(new List<string>());
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(items: items));
+
+            added().Should().NotBeNull();
         }
 
         [Fact]

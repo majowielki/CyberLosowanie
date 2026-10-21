@@ -5,6 +5,7 @@ import {
   CanvasImageItem,
   CanvasPage,
   CanvasShapeItem,
+  CanvasStickerItem,
   CanvasStroke,
   CanvasTextItem,
   createEmptyCanvasDocument,
@@ -12,7 +13,7 @@ import {
   serializeCanvasDocument,
   validateCanvasDocument,
 } from './canvasDocument';
-import { DOCUMENT_LIMITS, PAGE_PATTERNS, SHAPE_KINDS, STROKE_KINDS } from './canvasConstants';
+import { DOCUMENT_LIMITS, PAGE_PATTERNS, SHAPE_KINDS, STICKER_IDS, STROKE_KINDS } from './canvasConstants';
 
 const stroke = (overrides: Partial<CanvasStroke> = {}): CanvasStroke => ({
   id: 's1',
@@ -67,6 +68,18 @@ const shapeItem = (overrides: Partial<CanvasShapeItem> = {}): CanvasShapeItem =>
   height: 180,
   stroke: '#e11d48',
   strokeWidth: 6,
+  ...overrides,
+});
+
+const stickerItem = (overrides: Partial<CanvasStickerItem> = {}): CanvasStickerItem => ({
+  id: 'st1',
+  type: 'sticker',
+  stickerId: 'choinka',
+  x: 300,
+  y: 400,
+  rotation: 12,
+  width: 300,
+  height: 360,
   ...overrides,
 });
 
@@ -215,6 +228,27 @@ describe('validateCanvasDocument', () => {
     expect(errors.map((error) => error.key)).toContain(key);
   });
 
+  it('accepts every library sticker', () => {
+    const items = STICKER_IDS.map((stickerId, index) => stickerItem({ id: `st${index}`, stickerId }));
+    expect(validateCanvasDocument(documentWith({ pages: [page({ items })] }))).toEqual([]);
+  });
+
+  it.each([
+    ['an unknown id', stickerItem({ stickerId: 'unicorn' as CanvasStickerItem['stickerId'] }), 'wishlist.validation.stickerId'],
+    ['zero width', stickerItem({ width: 0 }), 'wishlist.validation.stickerSize'],
+    ['a non-finite height', stickerItem({ height: Number.NaN }), 'wishlist.validation.stickerSize'],
+  ])('rejects a sticker with %s', (_case, badItem, key) => {
+    const errors = validateCanvasDocument(documentWith({ pages: [page({ items: [badItem] })] }));
+    expect(errors.map((error) => error.key)).toContain(key);
+  });
+
+  it('does not count stickers against the image limit', () => {
+    const images = Array.from({ length: DOCUMENT_LIMITS.maxImageItems }, (_, index) => imageItem({ id: `i${index}` }));
+    const stickers = Array.from({ length: 20 }, (_, index) => stickerItem({ id: `st${index}` }));
+    const document = documentWith({ pages: [page({ items: [...images, ...stickers] })] });
+    expect(validateCanvasDocument(document, 3)).toEqual([]);
+  });
+
   it('rejects too many images across all pages', () => {
     // Each page stays within limits, but together they exceed the image cap.
     const imagesPerPage = Math.ceil((DOCUMENT_LIMITS.maxImageItems + 1) / 2);
@@ -312,6 +346,21 @@ describe('serialize/parse round trip', () => {
     const document = documentWith({ version: 42 });
     const result = parseCanvasDocument(serializeCanvasDocument(document));
     expect(result.document).toBeNull();
+  });
+
+  it('round-trips a sticker item', () => {
+    const document = documentWith({ pages: [page({ items: [stickerItem()] })] });
+    const result = parseCanvasDocument(serializeCanvasDocument(document));
+    expect(result.document?.pages[0].items).toEqual([stickerItem()]);
+  });
+
+  it('rejects a stored sticker with an unknown id', () => {
+    const raw = serializeCanvasDocument(
+      documentWith({ pages: [page({ items: [stickerItem({ stickerId: 'retired' as CanvasStickerItem['stickerId'] })] })] }),
+    );
+    const result = parseCanvasDocument(raw);
+    expect(result.document).toBeNull();
+    expect(result.errors.map((error) => error.key)).toContain('wishlist.validation.stickerId');
   });
 
   it('drops items of unknown types instead of failing', () => {

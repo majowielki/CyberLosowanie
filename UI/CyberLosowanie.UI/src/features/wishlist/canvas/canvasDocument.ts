@@ -19,6 +19,7 @@ import {
   SHAPE_KINDS,
   STROKE_KINDS,
 } from './canvasConstants';
+import { StickerId, isStickerId } from './stickers';
 
 /** A validation problem, translatable at display time. */
 export interface CanvasValidationError {
@@ -89,6 +90,22 @@ export interface CanvasShapeItem {
 }
 
 /**
+ * A decoration from the built-in sticker library (stickers.ts). Only the id is
+ * stored — the artwork ships with the app — so stickers are not uploads and do
+ * not count against the image limit.
+ */
+export interface CanvasStickerItem {
+  id: string;
+  type: 'sticker';
+  stickerId: StickerId;
+  x: number;
+  y: number;
+  rotation: number;
+  width: number;
+  height: number;
+}
+
+/**
  * Area fill made with the fill tool on a drawn region: polygons (an outer
  * outline plus holes, even-odd rule) in document coordinates. It lives in the
  * page's drawing list, in order with the strokes — later strokes draw over
@@ -108,7 +125,7 @@ export type CanvasDrawing = CanvasStroke | CanvasFill;
 export const isCanvasFill = (drawing: CanvasDrawing): drawing is CanvasFill => drawing.tool === 'fill';
 
 /** Order in the items array is the z-order. */
-export type CanvasItem = CanvasTextItem | CanvasImageItem | CanvasShapeItem;
+export type CanvasItem = CanvasTextItem | CanvasImageItem | CanvasShapeItem | CanvasStickerItem;
 
 /** Background pattern drawn over the page colour (see pagePatterns.ts). */
 export type PagePattern = (typeof PAGE_PATTERNS)[number];
@@ -381,6 +398,16 @@ function validateItems(
       ) {
         errors.push({ key: 'wishlist.validation.shapeSize' });
       }
+    } else if (item.type === 'sticker') {
+      if (!isStickerId(item.stickerId)) {
+        errors.push({ key: 'wishlist.validation.stickerId' });
+      }
+      if (
+        !Number.isFinite(item.width) || item.width <= 0 ||
+        !Number.isFinite(item.height) || item.height <= 0
+      ) {
+        errors.push({ key: 'wishlist.validation.stickerSize' });
+      }
     } else {
       imageCount++;
       const match = IMAGE_PATH_PATTERN.exec(item.path);
@@ -521,6 +548,15 @@ function isItemShape(value: unknown): value is CanvasItem {
       typeof value.stroke === 'string' &&
       typeof value.strokeWidth === 'number' &&
       (value.fill === undefined || typeof value.fill === 'string')
+    );
+  }
+  if (value.type === 'sticker') {
+    // An unknown sticker id is kept so validateCanvasDocument reports it.
+    return (
+      hasPlacement &&
+      typeof value.stickerId === 'string' &&
+      typeof value.width === 'number' &&
+      typeof value.height === 'number'
     );
   }
   return false;
