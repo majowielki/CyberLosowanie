@@ -13,6 +13,7 @@ import {
 } from './canvas/canvasDocument';
 import WishlistEditor from './canvas/WishlistEditor';
 import WishlistViewer from './canvas/WishlistViewer';
+import { readWishlistDraft } from './canvas/wishlistDraft';
 
 const isConflictError = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'status' in error &&
@@ -26,15 +27,24 @@ const isConflictError = (error: unknown): boolean =>
 function MyWishlistPage() {
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const hasCyberek = useSelector((state: RootState) => state.userAuthStore.cyberekId != null);
+  const cyberekId = useSelector((state: RootState) => state.userAuthStore.cyberekId);
+  const hasCyberek = cyberekId != null;
   // Skipping the request avoids a guaranteed 409 from the backend.
   const { data, isLoading, error } = useGetMyWishlistQuery(undefined, { skip: !hasCyberek });
   const [isEditing, setIsEditing] = useState(false);
+  // Set once the editor opened for a restored draft is left, so the page falls
+  // back to the normal preview/edit flow.
+  const [draftHandled, setDraftHandled] = useState(false);
 
   const saved = data?.data ?? null;
   const parsed = useMemo(
     () => (saved ? parseCanvasDocument(saved.canvasJson) : null),
     [saved],
+  );
+  // Unsaved changes left in this browser (see wishlistDraft) reopen the editor.
+  const draft = useMemo(
+    () => (isLoading || draftHandled ? null : readWishlistDraft(cyberekId, saved?.canvasJson ?? null)),
+    [isLoading, draftHandled, cyberekId, saved],
   );
 
   if (!hasCyberek) {
@@ -69,12 +79,17 @@ function MyWishlistPage() {
   // data — start from an empty canvas instead of blocking the feature.
   const document = parsed?.document ?? createEmptyCanvasDocument();
 
-  if (!saved || isEditing) {
+  if (!saved || isEditing || draft) {
+    const closeEditor = () => {
+      setIsEditing(false);
+      setDraftHandled(true);
+    };
     return (
       <WishlistEditor
-        initialDocument={document}
-        onExit={saved ? () => setIsEditing(false) : undefined}
-        onSaved={() => setIsEditing(false)}
+        initialDocument={draft ?? document}
+        restoredDraft={draft !== null}
+        onExit={saved ? closeEditor : undefined}
+        onSaved={closeEditor}
       />
     );
   }

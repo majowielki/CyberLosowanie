@@ -72,6 +72,18 @@ export const DEFAULT_TEXT_WIDTH = 420;
 export const DEFAULT_TEXT_PLACEHOLDER = 'Wpisz tekst...';
 export const MIN_TEXT_WIDTH = 40;
 
+// Mobile text sheet: font size presets (document units) and the layout of a
+// text added by tap — a list line spanning the rest of the page width.
+export const TEXT_SIZE_PRESETS = [
+  { id: 'small', fontSize: 32 },
+  { id: 'medium', fontSize: 48 },
+  { id: 'large', fontSize: 72 },
+  { id: 'huge', fontSize: 110 },
+] as const;
+export const MOBILE_DEFAULT_FONT_SIZE = 48;
+export const MOBILE_TEXT_MARGIN = 48;
+export const MOBILE_MIN_TEXT_WIDTH = 320;
+
 // Editor tools and the key that picks each one (single letter, no modifier).
 export const TOOL_SHORTCUTS = {
   select: 'V',

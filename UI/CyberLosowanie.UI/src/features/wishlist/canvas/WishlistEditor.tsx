@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useSelector } from 'react-redux';
-import { useBlocker } from 'react-router-dom';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { useBlocker, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Loader2, Maximize, Save } from 'lucide-react';
 import { RootState } from '@/app/store';
 import { Button } from '@/shared/ui/button';
 import { useToast } from '@/shared/hooks/use-toast';
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
+import { useHistoryBackTrap } from '@/shared/hooks/useHistoryBackTrap';
 import { cn } from '@/shared/lib/utils';
 import { TranslatableError, useTranslation } from '@/shared/i18n';
 import {
@@ -24,6 +27,10 @@ import {
   FillGapLevel,
   DEFAULT_STROKE_KIND,
   DEFAULT_STROKE_WIDTH,
+  DEFAULT_TEXT_PLACEHOLDER,
+  MOBILE_DEFAULT_FONT_SIZE,
+  MOBILE_MIN_TEXT_WIDTH,
+  MOBILE_TEXT_MARGIN,
   SHAPE_DRAG_THRESHOLD,
   TOOL_SHORTCUTS,
   EMOJI_INSERT_FONT_SIZE,
@@ -42,6 +49,8 @@ import { IMAGE_FILE_ACCEPT, prepareImageForUpload } from './imageUtils';
 import { RasterImage, computeAreaFill } from './areaFill';
 import CanvasToolbar, { EditorTool } from './CanvasToolbar';
 import TextEditOverlay from './TextEditOverlay';
+import MobileTextSheet, { MobileTextSheetHandle } from './MobileTextSheet';
+import MobileEditorBar from './MobileEditorBar';
 import { useCanvasEngine, ItemOrderMove, Point } from './useCanvasEngine';
 import { useStageViewport } from './useStageViewport';
 import WishlistCanvas from './WishlistCanvas';
@@ -50,6 +59,7 @@ import PageCarousel from './PageCarousel';
 import EmojiPicker from './EmojiPicker';
 import UnsavedChangesDialog from './UnsavedChangesDialog';
 import ConfirmDialog, { PendingConfirmation } from './ConfirmDialog';
+import { clearWishlistDraft, writeWishlistDraft } from './wishlistDraft';
 
 // Eraser cursor preview is drawn in a neutral gray (it has no ink color).
 const ERASER_CURSOR_COLOR = '#6b7280';
@@ -60,16 +70,29 @@ interface WishlistEditorProps {
   onExit?: () => void;
   /** Called after a successful save (the page switches back to preview). */
   onSaved?: () => void;
+  /** `initialDocument` is a local draft newer than the saved wishlist. */
+  restoredDraft?: boolean;
 }
+
+// Debounce of the local draft write while editing.
+const DRAFT_SAVE_DELAY_MS = 1000;
 
 /**
  * The wishlist canvas editor (doc 5.3): toolbar + canvas + top bar with zoom
  * and save. Composes the isolated Konva pieces — document state in
  * useCanvasEngine, viewport in useStageViewport, rendering in WishlistCanvas.
+ *
+ * Below the md breakpoint it takes over the whole screen (over the navbar):
+ * a slim top bar, the page fitted between the bars, the toolbar docked at the
+ * bottom, text typed in a panel above the keyboard and the system Back
+ * gesture handled in-app.
  */
-function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProps) {
+function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = false }: WishlistEditorProps) {
   const { t } = useTranslation();
-  const engine = useCanvasEngine(initialDocument);
+  const compact = !useMediaQuery('(min-width: 768px)');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const engine = useCanvasEngine(initialDocument, { initiallyDirty: restoredDraft });
   const [tool, setTool] = useState<EditorTool>('pen');
   const [color, setColor] = useState<string>(DEFAULT_PEN_COLOR);
   const [strokeWidth, setStrokeWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
@@ -80,6 +103,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
   const shapeOriginRef = useRef<Point | null>(null);
   const [shapeDraft, setShapeDraft] = useState<CanvasShapeItem | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const textSheetRef = useRef<MobileTextSheetHandle>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   // Set when the in-editor Back button is pressed with unsaved changes; router
   // navigation is caught separately by the blocker below.
@@ -98,6 +122,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     isHandPanActive: () => isSpaceHeldRef.current,
     // A pinch that starts mid-stroke means the finger was zooming, not drawing.
     onPinchStart: engine.cancelStroke,
+    fit: compact ? 'contain' : 'width',
   });
 
   const [saveMyWishlist, { isLoading: isSaving }] = useSaveMyWishlistMutation();
@@ -108,12 +133,67 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
 
   const { selectedItemId, removeItem, isDirty } = engine;
 
+  // Set right before an exit the user already confirmed (discard / saved), so
+  // the blocker lets that one navigation through.
+  const leavingRef = useRef(false);
+
   // Catch in-app route navigation (e.g. Navbar links) while there are unsaved
   // changes, so the confirmation dialog below can offer save/discard.
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname,
+      isDirty && !leavingRef.current && currentLocation.pathname !== nextLocation.pathname,
   );
+
+  // Unsaved changes are mirrored to a local draft (debounced, and at once when
+  // the tab is hidden — on phones that is often the last moment we get).
+  const discardedRef = useRef(false);
+  const { buildDocument } = engine;
+  useEffect(() => {
+    if (!isDirty) {
+      return;
+    }
+    const writeDraft = () => {
+      if (!discardedRef.current) {
+        writeWishlistDraft(cyberekId, buildDocument());
+      }
+    };
+    const timer = window.setTimeout(writeDraft, DRAFT_SAVE_DELAY_MS);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        writeDraft();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isDirty, buildDocument, cyberekId]);
+
+  useEffect(() => {
+    if (restoredDraft) {
+      toast({
+        title: t('wishlist.editor.draftRestored'),
+        description: t('wishlist.editor.draftRestoredBody'),
+      });
+    }
+    // Once per editor session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Full-screen phone editor: the page behind it must not scroll under the
+  // fingers (rubber-banding, the address bar collapsing mid-stroke).
+  useEffect(() => {
+    if (!compact) {
+      return;
+    }
+    const { style } = document.documentElement;
+    const previousOverflow = style.overflow;
+    style.overflow = 'hidden';
+    return () => {
+      style.overflow = previousOverflow;
+    };
+  }, [compact]);
 
   // Native browser guard for the one thing the router cannot intercept: closing
   // or refreshing the tab. The browser renders this prompt itself (no custom
@@ -230,8 +310,12 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     if (tool === 'pen' || tool === 'eraser') {
       engine.beginStroke(tool, color, strokeWidth, position, strokeKind);
     } else if (tool === 'text' && isBackground) {
-      const item = engine.addTextItem(position.x, position.y, color);
-      setEditingTextId(item.id);
+      // Phones: a readable size and a line spanning the rest of the page, so
+      // a typed list wraps across the page instead of in a narrow column.
+      const item = compact
+        ? addMobileTextItem(position)
+        : engine.addTextItem(position.x, position.y, color);
+      openTextEditor(item.id);
       setTool('select');
     } else if (tool === 'shape') {
       shapeOriginRef.current = position;
@@ -367,14 +451,46 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     (item): item is CanvasTextItem => item.type === 'text' && item.id === editingTextId,
   );
 
-  const handleTextCommit = (text: string) => {
+  /**
+   * Starts editing a text. On phones the panel is mounted synchronously and
+   * focused right away, while still inside the tap or click that asked for it
+   * — iOS ignores a focus() from an effect after the gesture and keeps the
+   * keyboard closed.
+   */
+  const openTextEditor = (id: string) => {
+    if (!compact) {
+      setEditingTextId(id);
+      return;
+    }
+    flushSync(() => setEditingTextId(id));
+    textSheetRef.current?.focus();
+  };
+
+  const addMobileTextItem = (position: Point) => {
+    const x = Math.min(position.x, CANVAS_WIDTH - MOBILE_TEXT_MARGIN - MOBILE_MIN_TEXT_WIDTH);
+    return engine.addTextItem(x, position.y, color, {
+      fontSize: MOBILE_DEFAULT_FONT_SIZE,
+      width: CANVAS_WIDTH - MOBILE_TEXT_MARGIN - x,
+    });
+  };
+
+  const handleTextCommit = (text: string, fontSize?: number) => {
     if (editingTextItem) {
       const trimmed = text.trim();
       if (!trimmed) {
         engine.removeItem(editingTextItem.id);
-      } else if (trimmed !== editingTextItem.text) {
-        engine.updateItem(editingTextItem.id, { text: trimmed });
+      } else if (trimmed !== editingTextItem.text || (fontSize && fontSize !== editingTextItem.fontSize)) {
+        engine.updateItem(editingTextItem.id, { text: trimmed, ...(fontSize ? { fontSize } : {}) });
       }
+    }
+    setEditingTextId(null);
+  };
+
+  // Cancelling a text that was never typed into drops it — the default text is
+  // only a placeholder and must not end up on the wishlist.
+  const handleTextCancel = () => {
+    if (editingTextItem?.text === DEFAULT_TEXT_PLACEHOLDER) {
+      engine.removeItem(editingTextItem.id);
     }
     setEditingTextId(null);
   };
@@ -441,6 +557,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     try {
       await saveMyWishlist({ canvasJson: serializeCanvasDocument(document) }).unwrap();
       engine.markSaved();
+      clearWishlistDraft(cyberekId);
       toast({ title: t('wishlist.editor.saved') });
       return true;
     } catch (error) {
@@ -485,14 +602,50 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
 
   const unsavedDialogOpen = blocker.state === 'blocked' || backRequested;
 
-  const handleExit = () => {
-    if (!onExit) {
+  // System Back on phones: close whatever is open first, then treat it like
+  // the top bar's Back button.
+  const handleSystemBack = () => {
+    if (textSheetRef.current) {
+      textSheetRef.current.commit();
+    } else if (unsavedDialogOpen) {
+      cancelExit();
+    } else if (confirmation) {
+      setConfirmation(null);
+    } else if (showEmojiPicker) {
+      setShowEmojiPicker(false);
+    } else if (document.querySelector('[data-radix-popper-content-wrapper]')) {
+      // An open toolbar flyout or menu (Radix closes its layers on Escape).
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    } else {
+      requestExit();
+    }
+  };
+  const releaseBackTrap = useHistoryBackTrap(compact, handleSystemBack);
+
+  /** Leaves the editor for real: back to the preview, or to the previous page. */
+  const leave = () => {
+    const trapOnTop = releaseBackTrap();
+    if (onExit) {
+      // Same route — the trap's history entry is popped when the editor unmounts.
+      onExit();
       return;
     }
+    leavingRef.current = true;
+    if (location.key === 'default') {
+      // Opened straight on /wishlist (e.g. from a link): nothing to go back to.
+      navigate('/');
+    } else if (trapOnTop) {
+      window.history.go(-2);
+    } else {
+      navigate(-1);
+    }
+  };
+
+  const requestExit = () => {
     if (engine.isDirty) {
       setBackRequested(true);
     } else {
-      onExit();
+      leave();
     }
   };
 
@@ -501,7 +654,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
       blocker.proceed();
     } else {
       setBackRequested(false);
-      onExit?.();
+      leave();
     }
   };
 
@@ -526,12 +679,227 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
     }
   };
 
+  /** Dialog "discard": drop the local draft too, then continue the exit. */
+  const discardAndExit = () => {
+    discardedRef.current = true;
+    clearWishlistDraft(cyberekId);
+    performExit();
+  };
+
+  const pageEditing = {
+    canAddPage: engine.canAddPage,
+    canDeletePage: engine.canDeletePage,
+    onAddPage: engine.addPage,
+    onDuplicatePage: engine.duplicatePage,
+    onDeletePage: () =>
+      setConfirmation({
+        title: t('wishlist.pages.deleteConfirm'),
+        description: t('wishlist.pages.deleteConfirmBody'),
+        confirmLabel: t('wishlist.pages.delete'),
+        onConfirm: engine.deletePage,
+      }),
+  };
+
+  const confirmClearPage = () =>
+    setConfirmation({
+      title: t('wishlist.editor.clearConfirm'),
+      description: t('wishlist.editor.clearConfirmBody'),
+      confirmLabel: t('wishlist.toolbar.clearAll'),
+      onConfirm: engine.clearPage,
+    });
+
+  const toolbar = (
+    <CanvasToolbar
+      variant={compact ? 'dock' : 'panel'}
+      tool={tool}
+      onToolChange={setTool}
+      color={paletteColor}
+      onColorChange={handleColorChange}
+      showSelectionColor={recolorsSelection}
+      strokeWidth={strokeWidth}
+      onStrokeWidthChange={setStrokeWidth}
+      strokeKind={strokeKind}
+      onStrokeKindChange={setStrokeKind}
+      shapeKind={shapeKind}
+      onShapeKindChange={setShapeKind}
+      shapeFilled={shapeFilled}
+      onShapeFilledChange={setShapeFilled}
+      pageBackground={engine.background}
+      pagePattern={engine.pattern}
+      onPagePatternChange={engine.setPagePattern}
+      fillGap={fillGap}
+      onFillGapChange={setFillGap}
+      canUndo={engine.canUndo}
+      canRedo={engine.canRedo}
+      onUndo={engine.undo}
+      onRedo={engine.redo}
+      hasSelection={selectedItem !== null}
+      canMoveSelectionForward={selectedIndex >= 0 && selectedIndex < engine.items.length - 1}
+      canMoveSelectionBackward={selectedIndex > 0}
+      onReorderSelection={reorderSelection}
+      onDeleteSelection={() => selectedItemId && removeItem(selectedItemId)}
+      onClearAll={confirmClearPage}
+      onEditSelectedText={
+        selectedItem?.type === 'text' ? () => openTextEditor(selectedItem.id) : undefined
+      }
+      onPickImage={() => fileInputRef.current?.click()}
+      onPickEmoji={() => setShowEmojiPicker(true)}
+      isUploadingImage={isUploadingImage}
+    />
+  );
+
+  const canvasArea = (
+    <div
+      ref={viewport.containerRef}
+      // The tap that created a text ends here — still inside the gesture, so
+      // focusing now opens the iOS keyboard (see openTextEditor).
+      onTouchEnd={compact ? () => textSheetRef.current?.focus() : undefined}
+      className={cn(
+        'relative touch-none overflow-hidden',
+        compact
+          // The page is fitted inside this box and centred in it.
+          ? 'flex h-full w-full items-center justify-center'
+          : 'flex-1 rounded-md shadow-lg',
+        // Pen/eraser hide the native cursor — the on-canvas brush circle is the cursor.
+        isSpaceHeld ? 'cursor-grab active:cursor-grabbing' : [
+          (tool === 'pen' || tool === 'eraser') && 'cursor-none',
+          tool === 'text' && 'cursor-text',
+          tool === 'shape' && 'cursor-crosshair',
+          tool === 'fill' && 'cursor-pointer',
+        ],
+      )}
+    >
+      {viewport.isMeasured && (
+        <div className={cn(compact && 'overflow-hidden rounded-md shadow-lg')}>
+          <WishlistCanvas
+            strokes={engine.strokes}
+            liveStroke={engine.liveStroke}
+            previewShape={shapeDraft}
+            onFillItem={tool === 'fill' ? handleFillItem : undefined}
+            drawingSnapshotRef={drawingSnapshotRef}
+            items={engine.items}
+            background={engine.background}
+            pattern={engine.pattern}
+            pageId={engine.pageId}
+            brushCursor={
+              // No brush preview under a finger — it would only trail the stroke.
+              !compact && (tool === 'pen' || tool === 'eraser')
+                ? {
+                    radius: strokeWidth / 2,
+                    color: tool === 'eraser' ? ERASER_CURSOR_COLOR : color,
+                  }
+                : null
+            }
+            stageProps={viewport.stageProps}
+            editable
+            itemsInteractive={tool === 'select'}
+            selectedItemId={engine.selectedItemId}
+            editingItemId={editingTextId}
+            onSelectItem={engine.setSelectedItemId}
+            onItemChange={engine.updateItem}
+            onTextEditRequest={openTextEditor}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+          />
+        </div>
+      )}
+      {editingTextItem && !compact && (
+        <TextEditOverlay
+          item={editingTextItem}
+          stageScale={viewport.stageScale}
+          stagePosition={viewport.stagePosition}
+          onCommit={handleTextCommit}
+          onCancel={handleTextCancel}
+        />
+      )}
+    </div>
+  );
+
+  const overlays = (
+    <>
+      {editingTextItem && compact && (
+        <MobileTextSheet
+          ref={textSheetRef}
+          // A fresh panel per edited text (its draft state starts from the item).
+          key={editingTextItem.id}
+          item={editingTextItem}
+          onCommit={handleTextCommit}
+        />
+      )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={IMAGE_FILE_ACCEPT}
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          // Reset so picking the same file again re-triggers onChange.
+          event.target.value = '';
+          void handleImageFilePicked(file);
+        }}
+      />
+
+      {showEmojiPicker && (
+        <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />
+      )}
+
+      <UnsavedChangesDialog
+        open={unsavedDialogOpen}
+        isSaving={isSaving}
+        onSave={saveAndExit}
+        onDiscard={discardAndExit}
+        onCancel={cancelExit}
+      />
+      <ConfirmDialog pending={confirmation} onClose={() => setConfirmation(null)} />
+    </>
+  );
+
+  if (compact) {
+    return (
+      // Covers the navbar (z-40) and footer; popovers and dialogs portal above.
+      <div className="fixed inset-0 z-[45] flex h-[100dvh] flex-col bg-pine-950">
+        <MobileEditorBar
+          onBack={requestExit}
+          onSave={handleSave}
+          isSaving={isSaving}
+          isDirty={engine.isDirty}
+          pageCount={engine.pageCount}
+          currentPageIndex={engine.currentPageIndex}
+          onGoTo={engine.goToPage}
+          pages={pageEditing}
+          onClearPage={confirmClearPage}
+          viewport={viewport}
+        />
+        <div className="relative min-h-0 flex-1 p-2">
+          {canvasArea}
+          {viewport.zoom > 1 && (
+            // Zoomed in by pinch: one tap back to the whole page.
+            <Button
+              type="button"
+              size="sm"
+              variant="glass"
+              className="absolute left-1/2 top-3 -translate-x-1/2 bg-pine-950/70 tabular-nums"
+              aria-label={t('wishlist.zoom.fitScreen')}
+              onClick={viewport.resetView}
+            >
+              {viewport.zoomPercentage}% <Maximize aria-hidden />
+            </Button>
+          )}
+        </div>
+        {toolbar}
+        {overlays}
+      </div>
+    );
+  }
+
   return (
     <div className="flex w-full max-w-5xl flex-col gap-3 py-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {onExit && (
-            <Button type="button" variant="glass" size="sm" onClick={handleExit}>
+            <Button type="button" variant="glass" size="sm" onClick={requestExit}>
               <ArrowLeft aria-hidden /> {t('common.action.back')}
             </Button>
           )}
@@ -559,146 +927,16 @@ function WishlistEditor({ initialDocument, onExit, onSaved }: WishlistEditorProp
           pageCount={engine.pageCount}
           currentPageIndex={engine.currentPageIndex}
           onGoTo={engine.goToPage}
-          editing={{
-            canAddPage: engine.canAddPage,
-            canDeletePage: engine.canDeletePage,
-            onAddPage: engine.addPage,
-            onDuplicatePage: engine.duplicatePage,
-            onDeletePage: () =>
-              setConfirmation({
-                title: t('wishlist.pages.deleteConfirm'),
-                description: t('wishlist.pages.deleteConfirmBody'),
-                confirmLabel: t('wishlist.pages.delete'),
-                onConfirm: engine.deletePage,
-              }),
-          }}
+          editing={pageEditing}
         />
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row">
-        <CanvasToolbar
-          tool={tool}
-          onToolChange={setTool}
-          color={paletteColor}
-          onColorChange={handleColorChange}
-          showSelectionColor={recolorsSelection}
-          strokeWidth={strokeWidth}
-          onStrokeWidthChange={setStrokeWidth}
-          strokeKind={strokeKind}
-          onStrokeKindChange={setStrokeKind}
-          shapeKind={shapeKind}
-          onShapeKindChange={setShapeKind}
-          shapeFilled={shapeFilled}
-          onShapeFilledChange={setShapeFilled}
-          pageBackground={engine.background}
-          pagePattern={engine.pattern}
-          onPagePatternChange={engine.setPagePattern}
-          fillGap={fillGap}
-          onFillGapChange={setFillGap}
-          canUndo={engine.canUndo}
-          canRedo={engine.canRedo}
-          onUndo={engine.undo}
-          onRedo={engine.redo}
-          hasSelection={selectedItem !== null}
-          canMoveSelectionForward={selectedIndex >= 0 && selectedIndex < engine.items.length - 1}
-          canMoveSelectionBackward={selectedIndex > 0}
-          onReorderSelection={reorderSelection}
-          onDeleteSelection={() => selectedItemId && removeItem(selectedItemId)}
-          onClearAll={() =>
-            setConfirmation({
-              title: t('wishlist.editor.clearConfirm'),
-              description: t('wishlist.editor.clearConfirmBody'),
-              confirmLabel: t('wishlist.toolbar.clearAll'),
-              onConfirm: engine.clearPage,
-            })
-          }
-          onPickImage={() => fileInputRef.current?.click()}
-          onPickEmoji={() => setShowEmojiPicker(true)}
-          isUploadingImage={isUploadingImage}
-        />
-
-        <div
-          ref={viewport.containerRef}
-          className={cn(
-            'relative flex-1 touch-none overflow-hidden rounded-md shadow-lg',
-            // Pen/eraser hide the native cursor — the on-canvas brush circle is the cursor.
-            isSpaceHeld ? 'cursor-grab active:cursor-grabbing' : [
-              (tool === 'pen' || tool === 'eraser') && 'cursor-none',
-              tool === 'text' && 'cursor-text',
-              tool === 'shape' && 'cursor-crosshair',
-              tool === 'fill' && 'cursor-pointer',
-            ],
-          )}
-        >
-          {viewport.isMeasured && (
-            <WishlistCanvas
-              strokes={engine.strokes}
-              liveStroke={engine.liveStroke}
-              previewShape={shapeDraft}
-              onFillItem={tool === 'fill' ? handleFillItem : undefined}
-              drawingSnapshotRef={drawingSnapshotRef}
-              items={engine.items}
-              background={engine.background}
-              pattern={engine.pattern}
-              pageId={engine.pageId}
-              brushCursor={
-                tool === 'pen' || tool === 'eraser'
-                  ? {
-                      radius: strokeWidth / 2,
-                      color: tool === 'eraser' ? ERASER_CURSOR_COLOR : color,
-                    }
-                  : null
-              }
-              stageProps={viewport.stageProps}
-              editable
-              itemsInteractive={tool === 'select'}
-              selectedItemId={engine.selectedItemId}
-              editingItemId={editingTextId}
-              onSelectItem={engine.setSelectedItemId}
-              onItemChange={engine.updateItem}
-              onTextEditRequest={setEditingTextId}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-            />
-          )}
-          {editingTextItem && (
-            <TextEditOverlay
-              item={editingTextItem}
-              stageScale={viewport.stageScale}
-              stagePosition={viewport.stagePosition}
-              onCommit={handleTextCommit}
-              onCancel={() => setEditingTextId(null)}
-            />
-          )}
-        </div>
+        {toolbar}
+        {canvasArea}
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={IMAGE_FILE_ACCEPT}
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          // Reset so picking the same file again re-triggers onChange.
-          event.target.value = '';
-          void handleImageFilePicked(file);
-        }}
-      />
-
-      {showEmojiPicker && (
-        <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />
-      )}
-
-      <UnsavedChangesDialog
-        open={unsavedDialogOpen}
-        isSaving={isSaving}
-        onSave={saveAndExit}
-        onDiscard={performExit}
-        onCancel={cancelExit}
-      />
-      <ConfirmDialog pending={confirmation} onClose={() => setConfirmation(null)} />
+      {overlays}
     </div>
   );
 }

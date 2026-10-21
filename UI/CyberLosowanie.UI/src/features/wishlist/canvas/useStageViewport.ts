@@ -19,6 +19,13 @@ export interface StageViewportOptions {
   isHandPanActive?: () => boolean;
   /** Called when a two-finger gesture starts — the editor cancels the in-progress stroke. */
   onPinchStart?: () => void;
+  /**
+   * 'width' (default): the page fills the container width and the container
+   * grows to the page height (the surrounding page scrolls). 'contain': the
+   * whole page fits inside the container's measured box — the full-screen
+   * mobile editor, where nothing around the canvas scrolls.
+   */
+  fit?: 'width' | 'contain';
 }
 
 interface PinchState {
@@ -35,9 +42,15 @@ const clamp = (value: number, min: number, max: number): number =>
  * clamped panning. Konva-specific — the stage is transformed, layers stay in
  * document coordinates.
  */
-export function useStageViewport({ panEnabled, isHandPanActive, onPinchStart }: StageViewportOptions) {
+export function useStageViewport({
+  panEnabled,
+  isHandPanActive,
+  onPinchStart,
+  fit = 'width',
+}: StageViewportOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
   const [zoom, setZoom] = useState(MIN_USER_ZOOM);
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
   const pinchRef = useRef<PinchState | null>(null);
@@ -52,18 +65,26 @@ export function useStageViewport({ panEnabled, isHandPanActive, onPinchStart }: 
       return;
     }
     const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width ?? 0;
-      setContainerWidth(width);
+      const rect = entries[0]?.contentRect;
+      setContainerWidth(rect?.width ?? 0);
+      setContainerHeight(rect?.height ?? 0);
     });
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+    // The editor swaps its container element when the layout (and with it
+    // `fit`) changes, so the observer re-attaches then.
+  }, [fit]);
 
-  const baseScale = containerWidth > 0 ? containerWidth / CANVAS_WIDTH : 0;
+  const fitsBox = fit === 'contain' && containerHeight > 0;
+  const baseScale = containerWidth <= 0
+    ? 0
+    : fitsBox
+      ? Math.min(containerWidth / CANVAS_WIDTH, containerHeight / CANVAS_HEIGHT)
+      : containerWidth / CANVAS_WIDTH;
   const stageScale = baseScale * zoom;
-  const stageWidth = containerWidth;
-  // At zoom 1 the whole portrait document is visible (page scrolls if needed);
-  // zooming magnifies within this fixed frame.
+  // At zoom 1 the whole portrait document is visible (in 'width' mode the page
+  // scrolls if needed); zooming magnifies within this fixed frame.
+  const stageWidth = fitsBox ? CANVAS_WIDTH * baseScale : containerWidth;
   const stageHeight = CANVAS_HEIGHT * baseScale;
 
   const clampPosition = useCallback(
@@ -238,7 +259,7 @@ export function useStageViewport({ panEnabled, isHandPanActive, onPinchStart }: 
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, []);
+  }, [fit]);
 
   const isHandPanning = useCallback(() => handPanRef.current !== null, []);
 
@@ -288,7 +309,7 @@ export function useStageViewport({ panEnabled, isHandPanActive, onPinchStart }: 
 
   return {
     containerRef,
-    isMeasured: containerWidth > 0,
+    isMeasured: containerWidth > 0 && (fit === 'width' || containerHeight > 0),
     stageScale,
     stagePosition,
     zoom,

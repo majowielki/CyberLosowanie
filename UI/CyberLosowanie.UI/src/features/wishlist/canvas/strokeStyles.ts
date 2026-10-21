@@ -32,6 +32,29 @@ export function darken(hex: string, amount: number): string {
   return rgbToHex([r * (1 - amount), g * (1 - amount), b * (1 - amount)]);
 }
 
+/**
+ * The same hue at full saturation and at least `minValue` brightness (HSV).
+ * Starting point for the custom colour picker: opened on black, grey or white
+ * its hue slider would change nothing visible.
+ */
+export function vivid(hex: string, minValue = 0.5): string {
+  const [r, g, b] = hexToRgb(hex).map((channel) => channel / 255);
+  const max = Math.max(r, g, b);
+  const delta = max - Math.min(r, g, b);
+  let hueSector = 0; // hue / 60°
+  if (delta > 0) {
+    hueSector = max === r ? (g - b) / delta : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
+  }
+  hueSector = (hueSector + 6) % 6;
+  const value = Math.max(max, minValue);
+  // HSV → RGB with saturation 1 (each channel is `value`, 0 or on the ramp between).
+  const channel = (n: number) => {
+    const k = (n + hueSector) % 6;
+    return value * (1 - Math.max(0, Math.min(k, 4 - k, 1))) * 255;
+  };
+  return rgbToHex([channel(5), channel(3), channel(1)]);
+}
+
 /** FNV-1a 32-bit hash — turns a stroke id into a PRNG seed. */
 export function hashString(value: string): number {
   let hash = 0x811c9dc5;

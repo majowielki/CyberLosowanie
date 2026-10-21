@@ -21,6 +21,7 @@ import {
   Smile,
   Square,
   Star,
+  TextCursorInput,
   Trash2,
   Triangle,
   Type,
@@ -44,6 +45,7 @@ import { PagePattern, ShapeKind, StrokeKind } from './canvasDocument';
 import type { ItemOrderMove } from './useCanvasEngine';
 import PagePatternPreview from './PagePatternPreview';
 import StrokeKindPreview from './StrokeKindPreview';
+import { vivid } from './strokeStyles';
 
 export type EditorTool = keyof typeof TOOL_SHORTCUTS;
 
@@ -82,6 +84,15 @@ interface CanvasToolbarProps {
   onPickImage: () => void;
   onPickEmoji: () => void;
   isUploadingImage: boolean;
+  /**
+   * 'panel' (default): left column on desktop, wrapping strip on narrow
+   * screens. 'dock': the full-screen phone editor's bottom bar — tools in one
+   * thumb-sized row, options and history in a row above; page-level actions
+   * (clear) live in the editor's top bar instead.
+   */
+  variant?: 'panel' | 'dock';
+  /** Dock only: shown while a text is selected (double-tap is not discoverable). */
+  onEditSelectedText?: () => void;
 }
 
 const TOOLS: Array<{ id: EditorTool; labelKey: TranslationKey; icon: typeof Pen }> = [
@@ -151,7 +162,9 @@ interface ToolbarFlyoutProps {
   label: string;
   /** Preview of the current value shown on the trigger. */
   trigger: ReactNode;
-  side: 'right' | 'bottom';
+  side: 'right' | 'bottom' | 'top';
+  /** Bigger touch target for the phone dock. */
+  large?: boolean;
   /** Panel body; `close` lets an option collapse the panel after selection. */
   children: (close: () => void) => ReactNode;
 }
@@ -161,7 +174,7 @@ interface ToolbarFlyoutProps {
  * with the full palette in a popover beside the toolbar. Keeps the toolbar
  * short — only the tools and the three current values stay visible.
  */
-function ToolbarFlyout({ label, trigger, side, children }: ToolbarFlyoutProps) {
+function ToolbarFlyout({ label, trigger, side, large, children }: ToolbarFlyoutProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -172,7 +185,8 @@ function ToolbarFlyout({ label, trigger, side, children }: ToolbarFlyoutProps) {
           title={label}
           aria-label={label}
           className={cn(
-            'relative flex h-9 w-12 items-center justify-center rounded-md hover:bg-gray-100',
+            'relative flex w-12 shrink-0 items-center justify-center rounded-md hover:bg-gray-100',
+            large ? 'h-11' : 'h-9',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500',
             open && 'bg-gray-200',
           )}
@@ -182,7 +196,7 @@ function ToolbarFlyout({ label, trigger, side, children }: ToolbarFlyoutProps) {
           <ChevronDown className="absolute bottom-0.5 right-0.5 h-2.5 w-2.5 text-gray-500" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent side={side} align="start" className="w-auto p-2">
+      <PopoverContent side={side} align="start" collisionPadding={8} className="w-auto max-w-[calc(100vw-16px)] p-2">
         {children(() => setOpen(false))}
       </PopoverContent>
     </Popover>
@@ -226,6 +240,8 @@ function CanvasToolbar({
   onPickImage,
   onPickEmoji,
   isUploadingImage,
+  variant = 'panel',
+  onEditSelectedText,
 }: CanvasToolbarProps) {
   const { t } = useTranslation();
   const withShortcut = (label: string, shortcut: string) =>
@@ -240,14 +256,29 @@ function CanvasToolbar({
     showColorOptions || showStrokeOptions || showKindOptions || showShapeOptions || showPatternOptions;
   const CurrentShapeIcon = SHAPE_OPTIONS.find((option) => option.id === shapeKind)?.icon ?? Square;
   const isCustomColor = !(PEN_COLORS as readonly string[]).includes(color);
-  // Desktop: toolbar is a left column, so panels open to its right; on phones
-  // the toolbar is a strip above the canvas and panels drop below it.
-  const flyoutSide = useMediaQuery('(min-width: 768px)') ? 'right' : 'bottom';
+  const dock = variant === 'dock';
+  // Desktop: toolbar is a left column, so panels open to its right; on narrow
+  // screens the panel is a strip above the canvas and panels drop below it;
+  // the phone dock sits at the bottom, so its panels open upwards.
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const flyoutSide = dock ? 'top' : isDesktop ? 'right' : 'bottom';
+  // Dock: 44px touch targets and 20px icons (the panel keeps the 36px desktop size).
+  const toolButtonClass = dock ? 'h-11 w-full [&_svg]:size-5' : undefined;
+  const actionButtonClass = dock ? 'h-11 w-11 shrink-0 [&_svg]:size-5' : undefined;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white/95 p-2 text-card-foreground shadow-elevated md:w-16 md:flex-col md:flex-nowrap">
+    <div
+      className={cn(
+        'text-card-foreground shadow-elevated',
+        dock
+          // Options + history on the first line, tools on the second (CSS order),
+          // so the most used buttons sit closest to the thumb.
+          ? 'flex flex-wrap items-center gap-1 rounded-t-2xl bg-white px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5'
+          : 'flex flex-wrap items-center gap-2 rounded-xl bg-white/95 p-2 md:w-16 md:flex-col md:flex-nowrap',
+      )}
+    >
       {/* Tools */}
-      <div className="flex flex-wrap items-center gap-1.5 md:flex-col">
+      <div className={dock ? 'order-2 grid w-full grid-cols-8 gap-0.5' : 'flex flex-wrap items-center gap-1.5 md:flex-col'}>
         {TOOLS.map(({ id, labelKey, icon: Icon }) => (
           <Button
             key={id}
@@ -258,6 +289,7 @@ function CanvasToolbar({
             aria-label={t(labelKey)}
             aria-keyshortcuts={TOOL_SHORTCUTS[id]}
             aria-pressed={tool === id}
+            className={toolButtonClass}
             onClick={() => onToolChange(id)}
           >
             <Icon />
@@ -270,6 +302,7 @@ function CanvasToolbar({
           title={t('wishlist.toolbar.insertImage')}
           aria-label={t('wishlist.toolbar.insertImage')}
           disabled={isUploadingImage}
+          className={toolButtonClass}
           onClick={onPickImage}
         >
           <ImagePlus />
@@ -280,6 +313,7 @@ function CanvasToolbar({
           variant="ghost"
           title={t('wishlist.toolbar.insertEmoji')}
           aria-label={t('wishlist.toolbar.insertEmoji')}
+          className={toolButtonClass}
           onClick={onPickEmoji}
         >
           <Smile />
@@ -288,14 +322,15 @@ function CanvasToolbar({
 
       {showContextualOptions && (
         <>
-          <ToolbarDivider />
+          {!dock && <ToolbarDivider />}
           {/* Contextual options collapse into one trigger each (showing the
               current value); the palette opens beside the toolbar. */}
-          <div className="flex flex-wrap items-center gap-1.5 md:flex-col">
+          <div className={dock ? 'order-1 flex items-center gap-0.5' : 'flex flex-wrap items-center gap-1.5 md:flex-col'}>
             {showKindOptions && (
               <ToolbarFlyout
                 label={t('wishlist.toolbar.kindCurrent', { name: t(KIND_LABEL_KEYS[strokeKind]) })}
                 side={flyoutSide}
+                large={dock}
                 trigger={<StrokeKindPreview kind={strokeKind} color={color} />}
               >
                 {(close) => (
@@ -329,6 +364,7 @@ function CanvasToolbar({
                   name: t(SHAPE_OPTIONS.find((option) => option.id === shapeKind)?.labelKey ?? 'wishlist.toolbar.shape.rect'),
                 })}
                 side={flyoutSide}
+                large={dock}
                 trigger={
                   <CurrentShapeIcon
                     className="h-6 w-6"
@@ -386,6 +422,7 @@ function CanvasToolbar({
               <ToolbarFlyout
                 label={t('wishlist.toolbar.colorCurrent', { color })}
                 side={flyoutSide}
+                large={dock}
                 trigger={
                   // Rainbow ring around the current colour — reads as "palette",
                   // not as a stroke-width dot.
@@ -438,7 +475,9 @@ function CanvasToolbar({
                     >
                       <input
                         type="color"
-                        value={color}
+                        // A preset opens the picker on its vivid twin, so dragging
+                        // the hue shows colours even when black is selected.
+                        value={isCustomColor ? color : vivid(color)}
                         aria-label={t('wishlist.toolbar.customColor')}
                         onChange={(event) => onColorChange(event.target.value)}
                         className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
@@ -453,6 +492,7 @@ function CanvasToolbar({
               <ToolbarFlyout
                 label={t('wishlist.toolbar.strokeCurrent', { width: strokeWidth })}
                 side={flyoutSide}
+                large={dock}
                 trigger={
                   <span
                     className="block rounded-full bg-gray-800"
@@ -494,6 +534,7 @@ function CanvasToolbar({
               <ToolbarFlyout
                 label={t('wishlist.toolbar.fillGap', { name: t(FILL_GAP_LABEL_KEYS[fillGap]) })}
                 side={flyoutSide}
+                large={dock}
                 trigger={<FillGapPreview level={fillGap} />}
               >
                 {(close) => (
@@ -528,6 +569,7 @@ function CanvasToolbar({
               <ToolbarFlyout
                 label={t('wishlist.toolbar.patternCurrent', { name: t(PATTERN_LABEL_KEYS[pagePattern ?? 'none']) })}
                 side={flyoutSide}
+                large={dock}
                 trigger={<PagePatternPreview pattern={pagePattern} background={pageBackground} />}
               >
                 {(close) => (
@@ -562,10 +604,23 @@ function CanvasToolbar({
         </>
       )}
 
-      <ToolbarDivider />
+      {!dock && <ToolbarDivider />}
 
       {/* History & destructive actions */}
-      <div className="flex flex-wrap items-center gap-1.5 md:flex-col">
+      <div className={dock ? 'order-1 ml-auto flex items-center gap-0.5' : 'flex flex-wrap items-center gap-1.5 md:flex-col'}>
+        {dock && hasSelection && onEditSelectedText && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            title={t('wishlist.text.edit')}
+            aria-label={t('wishlist.text.edit')}
+            className={actionButtonClass}
+            onClick={onEditSelectedText}
+          >
+            <TextCursorInput />
+          </Button>
+        )}
         <Button
           type="button"
           size="icon"
@@ -574,6 +629,7 @@ function CanvasToolbar({
           aria-keyshortcuts="Control+Z"
           aria-label={t('wishlist.toolbar.undo')}
           disabled={!canUndo}
+          className={actionButtonClass}
           onClick={onUndo}
         >
           <Undo2 />
@@ -586,12 +642,13 @@ function CanvasToolbar({
           aria-keyshortcuts="Control+Y Control+Shift+Z"
           aria-label={t('wishlist.toolbar.redo')}
           disabled={!canRedo}
+          className={actionButtonClass}
           onClick={onRedo}
         >
           <Redo2 />
         </Button>
         {hasSelection && (
-          <ToolbarFlyout label={t('wishlist.toolbar.order')} side={flyoutSide} trigger={<Layers className="h-5 w-5" aria-hidden />}>
+          <ToolbarFlyout label={t('wishlist.toolbar.order')} side={flyoutSide} large={dock} trigger={<Layers className="h-5 w-5" aria-hidden />}>
             {(close) => (
               <div className="flex flex-col gap-0.5" role="group" aria-label={t('wishlist.toolbar.orderGroup')}>
                 {ORDER_OPTIONS.map(({ move, labelKey, icon: Icon, shortcut }) => {
@@ -625,21 +682,24 @@ function CanvasToolbar({
           aria-keyshortcuts="Delete"
           aria-label={t('wishlist.toolbar.deleteSelection')}
           disabled={!hasSelection}
+          className={actionButtonClass}
           onClick={onDeleteSelection}
         >
           <Trash2 />
         </Button>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-          title={t('wishlist.toolbar.clearAll')}
-          aria-label={t('wishlist.toolbar.clearAll')}
-          onClick={onClearAll}
-        >
-          <FileX2 />
-        </Button>
+        {!dock && (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+            title={t('wishlist.toolbar.clearAll')}
+            aria-label={t('wishlist.toolbar.clearAll')}
+            onClick={onClearAll}
+          >
+            <FileX2 />
+          </Button>
+        )}
       </div>
     </div>
   );

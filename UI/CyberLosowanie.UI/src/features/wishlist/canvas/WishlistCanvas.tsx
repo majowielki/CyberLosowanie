@@ -2,6 +2,7 @@ import { MutableRefObject, useCallback, useEffect, useRef, useState } from 'reac
 import { Circle, Group, Image as KonvaImage, Layer, Rect, Stage, Text, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
+import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
 import {
   CANVAS_BACKGROUND,
   CANVAS_HEIGHT,
@@ -129,6 +130,9 @@ function WishlistCanvas({
   const transformerRef = useRef<Konva.Transformer>(null);
   const committedStrokesRef = useRef<Konva.Group>(null);
   const isDrawing = liveStroke !== null;
+  // Finger-sized transformer handles on touch screens (Konva's default 10px
+  // anchors are a mouse target).
+  const isCoarsePointer = useMediaQuery('(pointer: coarse)');
   // Pointer position (document coords) for the brush-size preview cursor.
   const [cursorPos, setCursorPos] = useState<Point | null>(null);
 
@@ -398,6 +402,10 @@ function WishlistCanvas({
             rotateEnabled
             enabledAnchors={TRANSFORMER_ANCHORS}
             boundBoxFunc={keepMinimumBox}
+            anchorSize={isCoarsePointer ? 22 : 10}
+            anchorCornerRadius={isCoarsePointer ? 11 : 0}
+            rotateAnchorOffset={isCoarsePointer ? 40 : 50}
+            padding={isCoarsePointer ? 6 : 0}
           />
         )}
       </Layer>

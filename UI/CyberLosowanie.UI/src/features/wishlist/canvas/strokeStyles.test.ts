@@ -7,6 +7,7 @@ import {
   jitterOffset,
   lighten,
   sampleSparkles,
+  vivid,
 } from './strokeStyles';
 
 describe('colour helpers', () => {
@@ -19,6 +20,18 @@ describe('colour helpers', () => {
 
   it('treats malformed colours as black instead of throwing', () => {
     expect(lighten('red', 0.5)).toBe('#808080');
+  });
+
+  it('makes a colour vivid: full saturation, brightness raised to the minimum', () => {
+    // Near-black blue keeps its hue (~221°) at 50% value.
+    expect(vivid('#111827')).toBe('#002980');
+    // Hue-less black/white/grey fall back to red.
+    expect(vivid('#000000')).toBe('#800000');
+    expect(vivid('#808080')).toBe('#800000');
+    expect(vivid('#ffffff')).toBe('#ff0000');
+    // Already bright colours keep their value and hue, only the saturation goes up.
+    expect(vivid('#e11d48')).toBe('#e10031');
+    expect(vivid('#22c55e')).toBe('#00c549');
   });
 });
 

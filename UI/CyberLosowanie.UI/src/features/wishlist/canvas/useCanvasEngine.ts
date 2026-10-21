@@ -66,8 +66,14 @@ const clonePageWithNewIds = (page: CanvasPage): CanvasPage => ({
  * Drawing performance (doc 5.1): points of the live stroke are appended to a
  * mutable ref and flushed to state through requestAnimationFrame; the stroke is
  * committed to the document (and the undo stack) only when it ends.
+ *
+ * `initiallyDirty` starts from a document that differs from the saved one (a
+ * restored local draft), so Save and the leave guards treat it as unsaved.
  */
-export function useCanvasEngine(initialDocument: CanvasDocument) {
+export function useCanvasEngine(
+  initialDocument: CanvasDocument,
+  options?: { initiallyDirty?: boolean },
+) {
   const [history, setHistory] = useState<EngineHistory>(() => ({
     past: [],
     present: initialDocument.pages,
@@ -76,7 +82,7 @@ export function useCanvasEngine(initialDocument: CanvasDocument) {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [liveStroke, setLiveStroke] = useState<CanvasStroke | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
+  const [isDirty, setIsDirty] = useState(options?.initiallyDirty ?? false);
 
   const liveStrokeRef = useRef<CanvasStroke | null>(null);
   const frameRequestRef = useRef<number | null>(null);

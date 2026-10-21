@@ -1,4 +1,4 @@
-import { Outlet, useNavigation } from "react-router-dom";
+import { Outlet, ScrollRestoration, useNavigation } from "react-router-dom";
 import { Footer, Loading, Navbar } from "@/shared/components";
 
 // The pine background and snow live on <body> / SceneBackground (App), so the
@@ -13,6 +13,9 @@ const HomeLayout = () => {
         {isPageLoading ? <Loading /> : <Outlet />}
       </main>
       <Footer />
+      {/* A new screen starts at the top (back/forward restore the old position) —
+          without it a step opened mid-scroll, its heading out of view on phones. */}
+      <ScrollRestoration />
     </div>
   );
 };

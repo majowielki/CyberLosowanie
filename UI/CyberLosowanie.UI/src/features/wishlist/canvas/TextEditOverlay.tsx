@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { DOCUMENT_LIMITS, TEXT_FONT_FAMILY } from './canvasConstants';
+import { useTranslation } from '@/shared/i18n';
+import { DEFAULT_TEXT_PLACEHOLDER, DOCUMENT_LIMITS, TEXT_FONT_FAMILY } from './canvasConstants';
 import { CanvasTextItem } from './canvasDocument';
 
 interface TextEditOverlayProps {
@@ -23,7 +24,10 @@ function TextEditOverlay({
   onCommit,
   onCancel,
 }: TextEditOverlayProps) {
-  const [text, setText] = useState(item.text);
+  const { t } = useTranslation();
+  // A new text starts empty; the default text is only a placeholder (committed
+  // empty, the item is removed instead of keeping "Wpisz tekst...").
+  const [text, setText] = useState(item.text === DEFAULT_TEXT_PLACEHOLDER ? '' : item.text);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -38,6 +42,7 @@ function TextEditOverlay({
       ref={textareaRef}
       value={text}
       maxLength={DOCUMENT_LIMITS.maxTextLength}
+      placeholder={t('wishlist.text.placeholder')}
       onChange={(event) => setText(event.target.value)}
       onBlur={commit}
       onKeyDown={(event) => {
