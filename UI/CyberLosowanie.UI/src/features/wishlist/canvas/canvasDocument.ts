@@ -18,6 +18,7 @@ import {
   PAGE_PATTERNS,
   SHAPE_KINDS,
   STROKE_KINDS,
+  TEXT_FONTS,
 } from './canvasConstants';
 import { StickerId, isStickerId } from './stickers';
 
@@ -31,6 +32,9 @@ export type StrokeTool = 'pen' | 'eraser';
 
 /** Pen style — how a pen stroke is rendered (see strokeStyles.ts). */
 export type StrokeKind = (typeof STROKE_KINDS)[number];
+
+/** Text font id (see TEXT_FONTS); absent on a text = the default font. */
+export type TextFontId = (typeof TEXT_FONTS)[number]['id'];
 
 export interface CanvasStroke {
   id: string;
@@ -57,6 +61,7 @@ export interface CanvasTextItem {
   fill: string;
   /** Wrap width in document units. */
   width: number;
+  fontFamily?: TextFontId;
 }
 
 export interface CanvasImageItem {
@@ -373,6 +378,9 @@ function validateItems(
       if (!HEX_COLOR_PATTERN.test(item.fill)) {
         errors.push({ key: 'wishlist.validation.textColor' });
       }
+      if (item.fontFamily !== undefined && !isTextFontId(item.fontFamily)) {
+        errors.push({ key: 'wishlist.validation.textFont' });
+      }
       if (!Number.isFinite(item.width) || item.width <= 0) {
         errors.push({ key: 'wishlist.validation.textWidth' });
       }
@@ -485,6 +493,9 @@ export const isPagePattern = (value: unknown): value is PagePattern =>
 export const isShapeKind = (value: unknown): value is ShapeKind =>
   typeof value === 'string' && (SHAPE_KINDS as readonly string[]).includes(value);
 
+export const isTextFontId = (value: unknown): value is TextFontId =>
+  typeof value === 'string' && TEXT_FONTS.some((font) => font.id === value);
+
 export const isStrokeKind = (value: unknown): value is StrokeKind =>
   typeof value === 'string' && (STROKE_KINDS as readonly string[]).includes(value);
 
@@ -527,7 +538,9 @@ function isItemShape(value: unknown): value is CanvasItem {
       typeof value.text === 'string' &&
       typeof value.fontSize === 'number' &&
       typeof value.fill === 'string' &&
-      typeof value.width === 'number'
+      typeof value.width === 'number' &&
+      // An unknown font is kept so validateCanvasDocument reports it.
+      (value.fontFamily === undefined || typeof value.fontFamily === 'string')
     );
   }
   if (value.type === 'image') {

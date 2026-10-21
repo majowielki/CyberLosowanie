@@ -41,12 +41,14 @@ import {
   TOOL_SHORTCUTS,
   STROKE_KINDS,
   STROKE_WIDTHS,
+  TEXT_FONTS,
 } from './canvasConstants';
-import { PagePattern, ShapeKind, StrokeKind } from './canvasDocument';
+import { PagePattern, ShapeKind, StrokeKind, TextFontId } from './canvasDocument';
 import type { ItemOrderMove } from './useCanvasEngine';
 import PagePatternPreview from './PagePatternPreview';
 import StrokeKindPreview from './StrokeKindPreview';
 import ColorPalettePanel from './ColorPalettePanel';
+import { cssFontFamily } from './textFonts';
 
 export type EditorTool = keyof typeof TOOL_SHORTCUTS;
 
@@ -96,6 +98,11 @@ interface CanvasToolbarProps {
   variant?: 'panel' | 'dock';
   /** Dock only: shown while a text is selected (double-tap is not discoverable). */
   onEditSelectedText?: () => void;
+  /** Font of the next text (text tool) or of the selected text (pointer tool). */
+  textFont: TextFontId | undefined;
+  onTextFontChange: (font: TextFontId | undefined) => void;
+  /** Pointer tool with a text selected: show the font picker for it. */
+  showSelectionFont: boolean;
 }
 
 const TOOLS: Array<{ id: EditorTool; labelKey: TranslationKey; icon: typeof Pen }> = [
@@ -249,6 +256,9 @@ function CanvasToolbar({
   isUploadingImage,
   variant = 'panel',
   onEditSelectedText,
+  textFont,
+  onTextFontChange,
+  showSelectionFont,
 }: CanvasToolbarProps) {
   const { t } = useTranslation();
   const withShortcut = (label: string, shortcut: string) =>
@@ -259,8 +269,11 @@ function CanvasToolbar({
   const showKindOptions = tool === 'pen';
   const showShapeOptions = tool === 'shape';
   const showPatternOptions = tool === 'fill';
+  const showFontOptions = tool === 'text' || showSelectionFont;
   const showContextualOptions =
-    showColorOptions || showStrokeOptions || showKindOptions || showShapeOptions || showPatternOptions;
+    showColorOptions || showStrokeOptions || showKindOptions || showShapeOptions || showPatternOptions ||
+    showFontOptions;
+  const currentFontName = TEXT_FONTS.find((font) => font.id === textFont)?.family ?? t('wishlist.toolbar.font.default');
   const CurrentShapeIcon = SHAPE_OPTIONS.find((option) => option.id === shapeKind)?.icon ?? Square;
   const dock = variant === 'dock';
   // Desktop: toolbar is a left column, so panels open to its right; on narrow
@@ -448,6 +461,43 @@ function CanvasToolbar({
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+              </ToolbarFlyout>
+            )}
+
+            {showFontOptions && (
+              <ToolbarFlyout
+                label={t('wishlist.toolbar.fontCurrent', { name: currentFontName })}
+                side={flyoutSide}
+                large={dock}
+                trigger={
+                  <span className="text-lg leading-none text-gray-800" style={{ fontFamily: cssFontFamily(textFont) }}>
+                    Aa
+                  </span>
+                }
+              >
+                {(close) => (
+                  <div className="flex w-56 flex-col gap-0.5" role="group" aria-label={t('wishlist.toolbar.fontGroup')}>
+                    {[undefined, ...TEXT_FONTS.map((font) => font.id)].map((id) => (
+                      <button
+                        key={id ?? 'default'}
+                        type="button"
+                        aria-pressed={textFont === id}
+                        onClick={() => {
+                          onTextFontChange(id);
+                          close();
+                        }}
+                        className={cn(
+                          'flex min-h-11 items-center rounded-lg px-3 text-left text-xl text-gray-800 hover:bg-gray-100',
+                          textFont === id && 'bg-gray-200 ring-1 ring-sky-500',
+                        )}
+                        // Each name is written in its own font — the list is the preview.
+                        style={{ fontFamily: cssFontFamily(id) }}
+                      >
+                        {TEXT_FONTS.find((font) => font.id === id)?.family ?? t('wishlist.toolbar.font.default')}
+                      </button>
+                    ))}
                   </div>
                 )}
               </ToolbarFlyout>

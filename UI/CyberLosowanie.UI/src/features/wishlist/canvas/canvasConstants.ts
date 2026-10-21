@@ -64,7 +64,22 @@ export const DEFAULT_STROKE_KIND: (typeof STROKE_KINDS)[number] = 'pen';
 export const DEFAULT_PEN_COLOR: string = PEN_COLORS[0];
 export const DEFAULT_STROKE_WIDTH: number = STROKE_WIDTHS[1];
 
+// Default font of a text without `fontFamily` (texts saved before fonts existed).
 export const TEXT_FONT_FAMILY = 'Arial';
+// Selectable text fonts (text item `fontFamily`). Mirrors API WishlistConstants
+// FONT_FAMILIES; ids live in saved wishlists, so they are only ever added. All
+// ship latin-ext, i.e. the Polish letters (fonts without them render broken text).
+export const TEXT_FONTS = [
+  { id: 'caveat', family: 'Caveat' },
+  { id: 'patrick-hand', family: 'Patrick Hand' },
+  { id: 'berkshire-swash', family: 'Berkshire Swash' },
+  { id: 'lobster', family: 'Lobster' },
+  { id: 'great-vibes', family: 'Great Vibes' },
+  { id: 'kaushan-script', family: 'Kaushan Script' },
+  { id: 'rubik-wet-paint', family: 'Rubik Wet Paint' },
+] as const;
+// New texts start in a handwriting font — it is a wishlist, not a form.
+export const DEFAULT_TEXT_FONT: (typeof TEXT_FONTS)[number]['id'] = 'caveat';
 export const DEFAULT_FONT_SIZE = 36;
 // Emojis are inserted as text items at a larger, sticker-like size.
 export const EMOJI_INSERT_FONT_SIZE = 120;

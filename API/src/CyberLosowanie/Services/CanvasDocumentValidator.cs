@@ -363,6 +363,11 @@ namespace CyberLosowanie.Services
                 errors.Add($"{label}: fill must be a #rrggbb color.");
             }
 
+            if (item.FontFamily != null && !WishlistConstants.FONT_FAMILIES.Contains(item.FontFamily))
+            {
+                errors.Add($"{label}: fontFamily must be one of {string.Join(", ", WishlistConstants.FONT_FAMILIES.Select(f => $"'{f}'"))}.");
+            }
+
             if (item.Width is null or <= 0)
             {
                 errors.Add($"{label}: width must be a positive number.");

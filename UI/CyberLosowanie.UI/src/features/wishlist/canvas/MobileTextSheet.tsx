@@ -3,8 +3,9 @@ import { Check } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { TranslationKey, useTranslation } from '@/shared/i18n';
-import { DEFAULT_TEXT_PLACEHOLDER, DOCUMENT_LIMITS, TEXT_SIZE_PRESETS } from './canvasConstants';
-import { CanvasTextItem } from './canvasDocument';
+import { DEFAULT_TEXT_PLACEHOLDER, DOCUMENT_LIMITS, TEXT_FONTS, TEXT_SIZE_PRESETS } from './canvasConstants';
+import { CanvasTextItem, TextFontId } from './canvasDocument';
+import { cssFontFamily } from './textFonts';
 
 const SIZE_LABEL_KEYS: Record<(typeof TEXT_SIZE_PRESETS)[number]['id'], TranslationKey> = {
   small: 'wishlist.text.size.small',
@@ -29,7 +30,7 @@ export interface MobileTextSheetHandle {
 
 interface MobileTextSheetProps {
   item: CanvasTextItem;
-  onCommit: (text: string, fontSize: number) => void;
+  onCommit: (text: string, fontSize: number, fontFamily: TextFontId | undefined) => void;
 }
 
 /**
@@ -37,7 +38,8 @@ interface MobileTextSheetProps {
  * on-screen keyboard. The inline overlay sits wherever the text is on the page —
  * often under the keyboard — and at page scale its font is ~12px; here the
  * typing happens at a readable 16px, Enter starts a new line (phones have no
- * Shift+Enter) and "Done" commits.
+ * Shift+Enter) and "Done" commits. Font and size are picked here too, and the
+ * field previews the font.
  */
 const MobileTextSheet = forwardRef<MobileTextSheetHandle, MobileTextSheetProps>(
   function MobileTextSheet({ item, onCommit }, ref) {
@@ -45,10 +47,11 @@ const MobileTextSheet = forwardRef<MobileTextSheetHandle, MobileTextSheetProps>(
     // A new text starts empty; the default text is only a placeholder.
     const [text, setText] = useState(item.text === DEFAULT_TEXT_PLACEHOLDER ? '' : item.text);
     const [fontSize, setFontSize] = useState(item.fontSize);
+    const [fontFamily, setFontFamily] = useState(item.fontFamily);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const keyboardInset = useKeyboardInset();
 
-    const commit = () => onCommit(text, fontSize);
+    const commit = () => onCommit(text, fontSize, fontFamily);
     const focusField = () => {
       const textarea = textareaRef.current;
       if (!textarea) {
@@ -82,9 +85,33 @@ const MobileTextSheet = forwardRef<MobileTextSheetHandle, MobileTextSheetProps>(
             maxLength={DOCUMENT_LIMITS.maxTextLength}
             placeholder={t('wishlist.text.placeholder')}
             onChange={(event) => setText(event.target.value)}
-            className="block max-h-40 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-base leading-snug outline-none focus:border-sky-500 focus:bg-white"
-            style={{ color: item.fill === '#ffffff' ? '#111827' : item.fill }}
+            // 18px rather than 16: script fonts read smaller at the same size.
+            className="block max-h-40 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-lg leading-snug outline-none focus:border-sky-500 focus:bg-white"
+            style={{ color: item.fill === '#ffffff' ? '#111827' : item.fill, fontFamily: cssFontFamily(fontFamily) }}
           />
+          {/* Fonts: one scrollable row, each name written in its own font. */}
+          <div
+            className="-mx-3 mt-2 flex gap-1.5 overflow-x-auto px-3 pb-1"
+            role="group"
+            aria-label={t('wishlist.toolbar.fontGroup')}
+          >
+            {[undefined, ...TEXT_FONTS.map((font) => font.id)].map((id) => (
+              <button
+                key={id ?? 'default'}
+                type="button"
+                aria-pressed={fontFamily === id}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setFontFamily(id)}
+                className={cn(
+                  'h-10 shrink-0 whitespace-nowrap rounded-xl px-3 text-lg text-gray-800',
+                  fontFamily === id ? 'bg-gray-200 ring-1 ring-sky-500' : 'bg-gray-50 hover:bg-gray-100',
+                )}
+                style={{ fontFamily: cssFontFamily(id) }}
+              >
+                {TEXT_FONTS.find((font) => font.id === id)?.family ?? t('wishlist.toolbar.font.default')}
+              </button>
+            ))}
+          </div>
           <div className="mt-2 flex items-center gap-2">
             <div className="flex flex-1 items-center gap-1" role="group" aria-label={t('wishlist.text.sizeGroup')}>
               {TEXT_SIZE_PRESETS.map((preset, index) => (

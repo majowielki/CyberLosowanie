@@ -49,6 +49,13 @@ namespace CyberLosowanie.Constants
             "dots", "grid", "lines", "stripes", "checker", "snowflakes", "stars", "satin", "glossy", "paper"
         };
         public const string ITEM_TYPE_TEXT = "text";
+        // Text fonts (item "fontFamily"); absent = the default sans-serif (texts
+        // saved before fonts existed). The font files ship with the frontend; ids
+        // live in saved wishlists, so they are only ever added.
+        public static readonly IReadOnlySet<string> FONT_FAMILIES = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "caveat", "patrick-hand", "berkshire-swash", "lobster", "great-vibes", "kaushan-script", "rubik-wet-paint"
+        };
         public const string ITEM_TYPE_IMAGE = "image";
         public const string ITEM_TYPE_SHAPE = "shape";
         // Shape items (item "shape"); outline colour + width like a pen stroke, optional fill.

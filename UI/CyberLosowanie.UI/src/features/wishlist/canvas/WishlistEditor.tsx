@@ -27,6 +27,7 @@ import {
   FillGapLevel,
   DEFAULT_STROKE_KIND,
   DEFAULT_STROKE_WIDTH,
+  DEFAULT_TEXT_FONT,
   DEFAULT_TEXT_PLACEHOLDER,
   MOBILE_DEFAULT_FONT_SIZE,
   MOBILE_MIN_TEXT_WIDTH,
@@ -42,6 +43,7 @@ import {
   CanvasTextItem,
   ShapeKind,
   StrokeKind,
+  TextFontId,
   serializeCanvasDocument,
   validateCanvasDocument,
 } from './canvasDocument';
@@ -97,6 +99,8 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
   const engine = useCanvasEngine(initialDocument, { initiallyDirty: restoredDraft });
   const [tool, setTool] = useState<EditorTool>('pen');
   const [color, setColor] = useState<string>(DEFAULT_PEN_COLOR);
+  // Font of the next text; the phone text panel updates it with the last choice.
+  const [textFont, setTextFont] = useState<TextFontId | undefined>(DEFAULT_TEXT_FONT);
   const [strokeWidth, setStrokeWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
   const [strokeKind, setStrokeKind] = useState<StrokeKind>(DEFAULT_STROKE_KIND);
   const [shapeKind, setShapeKind] = useState<ShapeKind>('rect');
@@ -288,6 +292,15 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
   const selectedItem = engine.items.find((item) => item.id === selectedItemId) ?? null;
   const selectedIndex = selectedItem ? engine.items.indexOf(selectedItem) : -1;
   // With the pointer tool, the palette recolours the selected text or shape.
+  // Likewise the font picker restyles a selected text instead of the next one.
+  const selectedText = tool === 'select' && selectedItem?.type === 'text' ? selectedItem : null;
+  const handleTextFontChange = (font: TextFontId | undefined) => {
+    if (selectedText) {
+      engine.updateItem(selectedText.id, { fontFamily: font });
+    } else {
+      setTextFont(font);
+    }
+  };
   const recolorsSelection =
     tool === 'select' && (selectedItem?.type === 'text' || selectedItem?.type === 'shape');
   const paletteColor = !recolorsSelection
@@ -317,7 +330,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
       // a typed list wraps across the page instead of in a narrow column.
       const item = compact
         ? addMobileTextItem(position)
-        : engine.addTextItem(position.x, position.y, color);
+        : engine.addTextItem(position.x, position.y, color, { fontFamily: textFont });
       openTextEditor(item.id);
       setTool('select');
     } else if (tool === 'shape') {
@@ -474,17 +487,29 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
     return engine.addTextItem(x, position.y, color, {
       fontSize: MOBILE_DEFAULT_FONT_SIZE,
       width: CANVAS_WIDTH - MOBILE_TEXT_MARGIN - x,
+      fontFamily: textFont,
     });
   };
 
-  const handleTextCommit = (text: string, fontSize?: number) => {
+  /** `style` comes from the phone panel, which also picks size and font. */
+  const handleTextCommit = (
+    text: string,
+    style?: { fontSize: number; fontFamily: TextFontId | undefined },
+  ) => {
     if (editingTextItem) {
       const trimmed = text.trim();
       if (!trimmed) {
         engine.removeItem(editingTextItem.id);
-      } else if (trimmed !== editingTextItem.text || (fontSize && fontSize !== editingTextItem.fontSize)) {
-        engine.updateItem(editingTextItem.id, { text: trimmed, ...(fontSize ? { fontSize } : {}) });
+      } else if (
+        trimmed !== editingTextItem.text ||
+        (style &&
+          (style.fontSize !== editingTextItem.fontSize || style.fontFamily !== editingTextItem.fontFamily))
+      ) {
+        engine.updateItem(editingTextItem.id, { text: trimmed, ...style });
       }
+    }
+    if (style) {
+      setTextFont(style.fontFamily);
     }
     setEditingTextId(null);
   };
@@ -728,6 +753,9 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
       color={paletteColor}
       onColorChange={handleColorChange}
       showSelectionColor={recolorsSelection}
+      textFont={selectedText ? selectedText.fontFamily : textFont}
+      onTextFontChange={handleTextFontChange}
+      showSelectionFont={selectedText !== null}
       strokeWidth={strokeWidth}
       onStrokeWidthChange={setStrokeWidth}
       strokeKind={strokeKind}
@@ -837,7 +865,7 @@ function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = fals
           // A fresh panel per edited text (its draft state starts from the item).
           key={editingTextItem.id}
           item={editingTextItem}
-          onCommit={handleTextCommit}
+          onCommit={(text, fontSize, fontFamily) => handleTextCommit(text, { fontSize, fontFamily })}
         />
       )}
 

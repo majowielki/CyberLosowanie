@@ -410,6 +410,41 @@ namespace CyberLosowanie.Test
         }
 
         [Theory]
+        [InlineData("caveat")]
+        [InlineData("berkshire-swash")]
+        [InlineData("rubik-wet-paint")]
+        public async Task SaveMyWishlistAsync_TextWithKnownFont_IsStored(string fontFamily)
+        {
+            var added = CaptureAddedWishlist();
+            var text = new { id = "t1", type = "text", text = "Drogi Mikołaju", x = 10.0, y = 20.0, rotation = 0.0, fontSize = 48.0, fill = "#111827", width = 600.0, fontFamily };
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(items: new[] { text }));
+
+            added()!.CanvasJson.Should().Contain($"\"fontFamily\":\"{fontFamily}\"");
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_TextWithoutFont_StoresNoFontFamily()
+        {
+            var added = CaptureAddedWishlist();
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(items: new[] { TextItem() }));
+
+            added()!.CanvasJson.Should().NotContain("fontFamily");
+        }
+
+        [Theory]
+        [InlineData("Comic Sans MS")]
+        [InlineData("")]
+        public async Task SaveMyWishlistAsync_TextWithUnknownFont_ThrowsBusinessValidation(string fontFamily)
+        {
+            var text = new { id = "t1", type = "text", text = "Lego", x = 10.0, y = 20.0, rotation = 0.0, fontSize = 48.0, fill = "#111827", width = 600.0, fontFamily };
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(items: new[] { text })));
+        }
+
+        [Theory]
         [InlineData("rect")]
         [InlineData("star")]
         [InlineData("arrow")]

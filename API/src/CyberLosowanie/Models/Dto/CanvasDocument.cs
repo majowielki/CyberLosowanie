@@ -78,6 +78,9 @@ namespace CyberLosowanie.Models.Dto
         public double? FontSize { get; set; }
         public string? Fill { get; set; }
 
+        /// <summary>Text only: an id from WishlistConstants.FONT_FAMILIES; absent = default font.</summary>
+        public string? FontFamily { get; set; }
+
         // Shape fields (Fill is shared with text; for a shape it is optional)
         public string? Shape { get; set; }
         public string? Stroke { get; set; }

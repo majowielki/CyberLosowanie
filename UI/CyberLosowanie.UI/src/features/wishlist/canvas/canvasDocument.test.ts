@@ -13,7 +13,7 @@ import {
   serializeCanvasDocument,
   validateCanvasDocument,
 } from './canvasDocument';
-import { DOCUMENT_LIMITS, PAGE_PATTERNS, SHAPE_KINDS, STICKER_IDS, STROKE_KINDS } from './canvasConstants';
+import { DOCUMENT_LIMITS, PAGE_PATTERNS, SHAPE_KINDS, STICKER_IDS, STROKE_KINDS, TEXT_FONTS } from './canvasConstants';
 
 const stroke = (overrides: Partial<CanvasStroke> = {}): CanvasStroke => ({
   id: 's1',
@@ -205,8 +205,23 @@ describe('validateCanvasDocument', () => {
     ['font size above maximum', textItem({ fontSize: DOCUMENT_LIMITS.maxFontSize + 1 })],
     ['bad fill color', textItem({ fill: 'blue' })],
     ['non-positive width', textItem({ width: 0 })],
+    ['unknown font', textItem({ fontFamily: 'comic-sans' as CanvasTextItem['fontFamily'] })],
   ])('rejects a text item with %s', (_case, badItem) => {
     expect(validateCanvasDocument(documentWith({ pages: [page({ items: [badItem] })] }))).not.toEqual([]);
+  });
+
+  it('accepts every text font, and a text without one (default font)', () => {
+    const items = [
+      textItem({ id: 'plain' }),
+      ...TEXT_FONTS.map((font) => textItem({ id: font.id, fontFamily: font.id })),
+    ];
+    expect(validateCanvasDocument(documentWith({ pages: [page({ items })] }))).toEqual([]);
+  });
+
+  it('keeps a text font through serialize and parse', () => {
+    const document = documentWith({ pages: [page({ items: [textItem({ fontFamily: 'great-vibes' })] })] });
+    const parsed = parseCanvasDocument(serializeCanvasDocument(document));
+    expect(parsed.document?.pages[0].items[0]).toMatchObject({ fontFamily: 'great-vibes' });
   });
 
   it('accepts every shape kind, outlined or filled', () => {

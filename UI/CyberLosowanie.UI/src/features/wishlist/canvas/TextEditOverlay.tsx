@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from '@/shared/i18n';
-import { DEFAULT_TEXT_PLACEHOLDER, DOCUMENT_LIMITS, TEXT_FONT_FAMILY } from './canvasConstants';
+import { DEFAULT_TEXT_PLACEHOLDER, DOCUMENT_LIMITS } from './canvasConstants';
+import { cssFontFamily } from './textFonts';
 import { CanvasTextItem } from './canvasDocument';
 
 interface TextEditOverlayProps {
@@ -69,7 +70,7 @@ function TextEditOverlay({
         minHeight: item.fontSize * stageScale * 1.2,
         fontSize: item.fontSize * stageScale,
         lineHeight: 1,
-        fontFamily: TEXT_FONT_FAMILY,
+        fontFamily: cssFontFamily(item.fontFamily),
         color: item.fill,
         transform: `rotate(${item.rotation}deg)`,
         transformOrigin: 'top left',

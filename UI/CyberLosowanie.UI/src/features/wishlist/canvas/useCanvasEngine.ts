@@ -11,6 +11,7 @@ import {
   PagePattern,
   StrokeKind,
   StrokeTool,
+  TextFontId,
   createEmptyPage,
   isCanvasFill,
 } from './canvasDocument';
@@ -219,7 +220,7 @@ export function useCanvasEngine(
       x: number,
       y: number,
       fill: string,
-      options?: { text?: string; fontSize?: number; width?: number },
+      options?: { text?: string; fontSize?: number; width?: number; fontFamily?: TextFontId },
     ): CanvasTextItem => {
       const fontSize = options?.fontSize ?? DEFAULT_FONT_SIZE;
       const item: CanvasTextItem = {
@@ -232,6 +233,7 @@ export function useCanvasEngine(
         fontSize,
         fill,
         width: options?.width ?? DEFAULT_TEXT_WIDTH,
+        ...(options?.fontFamily ? { fontFamily: options.fontFamily } : {}),
       };
       updateCurrentPage((page) => ({ ...page, items: [...page.items, item] }));
       setSelectedItemId(item.id);

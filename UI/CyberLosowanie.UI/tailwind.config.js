@@ -5,9 +5,9 @@ export default {
   theme: {
   	extend: {
   		fontFamily: {
-  			// Self-hosted variable fonts (@fontsource-variable), imported in main.tsx.
+  			// Self-hosted fonts (@fontsource / @fontsource-variable), imported in main.tsx.
   			sans: ['"Manrope Variable"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-  			display: ['"Cormorant Garamond Variable"', 'Georgia', 'serif']
+  			display: ['"Berkshire Swash"', 'Georgia', 'serif']
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client'
-// Self-hosted variable fonts (no third-party font requests at runtime).
+// Self-hosted fonts (no third-party font requests at runtime).
 import '@fontsource-variable/manrope'
-import '@fontsource-variable/cormorant-garamond'
+import '@fontsource/berkshire-swash'
 import './index.css'
 import App from './app/App.tsx'
 import store, { persistor } from './app/store'

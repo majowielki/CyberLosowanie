@@ -93,9 +93,11 @@
     @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
   }
 
-  /* Display typography — Cormorant Garamond for headings. */
+  /* Display typography — Berkshire Swash (festive retro script) for headings.
+     It has a single weight, so no faux bold from font-semibold/bold. */
   .font-display {
     font-family: theme('fontFamily.display');
+    font-synthesis-weight: none;
   }
 
   /* Small letter-spaced label above a heading. */

@@ -9,7 +9,6 @@ import {
   CANVAS_WIDTH,
   DOCUMENT_LIMITS,
   MIN_TEXT_WIDTH,
-  TEXT_FONT_FAMILY,
 } from './canvasConstants';
 import {
   CanvasImageItem,
@@ -26,6 +25,7 @@ import PagePatternLayer from './PagePatternLayer';
 import StrokeShape from './StrokeShape';
 import { STICKERS } from './stickers';
 import { useAuthorizedImage } from './useAuthorizedImage';
+import { cssFontFamily, useTextFontsReady } from './textFonts';
 import { useStickerImage } from './useStickerImage';
 import type { RasterImage } from './areaFill';
 import type { Point } from './useCanvasEngine';
@@ -137,6 +137,21 @@ function WishlistCanvas({
   // Finger-sized transformer handles on touch screens (Konva's default 10px
   // anchors are a mouse target).
   const isCoarsePointer = useMediaQuery('(pointer: coarse)');
+  // A web font that arrives after the first draw: re-measure the texts (Konva
+  // caches line widths/wrapping) and redraw, or they keep the fallback's layout.
+  const fontsReady = useTextFontsReady(items);
+  useEffect(() => {
+    if (fontsReady === 0) {
+      return;
+    }
+    itemNodesRef.current.forEach((node) => {
+      if (node.getClassName() === 'Text') {
+        (node as Konva.Text)._setTextData();
+      }
+    });
+    transformerRef.current?.forceUpdate();
+    transformerRef.current?.getStage()?.batchDraw();
+  }, [fontsReady]);
   // Pointer position (document coords) for the brush-size preview cursor.
   const [cursorPos, setCursorPos] = useState<Point | null>(null);
 
@@ -382,7 +397,7 @@ function WishlistCanvas({
                 {...sharedItemProps(item)}
                 text={item.text}
                 fontSize={item.fontSize}
-                fontFamily={TEXT_FONT_FAMILY}
+                fontFamily={cssFontFamily(item.fontFamily)}
                 fill={item.fill}
                 width={item.width}
                 visible={item.id !== editingItemId}

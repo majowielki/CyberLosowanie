@@ -32,6 +32,9 @@ const renderToolbar = (tool: EditorTool, overrides: Partial<React.ComponentProps
     onPickEmoji: vi.fn(),
     onPickSticker: vi.fn(),
     isUploadingImage: false,
+    textFont: 'caveat' as const,
+    onTextFontChange: vi.fn(),
+    showSelectionFont: false,
     ...overrides,
   };
   renderWithProviders(<CanvasToolbar {...props} />, { language: 'en' });
@@ -39,6 +42,23 @@ const renderToolbar = (tool: EditorTool, overrides: Partial<React.ComponentProps
 };
 
 describe('CanvasToolbar flyouts', () => {
+  it('offers the text fonts with the text tool, including the plain default', async () => {
+    const props = renderToolbar('text');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font: Caveat' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Berkshire Swash' }));
+    expect(props.onTextFontChange).toHaveBeenCalledWith('berkshire-swash');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font: Caveat' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Plain' }));
+    expect(props.onTextFontChange).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('hides the font picker for drawing tools', () => {
+    renderToolbar('pen');
+    expect(screen.queryByRole('button', { name: /^Font:/ })).not.toBeInTheDocument();
+  });
+
   it('keeps the palettes collapsed until their trigger is clicked', async () => {
     const props = renderToolbar('pen');
 
