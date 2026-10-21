@@ -2,6 +2,7 @@ import { TranslatableError } from '@/shared/i18n';
 import {
   IMAGE_DOWNSCALE_JPEG_QUALITY,
   IMAGE_DOWNSCALE_MAX_EDGE,
+  IMAGE_DOWNSCALE_WEBP_QUALITY,
   MAX_IMAGE_UPLOAD_BYTES,
 } from './canvasConstants';
 
@@ -18,7 +19,8 @@ export const IMAGE_FILE_ACCEPT = ACCEPTED_IMAGE_TYPES.join(',');
 
 /**
  * Prepares a picked file for upload: rejects non-image types up front, then
- * downscales anything larger than IMAGE_DOWNSCALE_MAX_EDGE (JPEG re-encode) —
+ * downscales anything larger than IMAGE_DOWNSCALE_MAX_EDGE (re-encoded as JPEG,
+ * or as WebP when the source may be transparent) —
  * the server-side 5 MB limit is a safety net, not a target (doc 4.3).
  * Returns the file to upload together with its pixel dimensions, which the
  * editor needs to place the image on the canvas.
@@ -51,13 +53,20 @@ export async function prepareImageForUpload(file: File): Promise<PreparedImage> 
     if (!context) {
       throw new TranslatableError('wishlist.image.processFailed');
     }
-    // JPEG has no alpha channel — flatten transparency onto white, not black.
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, width, height);
+    // PNG/WebP may carry transparency (cut-out lettering, stickers): keep it
+    // with a WebP re-encode. JPEG has no alpha channel, so a JPEG source is
+    // flattened onto white (not black) and stays JPEG.
+    const keepsAlpha = file.type !== 'image/jpeg';
+    if (!keepsAlpha) {
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, width, height);
+    }
     context.drawImage(bitmap, 0, 0, width, height);
 
     const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, 'image/jpeg', IMAGE_DOWNSCALE_JPEG_QUALITY),
+      keepsAlpha
+        ? canvas.toBlob(resolve, 'image/webp', IMAGE_DOWNSCALE_WEBP_QUALITY)
+        : canvas.toBlob(resolve, 'image/jpeg', IMAGE_DOWNSCALE_JPEG_QUALITY),
     );
     if (!blob) {
       throw new TranslatableError('wishlist.image.processFailed');
@@ -66,9 +75,12 @@ export async function prepareImageForUpload(file: File): Promise<PreparedImage> 
       throw new TranslatableError('wishlist.image.tooLarge');
     }
 
+    // A browser without WebP encoding falls back to PNG (still transparent):
+    // name and type the file after what was actually produced.
+    const extension = blob.type === 'image/webp' ? 'webp' : blob.type === 'image/png' ? 'png' : 'jpg';
     const baseName = file.name.replace(/\.[^.]+$/, '') || 'zdjecie';
     return {
-      file: new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' }),
+      file: new File([blob], `${baseName}.${extension}`, { type: blob.type || 'image/jpeg' }),
       width,
       height,
     };

@@ -31,8 +31,14 @@ function TextEditOverlay({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    textareaRef.current?.focus();
-    textareaRef.current?.select();
+    // Deferred past the click that created the text: its mousedown still has
+    // the default action pending (focus moves to the page), which would blur
+    // a textarea focused right away and end the edit before typing starts.
+    const timer = window.setTimeout(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const commit = () => onCommit(text);

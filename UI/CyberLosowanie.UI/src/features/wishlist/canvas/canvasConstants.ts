@@ -110,6 +110,9 @@ export const MAX_UNDO_STEPS = 100;
 export const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const IMAGE_DOWNSCALE_MAX_EDGE = 1600;
 export const IMAGE_DOWNSCALE_JPEG_QUALITY = 0.85;
+// PNG/WebP sources (which may be transparent — e.g. lettering exported from
+// Canva) are re-encoded as WebP, which keeps the alpha channel.
+export const IMAGE_DOWNSCALE_WEBP_QUALITY = 0.9;
 export const IMAGE_INSERT_MAX_WIDTH_RATIO = 0.6;
 
 // Page background patterns (page `pattern`, fill tool). Mirrors API
