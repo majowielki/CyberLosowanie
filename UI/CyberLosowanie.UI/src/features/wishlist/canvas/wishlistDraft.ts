@@ -1,3 +1,4 @@
+import { DEFAULT_TEXT_PLACEHOLDER } from './canvasConstants';
 import { CanvasDocument, parseCanvasDocument, serializeCanvasDocument } from './canvasDocument';
 
 /**
@@ -32,8 +33,17 @@ export function writeWishlistDraft(cyberekId: number | null | undefined, documen
   if (cyberekId == null) {
     return;
   }
+  // A text still being typed holds only the placeholder; restored, it would
+  // turn into a literal "Wpisz tekst..." on the page.
+  const withoutPlaceholders: CanvasDocument = {
+    ...document,
+    pages: document.pages.map((page) => ({
+      ...page,
+      items: page.items.filter((item) => item.type !== 'text' || item.text !== DEFAULT_TEXT_PLACEHOLDER),
+    })),
+  };
   try {
-    window.localStorage.setItem(draftKey(cyberekId), serializeCanvasDocument(document));
+    window.localStorage.setItem(draftKey(cyberekId), serializeCanvasDocument(withoutPlaceholders));
   } catch {
     // Quota or blocked storage: the draft is best-effort.
   }

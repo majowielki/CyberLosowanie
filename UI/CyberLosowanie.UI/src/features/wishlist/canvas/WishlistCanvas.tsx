@@ -132,11 +132,51 @@ function WishlistCanvas({
 }: WishlistCanvasProps) {
   const itemNodesRef = useRef<Map<string, Konva.Node>>(new Map());
   const transformerRef = useRef<Konva.Transformer>(null);
+  const stageRef = useRef<Konva.Stage>(null);
   const committedStrokesRef = useRef<Konva.Group>(null);
   const isDrawing = liveStroke !== null;
   // Finger-sized transformer handles on touch screens (Konva's default 10px
   // anchors are a mouse target).
   const isCoarsePointer = useMediaQuery('(pointer: coarse)');
+  // Chrome (notably on Android) frees the bitmaps of canvases in a background
+  // tab and later hands back a fresh context: the pixel-ratio scale Konva set
+  // up is gone, so the page drew at 1/devicePixelRatio size in a corner and the
+  // rest of the canvas stayed empty. Re-apply it on restore and on return.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) {
+      return;
+    }
+    const repairLayers = () => {
+      stage.getLayers().forEach((layer) => {
+        const canvases = [layer.getCanvas(), layer.getHitCanvas()];
+        const lostScale = canvases.some(
+          (canvas) => canvas.getContext()._context.getTransform().a !== canvas.getPixelRatio(),
+        );
+        if (lostScale) {
+          // setSize resets the bitmap and scales the fresh context by the pixel ratio.
+          canvases.forEach((canvas) =>
+            canvas.setSize(canvas.width / canvas.getPixelRatio(), canvas.height / canvas.getPixelRatio()),
+          );
+          layer.batchDraw();
+        }
+      });
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        repairLayers();
+      }
+    };
+    const container = stage.container();
+    // contextrestored does not bubble — catch it on the way down.
+    container.addEventListener('contextrestored', repairLayers, true);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      container.removeEventListener('contextrestored', repairLayers, true);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   // A web font that arrives after the first draw: re-measure the texts (Konva
   // caches line widths/wrapping) and redraw, or they keep the fallback's layout.
   const fontsReady = useTextFontsReady(items);
@@ -337,6 +377,7 @@ function WishlistCanvas({
 
   return (
     <Stage
+      ref={stageRef}
       {...stageProps}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -355,6 +396,9 @@ function WishlistCanvas({
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
           fill={background}
+          // Konva cancels the touch on a listening shape; read-only, a swipe on
+          // the page must scroll the browser page instead.
+          preventDefault={editable}
         />
         <PagePatternLayer pattern={pattern} background={background} seed={pageId} />
       </Layer>
