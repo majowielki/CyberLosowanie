@@ -189,11 +189,6 @@ namespace CyberLosowanie.Migrations
                     b.Property<int>("GiftedCyberekId")
                         .HasColumnType("int");
 
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -218,7 +213,6 @@ namespace CyberLosowanie.Migrations
                             Id = 1,
                             BannedCyberki = "[1,2,6,4,12]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
                             Name = "Michał",
                             Surname = "Majewski"
                         },
@@ -227,7 +221,6 @@ namespace CyberLosowanie.Migrations
                             Id = 2,
                             BannedCyberki = "[2,1,10,12,5]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/2.jpg",
                             Name = "Kornelia",
                             Surname = "Majewska"
                         },
@@ -236,7 +229,6 @@ namespace CyberLosowanie.Migrations
                             Id = 3,
                             BannedCyberki = "[3,9,11,10,6]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/3.jpg",
                             Name = "Ola",
                             Surname = "Sudoł"
                         },
@@ -245,7 +237,6 @@ namespace CyberLosowanie.Migrations
                             Id = 4,
                             BannedCyberki = "[4,11,2,5]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/4.jpg",
                             Name = "Daria",
                             Surname = "Kurowska"
                         },
@@ -254,7 +245,6 @@ namespace CyberLosowanie.Migrations
                             Id = 5,
                             BannedCyberki = "[5,8,7,3,10]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
                             Name = "Asia",
                             Surname = "Małek"
                         },
@@ -263,7 +253,6 @@ namespace CyberLosowanie.Migrations
                             Id = 6,
                             BannedCyberki = "[6,12,5,9,3]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/6.jpg",
                             Name = "Filip",
                             Surname = "Wilczyński"
                         },
@@ -272,7 +261,6 @@ namespace CyberLosowanie.Migrations
                             Id = 7,
                             BannedCyberki = "[7,10,3,5,8]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/7.jpg",
                             Name = "Marek",
                             Surname = "Grabowski"
                         },
@@ -281,7 +269,6 @@ namespace CyberLosowanie.Migrations
                             Id = 8,
                             BannedCyberki = "[8,5,1,7,9]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/8.jpg",
                             Name = "Michał",
                             Surname = "Karbowiak"
                         },
@@ -290,7 +277,6 @@ namespace CyberLosowanie.Migrations
                             Id = 9,
                             BannedCyberki = "[9,3,4,1,7]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/9.jpg",
                             Name = "Karol",
                             Surname = "Jagiełło"
                         },
@@ -299,7 +285,6 @@ namespace CyberLosowanie.Migrations
                             Id = 10,
                             BannedCyberki = "[10,7,12,6,2]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/10.jpg",
                             Name = "Natalia",
                             Surname = "Dutka"
                         },
@@ -308,7 +293,6 @@ namespace CyberLosowanie.Migrations
                             Id = 11,
                             BannedCyberki = "[11,4,8,2]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/11.jpg",
                             Name = "Paweł",
                             Surname = "Kurowski"
                         },
@@ -317,7 +301,6 @@ namespace CyberLosowanie.Migrations
                             Id = 12,
                             BannedCyberki = "[12,6,9,5,1]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/12.jpg",
                             Name = "Wiktoria",
                             Surname = "Wilczyńska"
                         });

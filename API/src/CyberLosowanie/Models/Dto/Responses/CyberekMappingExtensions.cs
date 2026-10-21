@@ -10,8 +10,7 @@ namespace CyberLosowanie.Models.Dto.Responses
         {
             Id = cyberek.Id,
             Name = cyberek.Name,
-            Surname = cyberek.Surname,
-            ImageUrl = cyberek.ImageUrl
+            Surname = cyberek.Surname
         };
 
         public static IEnumerable<CyberekResponse> ToResponse(this IEnumerable<Cyberek> cyberki)

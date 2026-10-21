@@ -3,6 +3,8 @@ import { MessageCatalog } from './catalog';
 // Wishlist pages + canvas editor (toolbar, zoom, validation, image upload).
 const pl = {
   'wishlist.my.title': 'Moja lista życzeń',
+  'wishlist.letterEyebrow': 'List do Mikołaja',
+  'wishlist.my.childAlt': 'Ty jako dziecko',
   'wishlist.my.lastSaved': 'Ostatni zapis: {date}',
   'wishlist.my.needCyberekFirst': 'Najpierw wybierz swojego cyberka — wtedy założysz listę życzeń.',
   'wishlist.my.pickCyberek': 'Wybierz cyberka',
@@ -11,6 +13,7 @@ const pl = {
   'wishlist.gifted.finishDrawFirst': 'Najpierw dokończ losowanie — potem zobaczysz listę życzeń wylosowanej osoby.',
   'wishlist.gifted.titleNamed': 'Lista życzeń {name}',
   'wishlist.gifted.titleFallback': 'Lista życzeń wylosowanej osoby',
+  'wishlist.gifted.childAlt': '{name} jako dziecko',
   'wishlist.gifted.notSavedYet': '{name} nie zapisał(a) jeszcze swojej listy życzeń.',
   'wishlist.gifted.fallbackPerson': 'Ta osoba',
   'wishlist.gifted.corrupt': 'Nie udało się odczytać tej listy życzeń.',
@@ -186,6 +189,8 @@ export const wishlist: MessageCatalog<WishlistKey> = {
   pl,
   en: {
     'wishlist.my.title': 'My wishlist',
+    'wishlist.letterEyebrow': 'Letter to Santa',
+    'wishlist.my.childAlt': 'You as a child',
     'wishlist.my.lastSaved': 'Last saved: {date}',
     'wishlist.my.needCyberekFirst': 'Pick your cyberek first — then you can create a wishlist.',
     'wishlist.my.pickCyberek': 'Pick a cyberek',
@@ -194,6 +199,7 @@ export const wishlist: MessageCatalog<WishlistKey> = {
     'wishlist.gifted.finishDrawFirst': 'Finish your draw first — then you can see the wishlist of the person you drew.',
     'wishlist.gifted.titleNamed': "{name}'s wishlist",
     'wishlist.gifted.titleFallback': "Your giftee's wishlist",
+    'wishlist.gifted.childAlt': '{name} as a child',
     'wishlist.gifted.notSavedYet': '{name} has not saved their wishlist yet.',
     'wishlist.gifted.fallbackPerson': 'This person',
     'wishlist.gifted.corrupt': 'Could not read this wishlist.',

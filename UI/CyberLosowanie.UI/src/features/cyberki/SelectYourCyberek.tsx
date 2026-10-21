@@ -16,6 +16,7 @@ import { cn } from "@/shared/lib/utils";
 import { toast } from "@/shared/hooks/use-toast";
 import { debugLog } from "@/shared/config";
 import { useTranslation } from "@/shared/i18n";
+import CyberekPortrait from "./CyberekPortrait";
 
 // Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function SelectYourCyberek() {
@@ -124,9 +125,12 @@ function SelectYourCyberek() {
                 )}
               >
                 <span className="relative block aspect-square w-full overflow-hidden rounded-xl bg-secondary">
-                  <img
-                    src={cyberek.imageUrl}
+                  {/* You pick yourself as the Santa — hence the Santa portrait. */}
+                  <CyberekPortrait
+                    cyberekId={cyberek.id}
+                    kind="santa"
                     alt={t('cyberki.select.imageAlt', { name: cyberek.name })}
+                    fallback={<span className="font-display text-3xl font-semibold">{cyberek.name.charAt(0)}</span>}
                     className={cn(
                       'h-full w-full object-cover transition-transform duration-300',
                       isSelected && 'scale-105',

@@ -10,6 +10,5 @@ namespace CyberLosowanie.Models.Dto.Responses
         public int Id { get; init; }
         public string Name { get; init; } = string.Empty;
         public string Surname { get; init; } = string.Empty;
-        public string ImageUrl { get; init; } = string.Empty;
     }
 }

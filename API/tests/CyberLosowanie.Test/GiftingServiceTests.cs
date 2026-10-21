@@ -22,7 +22,6 @@ namespace CyberLosowanie.Test
             Id = id,
             Name = $"Name{id}",
             Surname = $"Surname{id}",
-            ImageUrl = $"https://example.com/{id}.jpg",
             GiftedCyberekId = gifted,
             BannedCyberki = banned.ToList()
         };

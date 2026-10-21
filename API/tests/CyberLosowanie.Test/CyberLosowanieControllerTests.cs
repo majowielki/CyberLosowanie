@@ -150,7 +150,6 @@ namespace CyberLosowanie.Test
                     Id = 1,
                     Name = "Michał",
                     Surname = "Majewski",
-                    ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
                     GiftedCyberekId = 0,
                     BannedCyberki = new List<int> { 1, 2, 6 }
                 },
@@ -159,7 +158,6 @@ namespace CyberLosowanie.Test
                     Id = 5,
                     Name = "Asia",
                     Surname = "Małek",
-                    ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
                     GiftedCyberekId = 0,
                     BannedCyberki = new List<int> { 5, 7, 8 }
                 }
@@ -311,7 +309,6 @@ namespace CyberLosowanie.Test
                     Id = i,
                     Name = $"TestName{i}",
                     Surname = $"TestSurname{i}",
-                    ImageUrl = $"https://example.com/image{i}.jpg",
                     GiftedCyberekId = 0,
                     BannedCyberki = new List<int>()
                 });

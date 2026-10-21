@@ -6,6 +6,7 @@ import { RootState } from '@/app/store';
 import { Button } from '@/shared/ui/button';
 import { Loading, PageHeader, StatusMessage } from '@/shared/components';
 import { useTranslation } from '@/shared/i18n';
+import CyberekPortrait from '@/features/cyberki/CyberekPortrait';
 import { extractApiErrorMessage, useGetMyWishlistQuery } from './wishlistApi';
 import {
   createEmptyCanvasDocument,
@@ -97,16 +98,26 @@ function MyWishlistPage() {
   return (
     <div className="flex w-full max-w-4xl flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeader
-          align="left"
-          size="md"
-          title={t('wishlist.my.title')}
-          subtitle={t('wishlist.my.lastSaved', {
-            date: new Date(saved.updatedAtUtc).toLocaleString(
-              language === 'pl' ? 'pl-PL' : 'en-GB',
-            ),
-          })}
-        />
+        <div className="flex items-center gap-4">
+          {/* The wishlist is a letter to Santa — written by the child version of its owner. */}
+          <CyberekPortrait
+            cyberekId={cyberekId}
+            kind="child"
+            alt={t('wishlist.my.childAlt')}
+            className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-cream/80 sm:h-20 sm:w-20"
+          />
+          <PageHeader
+            align="left"
+            size="md"
+            eyebrow={t('wishlist.letterEyebrow')}
+            title={t('wishlist.my.title')}
+            subtitle={t('wishlist.my.lastSaved', {
+              date: new Date(saved.updatedAtUtc).toLocaleString(
+                language === 'pl' ? 'pl-PL' : 'en-GB',
+              ),
+            })}
+          />
+        </div>
         <Button onClick={() => setIsEditing(true)}>
           <Pencil aria-hidden /> {t('common.action.edit')}
         </Button>

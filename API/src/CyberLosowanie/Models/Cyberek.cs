@@ -15,11 +15,8 @@ namespace CyberLosowanie.Models
         [StringLength(100, MinimumLength = 1)]
         public string Surname { get; set; } = string.Empty;
         
-        [Required]
-        [Url]
-        [StringLength(500)]
-        public string ImageUrl { get; set; } = string.Empty;
-        
+        // Portraits are not stored here: they live in Blob Storage under the
+        // cyberek id (CyberekImageConstants).
         public int GiftedCyberekId { get; set; }
         
         public List<int> BannedCyberki { get; set; } = [];

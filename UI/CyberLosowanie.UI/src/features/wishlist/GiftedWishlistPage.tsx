@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button';
 import { Loading, PageHeader, StatusMessage } from '@/shared/components';
 import { useTranslation } from '@/shared/i18n';
 import { useGetMyGiftedCyberekQuery } from '@/features/cyberki/cyberLosowanieApi';
+import CyberekPortrait from '@/features/cyberki/CyberekPortrait';
 import { extractApiErrorMessage, useGetGiftedWishlistQuery } from './wishlistApi';
 import { parseCanvasDocument } from './canvas/canvasDocument';
 import WishlistViewer from './canvas/WishlistViewer';
@@ -72,15 +73,25 @@ function GiftedWishlistPage() {
   return (
     <div className="flex w-full max-w-4xl flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <PageHeader
-          align="left"
-          size="md"
-          title={
-            giftedName
-              ? t('wishlist.gifted.titleNamed', { name: giftedName })
-              : t('wishlist.gifted.titleFallback')
-          }
-        />
+        <div className="flex items-center gap-4">
+          {/* The wishlist is a letter to Santa — written by the child version of its owner. */}
+          <CyberekPortrait
+            cyberekId={giftedCyberekData?.data?.id}
+            kind="child"
+            alt={t('wishlist.gifted.childAlt', { name: giftedName ?? t('wishlist.gifted.fallbackPerson') })}
+            className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-cream/80 sm:h-20 sm:w-20"
+          />
+          <PageHeader
+            align="left"
+            size="md"
+            eyebrow={t('wishlist.letterEyebrow')}
+            title={
+              giftedName
+                ? t('wishlist.gifted.titleNamed', { name: giftedName })
+                : t('wishlist.gifted.titleFallback')
+            }
+          />
+        </div>
         <Button variant="glass" onClick={() => navigate('/final-page')}>
           <ArrowLeft aria-hidden /> {t('common.action.back')}
         </Button>

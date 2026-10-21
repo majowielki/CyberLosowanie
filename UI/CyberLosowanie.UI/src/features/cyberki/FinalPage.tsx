@@ -4,6 +4,7 @@ import { PageHeader, StatusMessage } from "@/shared/components";
 import { useNavigate } from "react-router-dom";
 import { Gift, ScrollText } from "lucide-react";
 import { useTranslation } from "@/shared/i18n";
+import CyberekPortrait from "./CyberekPortrait";
 
 // Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function FinalPage() {
@@ -42,7 +43,6 @@ function FinalPage() {
   }
 
   const cyberekName = currentCyberek.name || t('cyberki.final.unknownName');
-  const cyberekImg = currentCyberek.imageUrl || '';
 
   return (
     <div className="flex w-full flex-col items-center gap-10">
@@ -57,20 +57,19 @@ function FinalPage() {
         {/* The reveal moment: portrait comes into focus (static under reduced motion). */}
         <div className="relative motion-safe:animate-reveal">
           <div aria-hidden className="halo absolute inset-0 -z-10 scale-150 blur-2xl" />
-          {cyberekImg ? (
-            <img
-              src={cyberekImg}
-              alt={t('cyberki.final.imageAlt', { cyberekName })}
-              className="h-72 w-72 rounded-full object-cover shadow-halo ring-4 ring-cream sm:h-80 sm:w-80"
-            />
-          ) : (
-            <div className="grid h-72 w-72 place-items-center rounded-full bg-white/10 text-cream-muted shadow-halo ring-4 ring-cream sm:h-80 sm:w-80">
+          {/* The caricature: exaggerated features make the drawn person obvious at a glance. */}
+          <CyberekPortrait
+            cyberekId={currentCyberek.id}
+            kind="caricature"
+            alt={t('cyberki.final.imageAlt', { cyberekName })}
+            className="h-72 w-72 rounded-full object-cover shadow-halo ring-4 ring-cream sm:h-80 sm:w-80"
+            fallback={
               <span className="flex flex-col items-center gap-2 text-sm">
                 <Gift className="h-8 w-8" aria-hidden />
                 {t('cyberki.final.noImage')}
               </span>
-            </div>
-          )}
+            }
+          />
         </div>
         <figcaption className="font-display text-3xl font-semibold text-cream sm:text-4xl">
           {cyberekName}

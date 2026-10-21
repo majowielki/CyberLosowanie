@@ -26,7 +26,7 @@ vi.mock('./cyberLosowanieApi', async (importOriginal) => {
 
 import ChooseToBeGiftedCyberek from './ChooseToBeGiftedCyberek';
 
-const cyberki = [1, 2, 3].map((id) => ({ id, name: `N${id}`, imageUrl: '' }));
+const cyberki = [1, 2, 3].map((id) => ({ id, name: `N${id}`, surname: '' }));
 
 describe('ChooseToBeGiftedCyberek', () => {
   beforeEach(() => {

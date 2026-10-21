@@ -42,10 +42,12 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGiftingService, GiftingService>();
 builder.Services.AddScoped<IWishlistService, WishlistService>();
 builder.Services.AddScoped<IWishlistImageStorage, WishlistImageStorage>();
+builder.Services.AddScoped<ICyberekImageStorage, CyberekImageStorage>();
 
-// Wishlist image storage (Azure Blob; Azurite locally). The client is created
-// lazily on first use, so environments that never touch wishlist images
-// (e.g. CI) do not need storage configured. Thread-safe per Azure SDK docs.
+// Image storage — wishlist images and cyberek portraits (Azure Blob; Azurite
+// locally). The client is created lazily on first use, so environments that
+// never touch images (e.g. CI) do not need storage configured. Thread-safe per
+// Azure SDK docs.
 builder.Services.AddSingleton(serviceProvider =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
@@ -65,7 +67,7 @@ builder.Services.AddSingleton(serviceProvider =>
     }
 
     throw new InvalidOperationException(
-        "Wishlist image storage is not configured. Set 'Storage:ConnectionString' " +
+        "Image storage is not configured. Set 'Storage:ConnectionString' " +
         "(local dev: 'UseDevelopmentStorage=true' with Azurite) or 'Storage:AccountUri' (Managed Identity).");
 });
 

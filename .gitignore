@@ -75,3 +75,14 @@ pnpm-debug.log*
 *.swp
 .DS_Store
 Thumbs.db
+
+# Cyberek portraits (photos of real people) — uploaded to Blob Storage by
+# API/scripts/Upload-CyberkiImages.ps1, never committed to this public repo.
+UI/CyberLosowanie.UI/src/assets/mikolaje/
+UI/CyberLosowanie.UI/src/assets/karykatury/
+UI/CyberLosowanie.UI/src/assets/dzieci/
+
+# Azurite local storage (when started from the repo, e.g. by the VS Code extension)
+__azurite_db_*.json
+__blobstorage__/
+__queuestorage__/
