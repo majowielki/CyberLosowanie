@@ -611,7 +611,7 @@ namespace CyberLosowanie.Test
         [Fact]
         public async Task SaveMyWishlistAsync_DocumentOverSizeLimit_ThrowsBusinessValidation()
         {
-            // A single huge text field pushes the raw JSON above 512 KB.
+            // A single huge text field pushes the raw JSON above the size limit.
             var hugeText = new string('x', WishlistConstants.MAX_CANVAS_JSON_BYTES + 1);
             var json = BuildCanvasJson(items: new[] { TextItem(text: hugeText) });
             Encoding.UTF8.GetByteCount(json).Should().BeGreaterThan(WishlistConstants.MAX_CANVAS_JSON_BYTES);

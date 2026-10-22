@@ -14,7 +14,7 @@ namespace CyberLosowanie.Constants
         public const int CANVAS_HEIGHT = 1528;
 
         // Document limits (validated before anything reaches the database)
-        public const int MAX_CANVAS_JSON_BYTES = 512 * 1024;
+        public const int MAX_CANVAS_JSON_BYTES = 2 * 1024 * 1024;
         public const int MAX_PAGES = 10;
         // Strokes and items are counted per page; the total document size is
         // additionally bounded by MAX_CANVAS_JSON_BYTES.
@@ -23,8 +23,9 @@ namespace CyberLosowanie.Constants
         public const int MAX_POINTS_PER_STROKE = 20_000;
         public const int MAX_FILL_RINGS = 256;
         public const int MAX_ITEMS_PER_PAGE = 120;
-        // Images are capped across the whole document (each one is a stored blob).
-        public const int MAX_IMAGE_ITEMS = 10;
+        // Images are capped across the whole document (each one is a stored blob,
+        // downscaled to 1600 px by the client — a few hundred KB).
+        public const int MAX_IMAGE_ITEMS = 40;
         public const int MAX_TEXT_LENGTH = 500;
         public const int MIN_STROKE_WIDTH = 1;
         public const int MAX_STROKE_WIDTH = 64;

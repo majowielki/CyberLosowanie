@@ -16,14 +16,14 @@ export const CANVAS_BACKGROUND = '#ffffff';
 // Mirror of API Constants/WishlistConstants.cs. Strokes/items are counted per
 // page, images across the whole document, and the total JSON size is capped.
 export const DOCUMENT_LIMITS = {
-  maxJsonBytes: 512 * 1024,
+  maxJsonBytes: 2 * 1024 * 1024,
   maxPages: 10,
   maxStrokesPerPage: 4_000,
   // Also the budget for all rings of one area fill together.
   maxPointsPerStroke: 20_000,
   maxFillRings: 256,
   maxItemsPerPage: 120,
-  maxImageItems: 10,
+  maxImageItems: 40,
   maxTextLength: 500,
   minStrokeWidth: 1,
   maxStrokeWidth: 64,

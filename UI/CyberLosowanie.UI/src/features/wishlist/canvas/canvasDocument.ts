@@ -174,8 +174,17 @@ export const createEmptyCanvasDocument = (): CanvasDocument => ({
   pages: [createEmptyPage()],
 });
 
+// Coordinates come from pointer events with full float precision
+// (523.4567891234...). Two decimals — a hundredth of a document unit on the
+// 1080-wide page — are invisible and make stroke-heavy documents 2-3x smaller.
+const SERIALIZED_DECIMALS = 100;
+const roundNumbers = (_key: string, value: unknown) =>
+  typeof value === 'number' && !Number.isInteger(value)
+    ? Math.round(value * SERIALIZED_DECIMALS) / SERIALIZED_DECIMALS
+    : value;
+
 export const serializeCanvasDocument = (document: CanvasDocument): string =>
-  JSON.stringify(document);
+  JSON.stringify(document, roundNumbers);
 
 /**
  * Validates a document against the shared limits (section 3.4). Returns a list

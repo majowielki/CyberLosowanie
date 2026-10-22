@@ -298,10 +298,12 @@ describe('validateCanvasDocument', () => {
   });
 
   it('rejects a document exceeding the JSON size limit', () => {
-    // A handful of max-length strokes on one page push the JSON past 512 KB
-    // without hitting any structural per-page limit.
+    // Enough max-length strokes on one page to push the JSON past the size
+    // limit without hitting any structural per-page limit (each point
+    // serializes to 7 bytes: "999999,").
     const bigPoints = Array.from({ length: DOCUMENT_LIMITS.maxPointsPerStroke }, () => 999999);
-    const strokes = Array.from({ length: 5 }, (_, index) =>
+    const strokeCount = Math.ceil(DOCUMENT_LIMITS.maxJsonBytes / (DOCUMENT_LIMITS.maxPointsPerStroke * 7)) + 1;
+    const strokes = Array.from({ length: strokeCount }, (_, index) =>
       stroke({ id: `s${index}`, points: bigPoints }),
     );
     const errors = validateCanvasDocument(documentWith({ pages: [page({ strokes })] }));
@@ -333,6 +335,15 @@ describe('serialize/parse round trip', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.document?.pages[0].strokes[0].kind).toBeUndefined();
+  });
+
+  it('rounds coordinates to two decimals when serializing, leaving integers alone', () => {
+    const json = serializeCanvasDocument(
+      documentWith({ pages: [page({ strokes: [stroke({ points: [523.4567891234, 10, 0.004, 99.995] })] })] })
+    );
+
+    expect(json).toContain('"points":[523.46,10,0,100]');
+    expect(parseCanvasDocument(json).document?.pages[0].strokes[0].points).toEqual([523.46, 10, 0, 100]);
   });
 
   it('rejects a stored stroke with an unknown kind', () => {
