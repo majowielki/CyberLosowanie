@@ -73,6 +73,8 @@ namespace CyberLosowanie.Test
         [InlineData(CyberekImageConstants.KIND_SANTA)]
         [InlineData(CyberekImageConstants.KIND_CARICATURE)]
         [InlineData(CyberekImageConstants.KIND_CHILD)]
+        [InlineData(CyberekImageConstants.KIND_CARICATURE_STICKER)]
+        [InlineData(CyberekImageConstants.KIND_CHILD_STICKER)]
         public async Task GetImage_ImageExists_StreamsItWithContentTypeAndPrivateCache(string kind)
         {
             var bytes = Encoding.ASCII.GetBytes("image-bytes");
@@ -128,6 +130,26 @@ namespace CyberLosowanie.Test
         public void BlobPath_FollowsTheIdAndKindConvention()
         {
             CyberekImageConstants.BlobPath(7, CyberekImageConstants.KIND_CARICATURE).Should().Be("7/caricature.jpg");
+        }
+
+        [Theory]
+        [InlineData(CyberekImageConstants.KIND_CARICATURE_STICKER, "3/caricature-sticker.webp", "image/webp")]
+        [InlineData(CyberekImageConstants.KIND_CHILD_STICKER, "3/child-sticker.webp", "image/webp")]
+        [InlineData(CyberekImageConstants.KIND_SANTA, "3/santa.jpg", "image/jpeg")]
+        public void StickerKinds_AreWebpForTransparency(string kind, string path, string contentType)
+        {
+            CyberekImageConstants.BlobPath(3, kind).Should().Be(path);
+            CyberekImageConstants.ContentType(kind).Should().Be(contentType);
+        }
+
+        [Fact]
+        public void Authorization_StickerKindsStayBehindSignIn()
+        {
+            // Only the plain caricature has a public route; the sticker kinds go through
+            // the authorized GetImage like the santa and child portraits.
+            var getCaricature = typeof(CyberekImagesController).GetMethod(nameof(CyberekImagesController.GetCaricature))!;
+            getCaricature.GetCustomAttributes(typeof(HttpGetAttribute), true)
+                .Cast<HttpGetAttribute>().Single().Template.Should().EndWith("/" + CyberekImageConstants.KIND_CARICATURE);
         }
     }
 }

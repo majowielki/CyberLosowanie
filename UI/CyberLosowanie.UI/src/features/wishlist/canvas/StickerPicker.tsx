@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/shared/lib/utils';
 import { useTranslation } from '@/shared/i18n';
+import CyberekPortrait from '@/features/cyberki/CyberekPortrait';
 import { PICKER_STICKERS, STICKER_CATEGORIES, StickerCategory, StickerId } from './stickers';
+import { useWishlistOwnerCyberekId } from './wishlistOwner';
 
 interface StickerPickerProps {
   onSelect: (stickerId: StickerId) => void;
@@ -24,6 +26,7 @@ let lastCategory: StickerCategory = CATEGORIES[0];
  */
 function StickerPicker({ onSelect, onClose }: StickerPickerProps) {
   const { t } = useTranslation();
+  const ownerCyberekId = useWishlistOwnerCyberekId();
   const [category, setCategory] = useState<StickerCategory>(lastCategory);
 
   useEffect(() => {
@@ -85,21 +88,28 @@ function StickerPicker({ onSelect, onClose }: StickerPickerProps) {
           // a short panel squeezes the rows and the labels overlap the next row.
           className="grid auto-rows-max grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4"
         >
-          {PICKER_STICKERS.filter((sticker) => sticker.category === category).map(({ id, thumbSrc, labelKey }) => (
+          {PICKER_STICKERS.filter(
+            (sticker) => sticker.category === category && (!sticker.portraitKind || ownerCyberekId != null)
+          ).map(({ id, thumbSrc, portraitKind, labelKey }) => (
             <button
               key={id}
               type="button"
               className="flex min-h-11 flex-col items-center gap-1 rounded-lg p-2 text-center text-xs text-gray-600 hover:bg-gray-100"
               onClick={() => onSelect(id)}
             >
-              <img
-                src={thumbSrc}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="h-16 w-full object-contain"
-                draggable={false}
-              />
+              {portraitKind ? (
+                // The user's own face, from the API (no bundled thumbnail).
+                <CyberekPortrait cyberekId={ownerCyberekId} kind={portraitKind} alt="" className="h-16 w-full object-contain" />
+              ) : (
+                <img
+                  src={thumbSrc}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="h-16 w-full object-contain"
+                  draggable={false}
+                />
+              )}
               {t(labelKey)}
             </button>
           ))}

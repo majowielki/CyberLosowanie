@@ -8,5 +8,6 @@ export default interface cyberekModel {
   }
 
 // Mirrors backend CyberekImageConstants.KINDS: santa = picking yourself,
-// caricature = the draw reveal, child = the wishlist (a letter to Santa).
-export type cyberekImageKind = 'santa' | 'caricature' | 'child';
+// caricature = the draw reveal, child = the wishlist (a letter to Santa); the
+// *-sticker kinds are those two cut out with a white border (wishlist stickers).
+export type cyberekImageKind = 'santa' | 'caricature' | 'child' | 'caricature-sticker' | 'child-sticker';

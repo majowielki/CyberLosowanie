@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import StickerPicker from './StickerPicker';
+import { WishlistOwnerContext } from './wishlistOwner';
 
 const renderPicker = () => {
   const props = { onSelect: vi.fn(), onClose: vi.fn() };
@@ -48,6 +49,28 @@ describe('StickerPicker', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Photo frame' }));
 
     expect(onSelect).toHaveBeenCalledWith('ramka-polaroid');
+  });
+
+  it('offers the portrait stickers only once the wishlist owner is known', async () => {
+    renderPicker();
+    await userEvent.click(screen.getByRole('tab', { name: 'Cyber' }));
+    expect(screen.queryByRole('button', { name: 'My caricature' })).not.toBeInTheDocument();
+  });
+
+  it('shows the owner portrait stickers and passes their ids up', async () => {
+    const onSelect = vi.fn();
+    renderWithProviders(
+      <WishlistOwnerContext.Provider value={6}>
+        <StickerPicker onSelect={onSelect} onClose={vi.fn()} />
+      </WishlistOwnerContext.Provider>,
+      { language: 'en' }
+    );
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Cyber' }));
+    expect(screen.getByRole('button', { name: 'Me as a child' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'My caricature' }));
+
+    expect(onSelect).toHaveBeenCalledWith('moja-karykatura');
   });
 
   it('closes on Escape', async () => {

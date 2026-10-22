@@ -27,6 +27,8 @@ import { STICKERS } from './stickers';
 import { useAuthorizedImage } from './useAuthorizedImage';
 import { cssFontFamily, useTextFontsReady } from './textFonts';
 import { useStickerImage } from './useStickerImage';
+import { useWishlistOwnerCyberekId } from './wishlistOwner';
+import { useCyberekImage } from '@/features/cyberki/useCyberekImage';
 import type { RasterImage } from './areaFill';
 import type { Point } from './useCanvasEngine';
 import type { StageViewport } from './useStageViewport';
@@ -614,12 +616,20 @@ interface CanvasStickerNodeProps {
 }
 
 /**
- * Library sticker drawn from its bundled file. Until the file loads (or for an
- * id this build does not know) an invisible box of the same size keeps the
- * element selectable and transformable.
+ * Library sticker drawn from its bundled file — or, for a portrait sticker, from
+ * the wishlist owner's portrait loaded through the API. Until the image loads
+ * (or for an id this build does not know) an invisible box of the same size
+ * keeps the element selectable and transformable.
  */
 function CanvasStickerNode({ item, nodeProps, registerNode }: CanvasStickerNodeProps) {
-  const image = useStickerImage(STICKERS[item.stickerId]?.src);
+  const definition = STICKERS[item.stickerId];
+  const ownerCyberekId = useWishlistOwnerCyberekId();
+  const portrait = useCyberekImage(
+    definition?.portraitKind ? ownerCyberekId : null,
+    definition?.portraitKind ?? 'caricature-sticker',
+  );
+  const portraitSrc = portrait.status === 'loaded' ? portrait.src : undefined;
+  const image = useStickerImage(definition?.portraitKind ? portraitSrc : definition?.src);
 
   if (!image) {
     return (

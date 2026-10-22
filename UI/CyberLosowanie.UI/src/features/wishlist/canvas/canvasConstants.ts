@@ -186,4 +186,6 @@ export const STICKER_IDS = [
   'wesolych-swiat', 'dziekuje', 'zaskocz-mnie', 'bardzo-prosze',
   'pixel-prezent', 'pixel-choinka', 'robot-elf', 'mikolaj-vr',
   'asti-czapka', 'asti-piernik', 'luna-rogi', 'luna-prezent', 'masza-czapka', 'masza-sweter',
+  // Portrait stickers: the face of the wishlist's owner, served by the API.
+  'moja-karykatura', 'ja-dziecko',
 ] as const;

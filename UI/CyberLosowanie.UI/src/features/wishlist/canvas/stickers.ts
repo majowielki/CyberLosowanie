@@ -4,6 +4,7 @@
 // in src/assets/stickers/README.md.
 
 import type { TranslationKey } from '@/shared/i18n';
+import type { cyberekImageKind } from '@/types';
 import { STICKER_IDS } from './canvasConstants';
 
 export type StickerId = (typeof STICKER_IDS)[number];
@@ -22,9 +23,14 @@ export type StickerCategory = (typeof STICKER_CATEGORIES)[number];
 
 export interface StickerDefinition {
   /** Bundled asset URL (WebP with a transparent background), drawn on the canvas. */
-  src: string;
+  src?: string;
   /** Small version of the artwork for the picker. */
-  thumbSrc: string;
+  thumbSrc?: string;
+  /**
+   * Portrait sticker: no bundled file — the wishlist owner's portrait of this
+   * kind is loaded from the API instead (see wishlistOwner.ts).
+   */
+  portraitKind?: Extract<cyberekImageKind, 'caricature-sticker' | 'child-sticker'>;
   /** Size on insertion, in document units — the artwork's aspect ratio. */
   width: number;
   height: number;
@@ -100,6 +106,21 @@ const META: Record<StickerId, StickerMeta> = {
   'luna-prezent': { width: 300, height: 261, labelKey: 'wishlist.sticker.lunaGift', category: 'cyber' },
   'masza-czapka': { width: 187, height: 300, labelKey: 'wishlist.sticker.maszaSantaHat', category: 'cyber' },
   'masza-sweter': { width: 283, height: 300, labelKey: 'wishlist.sticker.maszaSweater', category: 'cyber' },
+  // 4:5 like every prepared portrait sticker (scripts/stickers/prepare-portrait-stickers.mjs).
+  'moja-karykatura': {
+    width: 280,
+    height: 350,
+    labelKey: 'wishlist.sticker.myCaricature',
+    category: 'cyber',
+    portraitKind: 'caricature-sticker',
+  },
+  'ja-dziecko': {
+    width: 280,
+    height: 350,
+    labelKey: 'wishlist.sticker.meAsChild',
+    category: 'cyber',
+    portraitKind: 'child-sticker',
+  },
 };
 
 // Artwork and thumbnails are found by file name (<id>.webp), so adding a sticker

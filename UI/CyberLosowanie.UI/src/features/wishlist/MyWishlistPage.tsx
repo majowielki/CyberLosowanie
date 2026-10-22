@@ -134,7 +134,7 @@ function MyWishlistPage() {
         </p>
       )}
       <SendLetterPanel wishlist={saved} />
-      <WishlistViewer document={document} allowDownload ownerName={myName} />
+      <WishlistViewer document={document} allowDownload ownerName={myName} ownerCyberekId={cyberekId} />
     </div>
   );
 }

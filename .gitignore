@@ -81,6 +81,9 @@ Thumbs.db
 UI/CyberLosowanie.UI/src/assets/mikolaje/
 UI/CyberLosowanie.UI/src/assets/karykatury/
 UI/CyberLosowanie.UI/src/assets/dzieci/
+# Their cut-out versions with a white die-cut border ("my caricature" / "me as a
+# child" stickers) — uploaded to Blob Storage by the same script.
+UI/CyberLosowanie.UI/src/assets/naklejki-portrety/
 # Reference photos of the participants' dogs (people in the shots) — only the
 # drawn stickers made from them are committed.
 UI/CyberLosowanie.UI/src/assets/psiaki/

@@ -6,6 +6,7 @@ import WishlistCanvas from './WishlistCanvas';
 import ZoomControls from './ZoomControls';
 import PageCarousel from './PageCarousel';
 import WishlistDownloadButton from './WishlistDownloadButton';
+import { WishlistOwnerContext } from './wishlistOwner';
 
 interface WishlistViewerProps {
   document: CanvasDocument;
@@ -13,6 +14,8 @@ interface WishlistViewerProps {
   allowDownload?: boolean;
   /** Wishlist owner's name, used in the downloaded file name. */
   ownerName?: string;
+  /** Wishlist owner's cyberek: whose face the portrait stickers show. */
+  ownerCyberekId?: number | null;
 }
 
 /**
@@ -20,7 +23,7 @@ interface WishlistViewerProps {
  * page): the same WishlistCanvas as the editor, without edit handlers, with
  * zoom/pan and page navigation (carousel) active.
  */
-function WishlistViewer({ document, allowDownload = false, ownerName }: WishlistViewerProps) {
+function WishlistViewer({ document, allowDownload = false, ownerName, ownerCyberekId = null }: WishlistViewerProps) {
   const viewport = useStageViewport({ panEnabled: true });
   const [pageIndex, setPageIndex] = useState(0);
 
@@ -28,45 +31,48 @@ function WishlistViewer({ document, allowDownload = false, ownerName }: Wishlist
   const page = document.pages[safeIndex];
 
   return (
-    <div className="flex w-full flex-col gap-2">
-      {/* Centred when the two strips wrap onto separate lines (phones). */}
-      <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-between">
-        {/* Empty slot keeps zoom controls on the right when there is one page. */}
-        <div>
-          <PageCarousel
-            pageCount={document.pages.length}
-            currentPageIndex={safeIndex}
-            onGoTo={setPageIndex}
-          />
+    // Also reaches the offscreen PDF/PNG capture inside WishlistDownloadButton.
+    <WishlistOwnerContext.Provider value={ownerCyberekId}>
+      <div className="flex w-full flex-col gap-2">
+        {/* Centred when the two strips wrap onto separate lines (phones). */}
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-between">
+          {/* Empty slot keeps zoom controls on the right when there is one page. */}
+          <div>
+            <PageCarousel
+              pageCount={document.pages.length}
+              currentPageIndex={safeIndex}
+              onGoTo={setPageIndex}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            {allowDownload && (
+              <WishlistDownloadButton document={document} currentPageIndex={safeIndex} ownerName={ownerName} />
+            )}
+            <ZoomControls viewport={viewport} />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {allowDownload && (
-            <WishlistDownloadButton document={document} currentPageIndex={safeIndex} ownerName={ownerName} />
+        <div
+          ref={viewport.containerRef}
+          className={cn(
+            'relative w-full overflow-hidden rounded-md shadow-lg',
+            // At 100% a vertical swipe scrolls the page (reading the list on a
+            // phone); once zoomed in, one finger pans the page inside the frame.
+            viewport.zoom > 1 ? 'touch-none' : 'touch-pan-y',
           )}
-          <ZoomControls viewport={viewport} />
+        >
+          {viewport.isMeasured && page && (
+            <WishlistCanvas
+              strokes={page.strokes}
+              items={page.items}
+              background={page.background}
+              pattern={page.pattern}
+              pageId={page.id}
+              stageProps={viewport.stageProps}
+            />
+          )}
         </div>
       </div>
-      <div
-        ref={viewport.containerRef}
-        className={cn(
-          'relative w-full overflow-hidden rounded-md shadow-lg',
-          // At 100% a vertical swipe scrolls the page (reading the list on a
-          // phone); once zoomed in, one finger pans the page inside the frame.
-          viewport.zoom > 1 ? 'touch-none' : 'touch-pan-y',
-        )}
-      >
-        {viewport.isMeasured && page && (
-          <WishlistCanvas
-            strokes={page.strokes}
-            items={page.items}
-            background={page.background}
-            pattern={page.pattern}
-            pageId={page.id}
-            stageProps={viewport.stageProps}
-          />
-        )}
-      </div>
-    </div>
+    </WishlistOwnerContext.Provider>
   );
 }
 

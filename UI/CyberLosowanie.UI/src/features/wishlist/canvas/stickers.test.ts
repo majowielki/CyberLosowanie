@@ -5,16 +5,29 @@ import { STICKER_IDS } from './canvasConstants';
 import { PICKER_STICKERS, STICKER_CATEGORIES, STICKERS } from './stickers';
 
 describe('sticker library', () => {
-  it.each(STICKER_IDS)('%s has its artwork, thumbnail, size and category', (id) => {
-    const sticker = STICKERS[id];
+  it.each(STICKER_IDS.filter((id) => !STICKERS[id].portraitKind))(
+    '%s has its artwork, thumbnail, size and category',
+    (id) => {
+      const sticker = STICKERS[id];
 
-    expect(sticker.src).toEqual(expect.stringContaining(`${id}`));
-    expect(sticker.thumbSrc).toEqual(expect.stringContaining(`${id}`));
-    expect(sticker.thumbSrc).not.toBe(sticker.src);
-    expect(sticker.width).toBeGreaterThan(0);
-    expect(sticker.height).toBeGreaterThan(0);
-    expect(Math.max(sticker.width, sticker.height)).toBeLessThanOrEqual(600);
-    expect(STICKER_CATEGORIES).toContain(sticker.category);
+      expect(sticker.src).toEqual(expect.stringContaining(`${id}`));
+      expect(sticker.thumbSrc).toEqual(expect.stringContaining(`${id}`));
+      expect(sticker.thumbSrc).not.toBe(sticker.src);
+      expect(sticker.width).toBeGreaterThan(0);
+      expect(sticker.height).toBeGreaterThan(0);
+      expect(Math.max(sticker.width, sticker.height)).toBeLessThanOrEqual(600);
+      expect(STICKER_CATEGORIES).toContain(sticker.category);
+    }
+  );
+
+  it('keeps portrait stickers out of the bundle: the face comes from the API', () => {
+    expect(STICKERS['moja-karykatura']).toMatchObject({ portraitKind: 'caricature-sticker', category: 'cyber' });
+    expect(STICKERS['ja-dziecko']).toMatchObject({ portraitKind: 'child-sticker', category: 'cyber' });
+    for (const id of ['moja-karykatura', 'ja-dziecko'] as const) {
+      expect(STICKERS[id].src).toBeUndefined();
+      // Prepared portrait stickers are all 4:5.
+      expect(STICKERS[id].width / STICKERS[id].height).toBeCloseTo(0.8);
+    }
   });
 
   it('uses kebab-case ASCII ids without duplicates', () => {

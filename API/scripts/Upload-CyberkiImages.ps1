@@ -10,6 +10,12 @@
     file names to cyberek ids, shrinks the 2048 px originals to web size and
     uploads them, overwriting what is there.
 
+    It also uploads the wishlist sticker versions of the caricature and child
+    portraits ("{cyberekId}/caricature-sticker.webp", "child-sticker.webp"):
+    cut out, with a white die-cut border, prepared by
+    UI/CyberLosowanie.UI/scripts/stickers/prepare-portrait-stickers.mjs into
+    the git-ignored naklejki-portrety folder.
+
     The originals are photos of real people and stay out of git (.gitignore);
     keep them locally in -SourceRoot.
 
@@ -49,7 +55,15 @@ $kinds = [ordered]@{
     'child'      = @{ Folder = 'dzieci';     Prefix = 'Dziecko' }
 }
 
-$jpegCodec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() |
+# Sticker kinds: the caricature/child portraits cut out with a white die-cut
+# border (scripts/stickers/prepare-portrait-stickers.mjs). Already WebP with
+# alpha at their final size, so they are uploaded as they are.
+$stickerKinds = [ordered]@{
+    'caricature-sticker' = @{ Folder = 'naklejki-portrety'; Prefix = 'Karykatura' }
+    'child-sticker'      = @{ Folder = 'naklejki-portrety'; Prefix = 'Dziecko' }
+}
+
+$jpegCodec =[System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() |
     Where-Object { $_.MimeType -eq 'image/jpeg' }
 $encoderParams = New-Object System.Drawing.Imaging.EncoderParameters 1
 $encoderParams.Param[0] = New-Object System.Drawing.Imaging.EncoderParameter ([System.Drawing.Imaging.Encoder]::Quality, [long]$Quality)
@@ -80,12 +94,17 @@ New-Item -ItemType Directory -Path $workDir | Out-Null
 
 try {
     # Check every source up front, so a missing file never leaves a half-updated set.
-    $missing = foreach ($kind in $kinds.Keys) {
+    $missing = @(foreach ($kind in $kinds.Keys) {
         foreach ($name in $cyberki.Keys) {
             $path = Join-Path $SourceRoot "$($kinds[$kind].Folder)\$($kinds[$kind].Prefix)_$name.jpg"
             if (-not (Test-Path $path)) { $path }
         }
-    }
+    }) + @(foreach ($kind in $stickerKinds.Keys) {
+        foreach ($name in $cyberki.Keys) {
+            $path = Join-Path $SourceRoot "$($stickerKinds[$kind].Folder)\$($stickerKinds[$kind].Prefix)_$name.webp"
+            if (-not (Test-Path $path)) { $path }
+        }
+    })
     if ($missing) {
         throw "Missing source images:`n$($missing -join "`n")"
     }
@@ -113,7 +132,18 @@ try {
             Write-Host "$id/$kind.jpg  <- $($kinds[$kind].Prefix)_$name.jpg ($kb KB)"
         }
     }
-    Write-Host "Uploaded $($kinds.Count * $cyberki.Count) images to '$Container'."
+    foreach ($kind in $stickerKinds.Keys) {
+        foreach ($name in $cyberki.Keys) {
+            $id = $cyberki[$name]
+            $source = Join-Path $SourceRoot "$($stickerKinds[$kind].Folder)\$($stickerKinds[$kind].Prefix)_$name.webp"
+            az storage blob upload --container-name $Container --name "$id/$kind.webp" --file $source `
+                --content-type 'image/webp' --overwrite --no-progress --connection-string $ConnectionString --only-show-errors | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "Upload of $id/$kind.webp failed." }
+            $kb = [Math]::Round((Get-Item $source).Length / 1KB)
+            Write-Host "$id/$kind.webp  <- $($stickerKinds[$kind].Prefix)_$name.webp ($kb KB)"
+        }
+    }
+    Write-Host "Uploaded $(($kinds.Count + $stickerKinds.Count) * $cyberki.Count) images to '$Container'."
 }
 finally {
     Remove-Item -Recurse -Force $workDir

@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { useBlocker, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, Maximize, Save } from 'lucide-react';
 import { RootState } from '@/app/store';
+import { WishlistOwnerContext } from './wishlistOwner';
 import { Button } from '@/shared/ui/button';
 import { useToast } from '@/shared/hooks/use-toast';
 import { useMediaQuery } from '@/shared/hooks/useMediaQuery';
@@ -91,7 +92,17 @@ const DRAFT_SAVE_DELAY_MS = 1000;
  * bottom, text typed in a panel above the keyboard and the system Back
  * gesture handled in-app.
  */
-function WishlistEditor({ initialDocument, onExit, onSaved, restoredDraft = false }: WishlistEditorProps) {
+/** The editor shows the signed-in user's own list: their face on portrait stickers. */
+function WishlistEditor(props: WishlistEditorProps) {
+  const cyberekId = useSelector((state: RootState) => state.userAuthStore.cyberekId);
+  return (
+    <WishlistOwnerContext.Provider value={cyberekId ?? null}>
+      <WishlistEditorBody {...props} />
+    </WishlistOwnerContext.Provider>
+  );
+}
+
+function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = false }: WishlistEditorProps) {
   const { t } = useTranslation();
   const compact = !useMediaQuery('(min-width: 768px)');
   const navigate = useNavigate();

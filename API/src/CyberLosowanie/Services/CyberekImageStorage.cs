@@ -29,7 +29,7 @@ namespace CyberLosowanie.Services
                 var response = await blob.DownloadStreamingAsync();
                 var contentType = response.Value.Details.ContentType;
                 return (response.Value.Content,
-                    string.IsNullOrWhiteSpace(contentType) ? CyberekImageConstants.CONTENT_TYPE : contentType);
+                    string.IsNullOrWhiteSpace(contentType) ? CyberekImageConstants.ContentType(kind) : contentType);
             }
             catch (RequestFailedException ex) when (ex.Status == StatusCodes.Status404NotFound)
             {

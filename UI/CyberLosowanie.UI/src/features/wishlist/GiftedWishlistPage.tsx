@@ -104,7 +104,14 @@ function GiftedWishlistPage() {
           {t('wishlist.gifted.corrupt')}
         </p>
       ) : (
-        parsed?.document && <WishlistViewer document={parsed.document} allowDownload ownerName={giftedName} />
+        parsed?.document && (
+          <WishlistViewer
+            document={parsed.document}
+            allowDownload
+            ownerName={giftedName}
+            ownerCyberekId={giftedCyberekData?.data?.id}
+          />
+        )
       )}
     </div>
   );

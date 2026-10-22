@@ -36,6 +36,25 @@ In short:
   white, pine and red, so halos and leftover background are easy to spot.
   Lettering must be checked letter by letter (ł, ż, ń, ś, ą, ę).
 
+## Portrait stickers ("Moja karykatura", "Ja jako dziecko")
+
+Two ids in the `cyber` tab have no file here: they show the **wishlist owner's**
+caricature or child portrait (the owner sees themselves, their Santa sees the
+owner). `stickers.ts` marks them with `portraitKind`; the canvas loads the
+image from the API (`caricature-sticker` / `child-sticker` kinds, sign-in only)
+for the cyberek given by `WishlistOwnerContext` (`canvas/wishlistOwner.ts`).
+
+They show real people, so they never live in the repository:
+
+1. Cut the person out of each original portrait with Higgsfield's
+   `image_background_remover` (1 credit each) — originals in
+   `src/assets/karykatury` and `src/assets/dzieci` (git-ignored).
+2. `node scripts/stickers/prepare-portrait-stickers.mjs <cut-outs dir>` adds the
+   white die-cut border (a distance transform around the silhouette) and frames
+   every sticker 4:5 into the git-ignored `src/assets/naklejki-portrety/`.
+3. `API/scripts/Upload-CyberkiImages.ps1` uploads them with the other portraits
+   as `{cyberekId}/caricature-sticker.webp` and `child-sticker.webp`.
+
 ## Adding a sticker
 
 1. **Name the files** after the id: lowercase ASCII, words joined with `-`,
