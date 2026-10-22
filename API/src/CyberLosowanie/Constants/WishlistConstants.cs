@@ -72,15 +72,17 @@ namespace CyberLosowanie.Constants
             "drogi-mikolaju", "choinka", "prezent",
             "moja-lista-zyczen", "bylem-grzeczny", "bylam-grzeczna", "ho-ho-ho",
             "top-1", "top-2", "top-3", "hit", "strzalka",
-            "metka", "wstega", "karteczka", "tasma-czerwona", "tasma-zielona",
+            "metka", "wstega", "karteczka", "lista", "zwoj", "tasma-czerwona", "tasma-zielona",
             "mikolaj", "renifer", "balwan", "piernikowy-ludzik",
             "skarpeta", "bombka", "laska-cukrowa",
             "elf", "pingwin", "kot-w-czapce", "mis",
             "dzwonek", "jemiola", "gwiazda-betlejemska", "swieca", "sniezynka", "gwiazdka", "lampki", "sanie", "kakao",
             "koperta", "znaczek", "ramka-polaroid", "wianek",
-            "pierniki", "karp", "pierogi",
+            "ramka-okno", "ramka-zlota", "ramka-lampki", "ramka-bombka",
+            "pierniki",
             "wesolych-swiat", "dziekuje", "zaskocz-mnie", "bardzo-prosze",
-            "pixel-prezent", "pixel-choinka", "robot-elf", "mikolaj-vr"
+            "pixel-prezent", "pixel-choinka", "robot-elf", "mikolaj-vr",
+            "asti-czapka", "asti-piernik", "luna-rogi", "luna-prezent", "masza-czapka", "masza-sweter"
         };
 
         // Image upload / storage

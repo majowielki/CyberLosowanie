@@ -11,7 +11,7 @@ const renderPicker = () => {
 };
 
 describe('StickerPicker', () => {
-  it('shows one tab per category', () => {
+  it('shows one tab per category that has stickers', () => {
     renderPicker();
 
     const tabs = within(screen.getByRole('tablist', { name: 'Sticker categories' })).getAllByRole('tab');
@@ -22,7 +22,6 @@ describe('StickerPicker', () => {
       'Christmas',
       'Characters',
       'Frames',
-      'Polish',
       'Cyber',
     ]);
   });

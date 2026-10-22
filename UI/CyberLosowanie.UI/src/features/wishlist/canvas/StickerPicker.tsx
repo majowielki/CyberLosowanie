@@ -81,7 +81,9 @@ function StickerPicker({ onSelect, onClose }: StickerPickerProps) {
           id="sticker-tabpanel"
           role="tabpanel"
           aria-labelledby={`sticker-tab-${category}`}
-          className="grid grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4"
+          // auto-rows-max: rows keep their content height and the panel scrolls; without it
+          // a short panel squeezes the rows and the labels overlap the next row.
+          className="grid auto-rows-max grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4"
         >
           {PICKER_STICKERS.filter((sticker) => sticker.category === category).map(({ id, thumbSrc, labelKey }) => (
             <button
