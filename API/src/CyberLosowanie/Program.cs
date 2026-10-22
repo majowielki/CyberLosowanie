@@ -48,14 +48,20 @@ builder.Services.AddScoped<ISantaNotificationService, SantaNotificationService>(
 builder.Services.AddScoped<IWishlistImageStorage, WishlistImageStorage>();
 builder.Services.AddScoped<ICyberekImageStorage, CyberekImageStorage>();
 
-// Email: SMTP when "Email:Smtp:Host" is set (any provider). Development without
-// SMTP logs the messages instead; anywhere else a missing SMTP config fails fast —
-// registration cannot work without the confirmation email. EF tooling (migration
-// scripts at deploy time) builds this host too and needs neither, hence IsDesignTime.
+// Email: EmailJS when all four "Email:EmailJs" values are set, otherwise SMTP when
+// "Email:Smtp:Host" is set (any provider). Development without either logs the
+// messages instead; anywhere else a missing provider fails fast — registration
+// cannot work without the confirmation email. EF tooling (migration scripts at
+// deploy time) builds this host too and needs none, hence IsDesignTime.
 var emailSection = builder.Configuration.GetSection(EmailOptions.SectionName);
 builder.Services.Configure<EmailOptions>(emailSection);
 var emailOptions = emailSection.Get<EmailOptions>() ?? new EmailOptions();
-if (emailOptions.IsSmtpConfigured)
+if (emailOptions.IsEmailJsConfigured)
+{
+    builder.Services.AddHttpClient<IEmailService, EmailJsEmailService>(client =>
+        client.BaseAddress = new Uri(EmailJsEmailService.BaseAddress));
+}
+else if (emailOptions.IsSmtpConfigured)
 {
     if (string.IsNullOrWhiteSpace(emailOptions.FromAddress))
     {
@@ -70,7 +76,8 @@ else if (builder.Environment.IsDevelopment() || EF.IsDesignTime)
 else
 {
     throw new InvalidOperationException(
-        "Email is not configured. Set 'Email:Smtp:Host' (plus port, credentials and 'Email:FromAddress').");
+        "Email is not configured. Set 'Email:EmailJs' (ServiceId, TemplateId, PublicKey, PrivateKey) " +
+        "or 'Email:Smtp:Host' (plus port, credentials and 'Email:FromAddress').");
 }
 
 var publicBaseUrl = builder.Configuration.GetValue<string>(AppLinks.ConfigurationKey);
