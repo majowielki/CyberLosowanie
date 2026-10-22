@@ -1,8 +1,10 @@
-import treeImage from "@/assets/landing-tree.webp";
+import tree1024 from "@/assets/landing-tree-1024.webp";
+import tree1536 from "@/assets/landing-tree-1536.webp";
+import tree2048 from "@/assets/landing-tree-2048.webp";
 import CyberekPortrait from "@/features/cyberki/CyberekPortrait";
 import { cn } from "@/shared/lib/utils";
 
-// The 12 empty bauble frames in landing-tree.webp (rows of 2, 4 and 6 from the
+// The 12 empty bauble frames in landing-tree-*.webp (rows of 2, 4 and 6 from the
 // top), measured at full resolution, and the cyberek hung in each. Centre in % of
 // the artwork (left of its width, top of its height); size is the cream interior's
 // diameter plus 2 px, in % of the width, so the photo covers its anti-aliased edge
@@ -24,6 +26,8 @@ const BAUBLES: Array<{ cyberekId: number; left: number; top: number; size: numbe
 
 interface HeroTreeProps {
   alt: string;
+  /** The rendered width as a `sizes` value, so the browser picks the right file. */
+  sizes: string;
   className?: string;
 }
 
@@ -31,25 +35,45 @@ interface HeroTreeProps {
  * The landing artwork: a raster tree with empty bauble frames and the cyberki
  * caricatures (public, served by the API) laid over them. Keeping the photos out
  * of the artwork keeps it light and keeps portraits out of the repository.
+ *
+ * Nothing here is positioned or zoomed with CSS transforms: the photos are drawn
+ * straight at their final size, so the browser resamples them only once.
  */
-function HeroTree({ alt, className }: HeroTreeProps) {
+function HeroTree({ alt, sizes, className }: HeroTreeProps) {
   return (
     <div className={cn("relative", className)}>
-      <img src={treeImage} alt={alt} width={2048} height={1360} className="block h-auto w-full" />
+      <img
+        src={tree2048}
+        srcSet={`${tree1024} 1024w, ${tree1536} 1536w, ${tree2048} 2048w`}
+        sizes={sizes}
+        alt={alt}
+        width={2048}
+        height={1360}
+        className="block h-auto w-full"
+      />
       {/* Decorative: the artwork's alt already describes the tree. */}
       <div aria-hidden>
         {BAUBLES.map(({ cyberekId, left, top, size }) => (
           <div
             key={cyberekId}
-            className="absolute aspect-square -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full"
-            style={{ left: `${left}%`, top: `${top}%`, width: `${size}%` }}
+            className="absolute aspect-square overflow-hidden rounded-full"
+            // Percentage margins resolve against the width on both axes, so
+            // -size/2 centres the square slot on its point.
+            style={{
+              left: `${left}%`,
+              top: `${top}%`,
+              width: `${size}%`,
+              marginLeft: `${-size / 2}%`,
+              marginTop: `${-size / 2}%`,
+            }}
           >
-            {/* The caricatures are full-figure — zoom in towards the face. */}
+            {/* The caricatures are full-figure — an oversized box zooms in 1.35x
+                towards the face (centred, 30% from the top). */}
             <CyberekPortrait
               cyberekId={cyberekId}
               kind="caricature"
               alt=""
-              className="h-full w-full origin-[50%_30%] scale-[1.35] object-cover"
+              className="absolute -left-[17.5%] -top-[10.5%] h-[135%] w-[135%] max-w-none object-cover"
             />
           </div>
         ))}

@@ -77,10 +77,6 @@ export default {
   			halo: '0 0 0 4px hsl(var(--gold) / 0.35), 0 24px 60px -16px hsl(var(--gold) / 0.45)'
   		},
   		keyframes: {
-  			float: {
-  				'0%, 100%': { transform: 'translateY(0)' },
-  				'50%': { transform: 'translateY(-8px)' }
-  			},
   			'fade-up': {
   				from: { opacity: '0', transform: 'translateY(12px)' },
   				to: { opacity: '1', transform: 'translateY(0)' }
@@ -96,7 +92,6 @@ export default {
   			}
   		},
   		animation: {
-  			float: 'float 7s ease-in-out infinite',
   			'fade-up': 'fade-up 0.6s ease-out both',
   			twinkle: 'twinkle 3.5s ease-in-out infinite',
   			reveal: 'reveal 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both'

@@ -30,7 +30,8 @@ function Landing() {
               the call to action stay close to the fold on short laptop screens. */}
           <HeroTree
             alt={t('landing.heroAlt')}
-            className="w-[min(94vw,60rem,75vh)] drop-shadow-[0_30px_40px_rgba(0,0,0,0.45)] motion-safe:animate-float"
+            sizes="min(94vw, 60rem, 75vh)"
+            className="w-[min(94vw,60rem,75vh)] drop-shadow-[0_30px_40px_rgba(0,0,0,0.45)]"
           />
         </div>
 
