@@ -1,6 +1,6 @@
 import { Gift, ScrollText, Sparkles, UserRound } from "lucide-react";
-import CyberLogo from "@/assets/cyber2.svg";
 import ProceedButton from "@/features/cyberki/ProceedButton";
+import HeroTree from "./HeroTree";
 import { TranslationKey, useTranslation } from "@/shared/i18n";
 
 const STEPS: Array<{ titleKey: TranslationKey; bodyKey: TranslationKey; icon: typeof Gift }> = [
@@ -23,21 +23,31 @@ function Landing() {
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
         </span>
 
-        {/* The SVG has generous transparent padding — negative margins pull the
-            visible artwork closer to the eyebrow and the tagline. */}
-        <div className="relative -my-10 sm:-my-14">
+        <div className="relative mt-4">
           {/* Light source behind the tree. */}
-          <div aria-hidden className="halo absolute inset-0 -z-10 scale-125 blur-2xl" />
-          {/* Square artwork capped by viewport height too, so the tagline and
-              the call to action stay above the fold on short laptop screens. */}
-          <img
-            src={CyberLogo}
+          <div aria-hidden className="halo absolute inset-0 -z-10 scale-110 blur-2xl" />
+          {/* Wide 3:2 artwork capped by viewport height too, so the tagline and
+              the call to action stay close to the fold on short laptop screens. */}
+          <HeroTree
             alt={t('landing.heroAlt')}
-            className="w-[min(88vw,34rem,55vh)] drop-shadow-[0_30px_40px_rgba(0,0,0,0.45)] motion-safe:animate-float"
+            className="w-[min(94vw,60rem,75vh)] drop-shadow-[0_30px_40px_rgba(0,0,0,0.45)] motion-safe:animate-float"
           />
         </div>
 
-        <h1 className="font-display max-w-2xl text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-cream sm:text-5xl lg:text-6xl">
+        {/* Same wordmark as the navbar logo, sized as the sign under the tree. */}
+        <p className="font-display mt-2 text-5xl tracking-tight text-cream sm:text-6xl lg:text-7xl">
+          Cyber<span className="text-gold">Losowanie</span>
+        </p>
+
+        {/* Ornament between the wordmark and the tagline; the tagline is set in
+            the text face, so the wordmark stays the only display lettering. */}
+        <div aria-hidden className="mt-5 flex items-center gap-3 text-gold/80">
+          <span className="h-px w-16 bg-gradient-to-r from-transparent to-gold/60 sm:w-24" />
+          <Sparkles className="h-4 w-4" />
+          <span className="h-px w-16 bg-gradient-to-l from-transparent to-gold/60 sm:w-24" />
+        </div>
+
+        <h1 className="mt-5 max-w-2xl text-balance text-2xl font-semibold leading-snug tracking-tight text-cream sm:text-3xl lg:text-4xl">
           {t('landing.tagline')}
         </h1>
         <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-cream-muted sm:text-lg">

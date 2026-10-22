@@ -2,6 +2,7 @@ using CyberLosowanie.Constants;
 using CyberLosowanie.Controllers;
 using CyberLosowanie.Interfaces.Services;
 using FluentAssertions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -11,7 +12,7 @@ namespace CyberLosowanie.Test
 {
     /// <summary>
     /// Contract of the cyberek portrait proxy: input validation, 404 for missing
-    /// blobs and a private-cache binary response.
+    /// blobs, a private-cache binary response and public caricatures only.
     /// </summary>
     public class CyberekImagesControllerTests
     {
@@ -84,6 +85,43 @@ namespace CyberLosowanie.Test
             fileResult.ContentType.Should().Be("image/jpeg");
             // Photos of real people — they must never land in shared caches.
             _controller.Response.Headers.CacheControl.ToString().Should().Contain("private");
+        }
+
+        [Fact]
+        public async Task GetCaricature_ImageExists_StreamsTheCaricature()
+        {
+            var bytes = Encoding.ASCII.GetBytes("image-bytes");
+            _storageMock.Setup(s => s.DownloadAsync(3, CyberekImageConstants.KIND_CARICATURE))
+                .ReturnsAsync((new MemoryStream(bytes), "image/jpeg"));
+
+            var result = await _controller.GetCaricature(3);
+
+            result.Should().BeOfType<FileStreamResult>();
+            _controller.Response.Headers.CacheControl.ToString().Should().Contain("private");
+        }
+
+        [Fact]
+        public async Task GetCaricature_IdOutOfRange_ReturnsBadRequestWithoutTouchingStorage()
+        {
+            var result = await _controller.GetCaricature(CyberLosowanieConstants.MAX_CYBEREK_ID + 1);
+
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _storageMock.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public void Authorization_OnlyTheCaricatureRouteIsPublic()
+        {
+            var controllerType = typeof(CyberekImagesController);
+            controllerType.GetCustomAttributes(typeof(AuthorizeAttribute), true).Should().NotBeEmpty();
+
+            var getImage = controllerType.GetMethod(nameof(CyberekImagesController.GetImage))!;
+            getImage.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Should().BeEmpty();
+
+            var getCaricature = controllerType.GetMethod(nameof(CyberekImagesController.GetCaricature))!;
+            getCaricature.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Should().NotBeEmpty();
+            getCaricature.GetCustomAttributes(typeof(HttpGetAttribute), true)
+                .Cast<HttpGetAttribute>().Single().Template.Should().Be("{id:int}/images/caricature");
         }
 
         [Fact]

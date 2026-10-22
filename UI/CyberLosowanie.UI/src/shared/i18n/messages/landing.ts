@@ -6,7 +6,7 @@ const pl = {
   'landing.tagline': 'Wylosuj, komu w tym roku zrobisz prezent.',
   'landing.subtitle':
     'Wybierz siebie z listy, otwórz tajemnicze pudełko i podejrzyj listę życzeń osoby, którą wylosujesz.',
-  'landing.heroAlt': 'Choinka z cyberkami i logo Cyber Losowanie',
+  'landing.heroAlt': 'Choinka z karykaturami cyberków w bombkach',
   'landing.steps.title': 'Jak to działa',
   'landing.step1.title': 'Wybierz siebie',
   'landing.step1.body': 'Znajdź się na liście cyberków i potwierdź, że to Ty.',
@@ -25,7 +25,7 @@ export const landing: MessageCatalog<LandingKey> = {
     'landing.tagline': 'Draw the person you will surprise this year.',
     'landing.subtitle':
       'Pick yourself from the list, open a mystery box and peek at the wishlist of the person you draw.',
-    'landing.heroAlt': 'Christmas tree with cybereks and the Cyber Losowanie logo',
+    'landing.heroAlt': 'Christmas tree with caricatures of the cybereks in its baubles',
     'landing.steps.title': 'How it works',
     'landing.step1.title': 'Pick yourself',
     'landing.step1.body': 'Find yourself on the list of cybereks and confirm it is you.',
