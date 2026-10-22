@@ -69,7 +69,18 @@ namespace CyberLosowanie.Constants
         public const string ITEM_TYPE_STICKER = "sticker";
         public static readonly IReadOnlySet<string> STICKER_IDS = new HashSet<string>(StringComparer.Ordinal)
         {
-            "drogi-mikolaju", "choinka", "prezent"
+            "drogi-mikolaju", "choinka", "prezent",
+            "moja-lista-zyczen", "bylem-grzeczny", "bylam-grzeczna", "ho-ho-ho",
+            "top-1", "top-2", "top-3", "hit", "strzalka",
+            "metka", "wstega", "karteczka", "tasma-czerwona", "tasma-zielona",
+            "mikolaj", "renifer", "balwan", "piernikowy-ludzik",
+            "skarpeta", "bombka", "laska-cukrowa",
+            "elf", "pingwin", "kot-w-czapce", "mis",
+            "dzwonek", "jemiola", "gwiazda-betlejemska", "swieca", "sniezynka", "gwiazdka", "lampki", "sanie", "kakao",
+            "koperta", "znaczek", "ramka-polaroid", "wianek",
+            "pierniki", "karp", "pierogi",
+            "wesolych-swiat", "dziekuje", "zaskocz-mnie", "bardzo-prosze",
+            "pixel-prezent", "pixel-choinka", "robot-elf", "mikolaj-vr"
         };
 
         // Image upload / storage

@@ -82,6 +82,10 @@ UI/CyberLosowanie.UI/src/assets/mikolaje/
 UI/CyberLosowanie.UI/src/assets/karykatury/
 UI/CyberLosowanie.UI/src/assets/dzieci/
 
+# Sticker generation workspace (raw Higgsfield output, prompts, log) — see
+# Docs/naklejki-higgsfield.md; only the prepared WebP files go to src/assets/stickers.
+UI/CyberLosowanie.UI/stickers-work/
+
 # Azurite local storage (when started from the repo, e.g. by the VS Code extension)
 __azurite_db_*.json
 __blobstorage__/

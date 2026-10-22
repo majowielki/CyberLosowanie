@@ -171,4 +171,17 @@ export const SHAPE_DRAG_THRESHOLD = 6;
 // WishlistConstants STICKER_IDS; the artwork and default size of each id live
 // in stickers.ts. Ids are stored in saved wishlists, so they are never renamed
 // or removed — see src/assets/stickers/README.md.
-export const STICKER_IDS = ['drogi-mikolaju', 'choinka', 'prezent'] as const;
+export const STICKER_IDS = [
+  'drogi-mikolaju', 'choinka', 'prezent',
+  'moja-lista-zyczen', 'bylem-grzeczny', 'bylam-grzeczna', 'ho-ho-ho',
+  'top-1', 'top-2', 'top-3', 'hit', 'strzalka',
+  'metka', 'wstega', 'karteczka', 'tasma-czerwona', 'tasma-zielona',
+  'mikolaj', 'renifer', 'balwan', 'piernikowy-ludzik',
+  'skarpeta', 'bombka', 'laska-cukrowa',
+  'elf', 'pingwin', 'kot-w-czapce', 'mis',
+  'dzwonek', 'jemiola', 'gwiazda-betlejemska', 'swieca', 'sniezynka', 'gwiazdka', 'lampki', 'sanie', 'kakao',
+  'koperta', 'znaczek', 'ramka-polaroid', 'wianek',
+  'pierniki', 'karp', 'pierogi',
+  'wesolych-swiat', 'dziekuje', 'zaskocz-mnie', 'bardzo-prosze',
+  'pixel-prezent', 'pixel-choinka', 'robot-elf', 'mikolaj-vr',
+] as const;
