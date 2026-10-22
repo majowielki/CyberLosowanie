@@ -117,7 +117,7 @@ namespace CyberLosowanie.Controllers
         [ProducesResponseType(typeof(ApiResponse<WishlistResponse>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(ApiResponse<object>), 401)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - not saved / no changes / cooldown
+        [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - not saved / no changes since last notification
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<IActionResult> SendMyWishlist([FromBody] SendWishlistRequestDTO request)
         {

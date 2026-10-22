@@ -55,7 +55,7 @@ const wishlistApi = createApi({
     }),
 
     // POST /api/wishlist/my/send — send the saved letter to Santa, or (later)
-    // notify them about changes. 409 = not saved / nothing new / cooldown.
+    // notify them about changes. 409 = not saved / nothing new since the last notification.
     sendMyWishlist: builder.mutation<apiResponseBody<wishlistModel>, { note?: string }>({
       query: (body) => ({
         url: ENDPOINTS.MY_SEND,

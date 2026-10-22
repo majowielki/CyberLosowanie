@@ -76,9 +76,7 @@ namespace CyberLosowanie.Constants
         public const long MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024;
         public const string IMAGES_CONTAINER_NAME = "wishlist-images";
 
-        // Letter to Santa. A repeated "notify about changes" is allowed only after
-        // the cooldown, so the Santa's inbox cannot be flooded.
-        public static readonly TimeSpan SANTA_NOTIFICATION_COOLDOWN = TimeSpan.FromHours(3);
+        // Letter to Santa: optional note quoted in the email.
         public const int MAX_SANTA_NOTE_LENGTH = 300;
 
         // Error messages
@@ -96,7 +94,5 @@ namespace CyberLosowanie.Constants
             "Save your wishlist before sending it to Santa.";
         public const string NO_CHANGES_SINCE_NOTIFICATION =
             "Nothing has changed since Santa was last notified.";
-        public const string NOTIFICATION_COOLDOWN_ACTIVE =
-            "Santa was notified recently. Please try again later.";
     }
 }

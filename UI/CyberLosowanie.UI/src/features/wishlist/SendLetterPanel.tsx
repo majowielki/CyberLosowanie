@@ -22,8 +22,8 @@ const MAX_NOTE_LENGTH = 300;
 /**
  * "Send letter to Santa" under my saved wishlist. Before the first send the list
  * is a private draft; afterwards every save is visible to Santa immediately and
- * the button turns into an optional "tell Santa about changes" (only after a
- * new save, and not more often than the backend cooldown allows).
+ * the button turns into an optional "tell Santa about changes" (available
+ * after every new save).
  */
 function SendLetterPanel({ wishlist }: { wishlist: wishlistModel }) {
   const { t, language } = useTranslation();
@@ -35,15 +35,8 @@ function SendLetterPanel({ wishlist }: { wishlist: wishlistModel }) {
   const isSent = Boolean(wishlist.sentAtUtc);
   const lastNotification = wishlist.lastNotificationAtUtc ? new Date(wishlist.lastNotificationAtUtc) : null;
   const hasChanges = !lastNotification || new Date(wishlist.updatedAtUtc) > lastNotification;
-  const cooldownUntil = wishlist.nextNotificationAtUtc ? new Date(wishlist.nextNotificationAtUtc) : null;
-  const inCooldown = cooldownUntil !== null && cooldownUntil > new Date();
-  const canSend = !isSent || (hasChanges && !inCooldown);
-
-  const blockedHint = !isSent || canSend
-    ? null
-    : !hasChanges
-      ? t('wishlist.letter.noChanges')
-      : t('wishlist.letter.cooldown', { time: cooldownUntil!.toLocaleString(locale) });
+  const canSend = !isSent || hasChanges;
+  const blockedHint = canSend ? null : t('wishlist.letter.noChanges');
 
   const handleConfirm = async () => {
     try {

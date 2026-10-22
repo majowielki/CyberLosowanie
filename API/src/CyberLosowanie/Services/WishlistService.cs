@@ -95,16 +95,12 @@ namespace CyberLosowanie.Services
 
             var now = DateTime.UtcNow;
             var isUpdate = wishlist.SentAtUtc != null;
-            if (isUpdate && wishlist.LastNotificationAtUtc is { } lastNotification)
+            // Notifying again needs a save since the last notification — otherwise the
+            // Santa would be asked to look at a letter that has not changed.
+            if (isUpdate && wishlist.LastNotificationAtUtc is { } lastNotification
+                && wishlist.UpdatedAtUtc <= lastNotification)
             {
-                if (wishlist.UpdatedAtUtc <= lastNotification)
-                {
-                    throw new WishlistConflictException(WishlistConstants.NO_CHANGES_SINCE_NOTIFICATION);
-                }
-                if (now < lastNotification + WishlistConstants.SANTA_NOTIFICATION_COOLDOWN)
-                {
-                    throw new WishlistConflictException(WishlistConstants.NOTIFICATION_COOLDOWN_ACTIVE);
-                }
+                throw new WishlistConflictException(WishlistConstants.NO_CHANGES_SINCE_NOTIFICATION);
             }
 
             wishlist.SentAtUtc ??= now;

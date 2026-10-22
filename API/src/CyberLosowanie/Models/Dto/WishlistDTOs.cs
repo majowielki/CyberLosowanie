@@ -32,9 +32,6 @@ namespace CyberLosowanie.Models.Dto
 
         /// <summary>Owner only: last send / "notify about changes".</summary>
         public DateTime? LastNotificationAtUtc { get; set; }
-
-        /// <summary>Owner only: earliest time the next notification is accepted (null = now).</summary>
-        public DateTime? NextNotificationAtUtc { get; set; }
     }
 
     /// <summary>Santa's view of the letter state, for the navigation badge.</summary>
@@ -55,18 +52,13 @@ namespace CyberLosowanie.Models.Dto
 
     public static class WishlistMappingExtensions
     {
-        public static WishlistResponse ToOwnerResponse(this Models.Wishlist wishlist)
+        public static WishlistResponse ToOwnerResponse(this Models.Wishlist wishlist) => new()
         {
-            var nextNotification = wishlist.LastNotificationAtUtc + WishlistConstants.SANTA_NOTIFICATION_COOLDOWN;
-            return new WishlistResponse
-            {
-                CanvasJson = wishlist.CanvasJson,
-                UpdatedAtUtc = wishlist.UpdatedAtUtc,
-                SentAtUtc = wishlist.SentAtUtc,
-                LastNotificationAtUtc = wishlist.LastNotificationAtUtc,
-                NextNotificationAtUtc = nextNotification > DateTime.UtcNow ? nextNotification : null
-            };
-        }
+            CanvasJson = wishlist.CanvasJson,
+            UpdatedAtUtc = wishlist.UpdatedAtUtc,
+            SentAtUtc = wishlist.SentAtUtc,
+            LastNotificationAtUtc = wishlist.LastNotificationAtUtc
+        };
 
         public static WishlistResponse ToSantaResponse(this Models.Wishlist wishlist) => new()
         {

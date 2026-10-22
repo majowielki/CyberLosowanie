@@ -33,7 +33,7 @@ namespace CyberLosowanie.Models
 
         /// <summary>
         /// Last time the owner pressed send / "notify Santa about changes" — the base
-        /// for the "anything new since?" check and the notification cooldown. Set even
+        /// for the "anything new since?" check. Set even
         /// when nobody has drawn the owner yet, so the owner cannot tell the difference.
         /// </summary>
         public DateTime? LastNotificationAtUtc { get; set; }

@@ -8,8 +8,6 @@ export default interface wishlistModel {
   sentAtUtc?: string | null;
   /** Last send / "notify about changes". */
   lastNotificationAtUtc?: string | null;
-  /** Earliest time the next notification is accepted; null = now. */
-  nextNotificationAtUtc?: string | null;
 }
 
 // Mirrors backend GiftedWishlistStatusResponse (navigation badge).

@@ -983,7 +983,6 @@ namespace CyberLosowanie.Test
             wishlist.SentAtUtc.Should().NotBeNull();
             wishlist.LastNotificationAtUtc.Should().Be(wishlist.SentAtUtc);
             result.SentAtUtc.Should().Be(wishlist.SentAtUtc);
-            result.NextNotificationAtUtc.Should().BeAfter(DateTime.UtcNow);
             _wishlistRepo.Verify(r => r.SaveChangesAsync(), Times.Once);
             _santa.Verify(s => s.NotifyLetterSentAsync(OwnCyberekId, false, "hello"), Times.Once);
         }
@@ -1008,27 +1007,10 @@ namespace CyberLosowanie.Test
         }
 
         [Fact]
-        public async Task SendMyWishlistAsync_ResendWithinCooldown_ThrowsWishlistConflict()
+        public async Task SendMyWishlistAsync_ResendRightAfterChanges_NotifiesAsUpdateAndKeepsFirstSentAt()
         {
-            var sentAt = DateTime.UtcNow.AddMinutes(-30);
-            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(OwnCyberekId)).ReturnsAsync(new Wishlist
-            {
-                CyberekId = OwnCyberekId,
-                UpdatedAtUtc = DateTime.UtcNow,
-                SentAtUtc = sentAt,
-                LastNotificationAtUtc = sentAt
-            });
-
-            var ex = await Assert.ThrowsAsync<WishlistConflictException>(
-                () => CreateService().SendMyWishlistAsync(UserName, null));
-
-            ex.Message.Should().Be(WishlistConstants.NOTIFICATION_COOLDOWN_ACTIVE);
-        }
-
-        [Fact]
-        public async Task SendMyWishlistAsync_ResendAfterChangesAndCooldown_NotifiesAsUpdateAndKeepsFirstSentAt()
-        {
-            var sentAt = DateTime.UtcNow.AddDays(-1);
+            // No waiting period: a save one minute after the last notification is enough.
+            var sentAt = DateTime.UtcNow.AddMinutes(-2);
             var wishlist = new Wishlist
             {
                 CyberekId = OwnCyberekId,

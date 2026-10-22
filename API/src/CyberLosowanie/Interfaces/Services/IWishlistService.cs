@@ -19,7 +19,7 @@ namespace CyberLosowanie.Interfaces.Services
         /// <summary>
         /// Sends the saved letter to the caller's Santa (first call), or notifies them
         /// about changes (later calls: only after a save since the last notification
-        /// and outside the cooldown — otherwise <see cref="Exceptions.WishlistConflictException"/>).
+        /// — otherwise <see cref="Exceptions.WishlistConflictException"/>).
         /// </summary>
         Task<WishlistResponse> SendMyWishlistAsync(string userName, string? note);
 
