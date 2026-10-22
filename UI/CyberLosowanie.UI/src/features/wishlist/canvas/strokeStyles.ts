@@ -20,6 +20,18 @@ export function rgbToHex([r, g, b]: [number, number, number]): string {
   return `#${toByte(r)}${toByte(g)}${toByte(b)}`;
 }
 
+/**
+ * Whether `hex` is too light to read on a white surface: WCAG relative
+ * luminance above 0.6 (white, cream, pale pastels — not yellow or orange).
+ */
+export function isLightColor(hex: string): boolean {
+  const linear = hexToRgb(hex).map((channel) => {
+    const c = channel / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2] > 0.6;
+}
+
 /** Blends `hex` towards white (`amount` 0 = unchanged, 1 = white). */
 export function lighten(hex: string, amount: number): string {
   const [r, g, b] = hexToRgb(hex);

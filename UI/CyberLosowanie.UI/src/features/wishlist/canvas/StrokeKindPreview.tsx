@@ -1,18 +1,20 @@
 import { StrokeKind } from './canvasDocument';
-import { darken, lighten } from './strokeStyles';
+import { darken, isLightColor, lighten } from './strokeStyles';
 
 // A short wave; every style below draws this same path so the previews compare.
 const WAVE = 'M3 13 C 9 2, 15 22, 22 11 S 30 4, 35 9';
 
 /**
  * Thumbnail of a pen style for the toolbar: an SVG approximation of what
- * StrokeShape renders on the canvas, in the currently selected colour.
+ * StrokeShape renders on the canvas, in the currently selected colour. A light
+ * colour (white ink) gets a dark chip behind it, or it vanishes on the white toolbar.
  */
 function StrokeKindPreview({ kind, color }: { kind: StrokeKind; color: string }) {
   const common = { d: WAVE, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   return (
     <svg viewBox="0 0 38 22" className="h-5 w-9" aria-hidden focusable="false">
+      {isLightColor(color) && <rect data-testid="light-ink-backdrop" width={38} height={22} rx={5} fill="#374151" />}
       {kind === 'pen' && <path {...common} stroke={color} strokeWidth={4} />}
 
       {kind === 'marker' && (

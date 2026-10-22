@@ -100,6 +100,9 @@ const TRANSFORMER_ANCHORS = [
   'middle-left',
   'middle-right',
 ];
+// For items too short on screen to fit three anchors down a side (a one-line
+// text, a strip of washi tape): the side anchors would sit on the corner ones.
+const CORNER_ANCHORS = TRANSFORMER_ANCHORS.slice(0, 4);
 const keepMinimumBox = (oldBox: TransformerBox, newBox: TransformerBox): TransformerBox =>
   newBox.width < 5 || newBox.height < 5 ? oldBox : newBox;
 type TransformerBox = Parameters<NonNullable<Konva.TransformerConfig['boundBoxFunc']>>[0];
@@ -212,6 +215,20 @@ function WishlistCanvas({
     }
   }, []);
 
+  // Side anchors only when the selection is tall enough on screen to keep them
+  // clear of the corner anchors (re-checked on zoom and after each resize).
+  const anchorSize = isCoarsePointer ? 22 : 10;
+  const transformerPadding = isCoarsePointer ? 6 : 0;
+  const [compactAnchors, setCompactAnchors] = useState(false);
+  const updateAnchorLayout = useCallback(() => {
+    const node = transformerRef.current?.nodes()[0];
+    if (!node) {
+      return;
+    }
+    const screenHeight = node.height() * Math.abs(node.getAbsoluteScale().y) + 2 * transformerPadding;
+    setCompactAnchors(screenHeight < anchorSize * 3);
+  }, [anchorSize, transformerPadding]);
+
   // Attach the transformer to the selected node (classic Konva pattern).
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -220,8 +237,9 @@ function WishlistCanvas({
     }
     const node = selectedItemId ? itemNodesRef.current.get(selectedItemId) : undefined;
     transformer.nodes(node && selectedItemId !== editingItemId ? [node] : []);
+    updateAnchorLayout();
     transformer.getLayer()?.batchDraw();
-  }, [selectedItemId, editingItemId, items]);
+  }, [selectedItemId, editingItemId, items, stageProps.scaleX, updateAnchorLayout]);
 
   // Cache on stroke start, drop on stroke end (the next frame shows live vectors
   // again). Strokes cannot change mid-stroke, so one snapshot per stroke is enough.
@@ -503,12 +521,13 @@ function WishlistCanvas({
           <Transformer
             ref={transformerRef}
             rotateEnabled
-            enabledAnchors={TRANSFORMER_ANCHORS}
+            enabledAnchors={compactAnchors ? CORNER_ANCHORS : TRANSFORMER_ANCHORS}
             boundBoxFunc={keepMinimumBox}
-            anchorSize={isCoarsePointer ? 22 : 10}
+            anchorSize={anchorSize}
             anchorCornerRadius={isCoarsePointer ? 11 : 0}
             rotateAnchorOffset={isCoarsePointer ? 40 : 50}
-            padding={isCoarsePointer ? 6 : 0}
+            padding={transformerPadding}
+            onTransformEnd={updateAnchorLayout}
           />
         )}
       </Layer>

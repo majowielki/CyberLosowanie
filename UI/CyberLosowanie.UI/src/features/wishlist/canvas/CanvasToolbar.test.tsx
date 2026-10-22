@@ -92,6 +92,22 @@ describe('CanvasToolbar flyouts', () => {
   });
 });
 
+describe('CanvasToolbar pen-style preview', () => {
+  it('puts white ink on a dark chip so it stays visible on the white toolbar', () => {
+    renderToolbar('pen', { color: '#ffffff' });
+
+    const trigger = screen.getByRole('button', { name: 'Pen style: Pen' });
+    expect(trigger.querySelector('[data-testid="light-ink-backdrop"]')).not.toBeNull();
+  });
+
+  it('draws dark ink without a chip', () => {
+    renderToolbar('pen', { color: '#111827' });
+
+    const trigger = screen.getByRole('button', { name: 'Pen style: Pen' });
+    expect(trigger.querySelector('[data-testid="light-ink-backdrop"]')).toBeNull();
+  });
+});
+
 describe('CanvasToolbar insert actions', () => {
   it('shows the sticker button next to the emoji button in the panel', async () => {
     const props = renderToolbar('pen');

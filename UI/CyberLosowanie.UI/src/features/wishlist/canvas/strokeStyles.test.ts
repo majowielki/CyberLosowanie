@@ -6,6 +6,7 @@ import {
   hashString,
   hexToHsv,
   hsvToHex,
+  isLightColor,
   jitterOffset,
   lighten,
   sampleSparkles,
@@ -33,6 +34,15 @@ describe('colour helpers', () => {
     expect(hsvToHex({ h: 60, s: 1, v: 1 })).toBe('#ffff00');
     expect(hsvToHex({ h: 300, s: 0.5, v: 0.5 })).toBe('#804080');
     expect(hsvToHex({ h: 0, s: 0, v: 1 })).toBe('#ffffff');
+  });
+
+  it('flags only colours too light to read on white', () => {
+    expect(isLightColor('#ffffff')).toBe(true);
+    expect(isLightColor('#f6f0e4')).toBe(true);
+    // The rest of the pen palette stays readable on the white toolbar.
+    for (const hex of ['#111827', '#e11d48', '#f97316', '#eab308', '#22c55e', '#0ea5e9', '#6366f1']) {
+      expect(isLightColor(hex)).toBe(false);
+    }
   });
 
   it('round-trips palette colours through HSV', () => {
