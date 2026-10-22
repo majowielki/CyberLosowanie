@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CyberLosowanie.Migrations
 {
     /// <inheritdoc />
-    public partial class AddUniqueIndexOnGiftedCyberekId : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -34,6 +34,7 @@ namespace CyberLosowanie.Migrations
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     CyberekId = table.Column<int>(type: "int", nullable: false),
                     GiftedCyberekId = table.Column<int>(type: "int", nullable: false),
+                    PreferredLanguage = table.Column<string>(type: "nvarchar(5)", maxLength: 5, nullable: false),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -90,9 +91,8 @@ namespace CyberLosowanie.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     Surname = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    ImageUrl = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     GiftedCyberekId = table.Column<int>(type: "int", nullable: false),
-                    BannedCyberki = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    BannedCyberki = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -205,19 +205,47 @@ namespace CyberLosowanie.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Wishlists",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CyberekId = table.Column<int>(type: "int", nullable: false),
+                    CanvasJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    SentAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    LastNotificationAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    SantaViewedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Wishlists", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Wishlists_Cyberki_CyberekId",
+                        column: x => x.CyberekId,
+                        principalTable: "Cyberki",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.InsertData(
                 table: "Cyberki",
-                columns: new[] { "Id", "BannedCyberki", "GiftedCyberekId", "ImageUrl", "Name", "Surname" },
+                columns: new[] { "Id", "BannedCyberki", "GiftedCyberekId", "Name", "Surname" },
                 values: new object[,]
                 {
-                    { 1, "[1]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Andrzej.jpg", "Andrzej", "Ziulweski" },
-                    { 2, "[2,5]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Oskar.jpg", "Oskar", "Ziulewski" },
-                    { 3, "[3,8]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Iza.jpg", "Iza", "Kawulok" },
-                    { 4, "[4,7]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Kornelia.jpg", "Kornelia", "Majewska" },
-                    { 5, "[5,2]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Ania.jpg", "Ania", "Velychko" },
-                    { 6, "[6]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Oksana.jpg", "Oksana", "Velychko" },
-                    { 7, "[7,4]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Michal.jpg", "Michał", "Majewski" },
-                    { 8, "[8,3]", 0, "https://losowanie.blob.core.windows.net/losowanieblobs/Filip.jpg", "Filip", "Ziulewski" }
+                    { 1, "[1,2,6,4,12]", 0, "Michał", "Majewski" },
+                    { 2, "[2,1,10,12,5]", 0, "Kornelia", "Majewska" },
+                    { 3, "[3,9,11,10,6]", 0, "Ola", "Sudoł" },
+                    { 4, "[4,11,2,5]", 0, "Daria", "Kurowska" },
+                    { 5, "[5,8,7,3,10]", 0, "Asia", "Małek" },
+                    { 6, "[6,12,5,9,3]", 0, "Filip", "Wilczyński" },
+                    { 7, "[7,10,3,5,8]", 0, "Marek", "Grabowski" },
+                    { 8, "[8,5,1,7,9]", 0, "Michał", "Karbowiak" },
+                    { 9, "[9,3,4,1,7]", 0, "Karol", "Jagiełło" },
+                    { 10, "[10,7,12,6,2]", 0, "Natalia", "Dutka" },
+                    { 11, "[11,4,8,2]", 0, "Paweł", "Kurowski" },
+                    { 12, "[12,6,9,5,1]", 0, "Wiktoria", "Wilczyńska" }
                 });
 
             migrationBuilder.CreateIndex(
@@ -285,6 +313,12 @@ namespace CyberLosowanie.Migrations
                 column: "GiftedCyberekId",
                 unique: true,
                 filter: "[GiftedCyberekId] IS NOT NULL AND [GiftedCyberekId] <> 0");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Wishlists_CyberekId",
+                table: "Wishlists",
+                column: "CyberekId",
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -309,13 +343,16 @@ namespace CyberLosowanie.Migrations
                 name: "AuditLogs");
 
             migrationBuilder.DropTable(
-                name: "Cyberki");
+                name: "Wishlists");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
+
+            migrationBuilder.DropTable(
+                name: "Cyberki");
         }
     }
 }

@@ -12,15 +12,15 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CyberLosowanie.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260714165900_SeedTwelveCyberki")]
-    partial class SeedTwelveCyberki
+    [Migration("20261022103830_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -72,6 +72,11 @@ namespace CyberLosowanie.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<string>("PreferredLanguage")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
@@ -186,15 +191,11 @@ namespace CyberLosowanie.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.PrimitiveCollection<string>("BannedCyberki")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("GiftedCyberekId")
                         .HasColumnType("int");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -218,111 +219,134 @@ namespace CyberLosowanie.Migrations
                         new
                         {
                             Id = 1,
-                            BannedCyberki = "[1,2,6]",
+                            BannedCyberki = "[1,2,6,4,12]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/1.jpg",
                             Name = "Michał",
                             Surname = "Majewski"
                         },
                         new
                         {
                             Id = 2,
-                            BannedCyberki = "[1,2,10]",
+                            BannedCyberki = "[2,1,10,12,5]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/2.jpg",
                             Name = "Kornelia",
                             Surname = "Majewska"
                         },
                         new
                         {
                             Id = 3,
-                            BannedCyberki = "[3,9,11]",
+                            BannedCyberki = "[3,9,11,10,6]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/3.jpg",
                             Name = "Ola",
                             Surname = "Sudoł"
                         },
                         new
                         {
                             Id = 4,
-                            BannedCyberki = "[2,4,11]",
+                            BannedCyberki = "[4,11,2,5]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/4.jpg",
                             Name = "Daria",
                             Surname = "Kurowska"
                         },
                         new
                         {
                             Id = 5,
-                            BannedCyberki = "[5,7,8]",
+                            BannedCyberki = "[5,8,7,3,10]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/5.jpg",
                             Name = "Asia",
                             Surname = "Małek"
                         },
                         new
                         {
                             Id = 6,
-                            BannedCyberki = "[5,6,12]",
+                            BannedCyberki = "[6,12,5,9,3]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/6.jpg",
                             Name = "Filip",
                             Surname = "Wilczyński"
                         },
                         new
                         {
                             Id = 7,
-                            BannedCyberki = "[3,7,10]",
+                            BannedCyberki = "[7,10,3,5,8]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/7.jpg",
                             Name = "Marek",
                             Surname = "Grabowski"
                         },
                         new
                         {
                             Id = 8,
-                            BannedCyberki = "[1,5,8]",
+                            BannedCyberki = "[8,5,1,7,9]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/8.jpg",
                             Name = "Michał",
                             Surname = "Karbowiak"
                         },
                         new
                         {
                             Id = 9,
-                            BannedCyberki = "[3,4,9]",
+                            BannedCyberki = "[9,3,4,1,7]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/9.jpg",
                             Name = "Karol",
                             Surname = "Jagiełło"
                         },
                         new
                         {
                             Id = 10,
-                            BannedCyberki = "[7,10,12]",
+                            BannedCyberki = "[10,7,12,6,2]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/10.jpg",
                             Name = "Natalia",
                             Surname = "Dutka"
                         },
                         new
                         {
                             Id = 11,
-                            BannedCyberki = "[4,8,11]",
+                            BannedCyberki = "[11,4,8,2]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/men/11.jpg",
                             Name = "Paweł",
                             Surname = "Kurowski"
                         },
                         new
                         {
                             Id = 12,
-                            BannedCyberki = "[6,9,12]",
+                            BannedCyberki = "[12,6,9,5,1]",
                             GiftedCyberekId = 0,
-                            ImageUrl = "https://randomuser.me/api/portraits/women/12.jpg",
                             Name = "Wiktoria",
                             Surname = "Wilczyńska"
                         });
+                });
+
+            modelBuilder.Entity("CyberLosowanie.Models.Wishlist", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CanvasJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("CyberekId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastNotificationAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SantaViewedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SentAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CyberekId")
+                        .IsUnique();
+
+                    b.ToTable("Wishlists");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -456,6 +480,15 @@ namespace CyberLosowanie.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("CyberLosowanie.Models.Wishlist", b =>
+                {
+                    b.HasOne("CyberLosowanie.Models.Cyberek", null)
+                        .WithMany()
+                        .HasForeignKey("CyberekId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

@@ -1,6 +1,11 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { config, debugLog } from "@/shared/config";
-import { apiResponseBody, wishlistModel, uploadImageResponseModel } from "@/types";
+import {
+  apiResponseBody,
+  giftedWishlistStatusModel,
+  uploadImageResponseModel,
+  wishlistModel,
+} from "@/types";
 
 const ENDPOINTS = config.ENDPOINTS.WISHLIST;
 
@@ -49,8 +54,20 @@ const wishlistApi = createApi({
       },
     }),
 
+    // POST /api/wishlist/my/send — send the saved letter to Santa, or (later)
+    // notify them about changes. 409 = not saved / nothing new / cooldown.
+    sendMyWishlist: builder.mutation<apiResponseBody<wishlistModel>, { note?: string }>({
+      query: (body) => ({
+        url: ENDPOINTS.MY_SEND,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: [{ type: "Wishlist", id: "MY" }],
+    }),
+
     // GET /api/wishlist/gifted — wishlist of the person I drew (read-only);
-    // data null = they have not saved one yet; 409 = my draw is not completed.
+    // data null = they have not sent their letter yet; 409 = my draw is not
+    // completed. Opening it marks the letter seen, so the badge status refreshes.
     getGiftedWishlist: builder.query<apiResponseBody<wishlistModel | null>, void>({
       query: () => ({
         url: ENDPOINTS.GIFTED,
@@ -60,6 +77,23 @@ const wishlistApi = createApi({
         debugLog("Get gifted wishlist response:", response);
         return response;
       },
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          dispatch(wishlistApi.util.invalidateTags([{ type: "Wishlist", id: "GIFTED_STATUS" }]));
+        } catch {
+          // Errors are rendered by the page; nothing to refresh.
+        }
+      },
+    }),
+
+    // GET /api/wishlist/gifted/status — navigation badge: is the giftee's letter
+    // sent, and does it have changes I have not seen? Never 409.
+    getGiftedWishlistStatus: builder.query<apiResponseBody<giftedWishlistStatusModel>, void>({
+      query: () => ({
+        url: ENDPOINTS.GIFTED_STATUS,
+      }),
+      providesTags: [{ type: "Wishlist", id: "GIFTED_STATUS" }],
     }),
 
     // POST /api/wishlist/my/images — multipart upload; returns the blob path to
@@ -103,7 +137,9 @@ export function extractApiErrorMessage(error: unknown, fallback: string): string
 export const {
   useGetMyWishlistQuery,
   useSaveMyWishlistMutation,
+  useSendMyWishlistMutation,
   useGetGiftedWishlistQuery,
+  useGetGiftedWishlistStatusQuery,
   useUploadWishlistImageMutation,
 } = wishlistApi;
 export default wishlistApi;

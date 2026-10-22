@@ -23,5 +23,22 @@ namespace CyberLosowanie.Models
         public string CanvasJson { get; set; } = string.Empty;
 
         public DateTime UpdatedAtUtc { get; set; }
+
+        /// <summary>
+        /// When the owner first sent the letter to their Santa. Until then the wishlist
+        /// is a private draft: the Santa sees neither the document nor its images.
+        /// Later saves stay visible to the Santa immediately.
+        /// </summary>
+        public DateTime? SentAtUtc { get; set; }
+
+        /// <summary>
+        /// Last time the owner pressed send / "notify Santa about changes" — the base
+        /// for the "anything new since?" check and the notification cooldown. Set even
+        /// when nobody has drawn the owner yet, so the owner cannot tell the difference.
+        /// </summary>
+        public DateTime? LastNotificationAtUtc { get; set; }
+
+        /// <summary>Last time the Santa opened the letter (drives their "new changes" badge).</summary>
+        public DateTime? SantaViewedAtUtc { get; set; }
     }
 }

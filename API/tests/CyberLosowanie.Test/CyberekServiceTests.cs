@@ -22,6 +22,7 @@ namespace CyberLosowanie.Test
         private readonly Mock<IApplicationUserRepository> _userRepo = new();
         private readonly Mock<IGiftingService> _gifting = new();
         private readonly Mock<IAuditService> _audit = new();
+        private readonly Mock<ISantaNotificationService> _santa = new();
         private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
         private CyberekService CreateService()
@@ -32,7 +33,8 @@ namespace CyberLosowanie.Test
                 _gifting.Object,
                 _cache,
                 NullLogger<CyberekService>.Instance,
-                _audit.Object);
+                _audit.Object,
+                _santa.Object);
         }
 
         private static Mock<IDbContextTransaction> MockTransaction() => new();
@@ -57,12 +59,13 @@ namespace CyberLosowanie.Test
             var audit = _audit.Object;
             var logger = NullLogger<CyberekService>.Instance;
 
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(null!, users, gifting, _cache, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, null!, gifting, _cache, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, null!, _cache, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, null!, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, null!, audit));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, logger, null!));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(null!, users, gifting, _cache, logger, audit, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, null!, gifting, _cache, logger, audit, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, null!, _cache, logger, audit, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, null!, logger, audit, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, null!, audit, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, logger, null!, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, logger, audit, null!));
         }
 
         #endregion
@@ -488,6 +491,8 @@ namespace CyberLosowanie.Test
             tx.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
             // The validate+commit section must run under the serialized draw lock.
             _cyberekRepo.Verify(r => r.AcquireDrawLockAsync(), Times.Once);
+            // A letter sent before the draw reaches the new Santa right away.
+            _santa.Verify(s => s.NotifyAfterDrawAsync("u1", 5), Times.Once);
         }
 
         [Fact]

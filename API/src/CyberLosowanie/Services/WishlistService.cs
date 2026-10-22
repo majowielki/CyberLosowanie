@@ -16,6 +16,7 @@ namespace CyberLosowanie.Services
         private readonly IWishlistImageStorage _imageStorage;
         private readonly ILogger<WishlistService> _logger;
         private readonly IAuditService _auditService;
+        private readonly ISantaNotificationService _santaNotificationService;
 
         // Magic-byte signatures of the allowed upload formats. Content-Type headers
         // are client-controlled and not trusted.
@@ -28,13 +29,15 @@ namespace CyberLosowanie.Services
             IApplicationUserRepository userRepository,
             IWishlistImageStorage imageStorage,
             ILogger<WishlistService> logger,
-            IAuditService auditService)
+            IAuditService auditService,
+            ISantaNotificationService santaNotificationService)
         {
             _wishlistRepository = wishlistRepository ?? throw new ArgumentNullException(nameof(wishlistRepository));
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
             _imageStorage = imageStorage ?? throw new ArgumentNullException(nameof(imageStorage));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
+            _santaNotificationService = santaNotificationService ?? throw new ArgumentNullException(nameof(santaNotificationService));
         }
 
         public async Task<WishlistResponse?> GetMyWishlistAsync(string userName)
@@ -43,7 +46,7 @@ namespace CyberLosowanie.Services
             var cyberekId = EnsureCyberekSelected(user);
 
             var wishlist = await _wishlistRepository.GetByCyberekIdAsync(cyberekId);
-            return wishlist?.ToResponse();
+            return wishlist?.ToOwnerResponse();
         }
 
         public async Task<WishlistResponse> SaveMyWishlistAsync(string userName, string canvasJson)
@@ -76,7 +79,49 @@ namespace CyberLosowanie.Services
             // save — the document is already committed.
             await CleanUpOrphanedImagesAsync(cyberekId, CanvasDocumentValidator.GetReferencedImagePaths(document));
 
-            return wishlist.ToResponse();
+            return wishlist.ToOwnerResponse();
+        }
+
+        public async Task<WishlistResponse> SendMyWishlistAsync(string userName, string? note)
+        {
+            var user = await GetRequiredUserAsync(userName, nameof(SendMyWishlistAsync));
+            var cyberekId = EnsureCyberekSelected(user);
+
+            var wishlist = await _wishlistRepository.GetByCyberekIdAsync(cyberekId);
+            if (wishlist == null)
+            {
+                throw new WishlistConflictException(WishlistConstants.WISHLIST_NOT_SAVED);
+            }
+
+            var now = DateTime.UtcNow;
+            var isUpdate = wishlist.SentAtUtc != null;
+            if (isUpdate && wishlist.LastNotificationAtUtc is { } lastNotification)
+            {
+                if (wishlist.UpdatedAtUtc <= lastNotification)
+                {
+                    throw new WishlistConflictException(WishlistConstants.NO_CHANGES_SINCE_NOTIFICATION);
+                }
+                if (now < lastNotification + WishlistConstants.SANTA_NOTIFICATION_COOLDOWN)
+                {
+                    throw new WishlistConflictException(WishlistConstants.NOTIFICATION_COOLDOWN_ACTIVE);
+                }
+            }
+
+            wishlist.SentAtUtc ??= now;
+            wishlist.LastNotificationAtUtc = now;
+            await _wishlistRepository.SaveChangesAsync();
+
+            await _auditService.LogInformationAsync(
+                isUpdate ? $"Santa notified about wishlist changes for cyberek {cyberekId}" : $"Wishlist sent to Santa for cyberek {cyberekId}",
+                userId: user.Id,
+                userName: userName);
+
+            // The response is the same whether or not someone has drawn this user —
+            // the owner must not learn the draw progress from it. Without a Santa yet,
+            // the letter reaches them at draw time (CyberekService.AssignGiftAsync).
+            await _santaNotificationService.NotifyLetterSentAsync(cyberekId, isUpdate, note);
+
+            return wishlist.ToOwnerResponse();
         }
 
         public async Task<WishlistResponse?> GetGiftedWishlistAsync(string userName)
@@ -92,8 +137,41 @@ namespace CyberLosowanie.Services
                 throw new WishlistConflictException(WishlistConstants.DRAW_NOT_COMPLETED);
             }
 
+            // A draft (never sent) looks exactly like "no wishlist yet" to the Santa.
             var wishlist = await _wishlistRepository.GetByCyberekIdAsync(user.GiftedCyberekId);
-            return wishlist?.ToResponse();
+            if (wishlist?.SentAtUtc == null)
+            {
+                return null;
+            }
+
+            wishlist.SantaViewedAtUtc = DateTime.UtcNow;
+            await _wishlistRepository.SaveChangesAsync();
+
+            return wishlist.ToSantaResponse();
+        }
+
+        public async Task<GiftedWishlistStatusResponse> GetGiftedWishlistStatusAsync(string userName)
+        {
+            var user = await GetRequiredUserAsync(userName, nameof(GetGiftedWishlistStatusAsync));
+
+            // Polled by the navigation bar for every signed-in user, so "draw not
+            // completed" is a normal empty state here rather than a 409.
+            if (user.GiftedCyberekId == 0)
+            {
+                return new GiftedWishlistStatusResponse();
+            }
+
+            var wishlist = await _wishlistRepository.GetByCyberekIdAsync(user.GiftedCyberekId);
+            if (wishlist?.SentAtUtc == null)
+            {
+                return new GiftedWishlistStatusResponse();
+            }
+
+            return new GiftedWishlistStatusResponse
+            {
+                IsSent = true,
+                HasUnseenChanges = wishlist.SantaViewedAtUtc == null || wishlist.UpdatedAtUtc > wishlist.SantaViewedAtUtc
+            };
         }
 
         public async Task<UploadImageResponse> UploadImageAsync(string userName, Stream content, long contentLength)
@@ -152,6 +230,21 @@ namespace CyberLosowanie.Services
                     userName: userName,
                     additionalData: new { RequestedCyberekId = cyberekId, FileName = fileName });
                 throw new ForbiddenAccessException(WishlistConstants.IMAGE_ACCESS_DENIED);
+            }
+
+            // Same rule as the document: the Santa sees images only once the letter is sent.
+            if (user.CyberekId != cyberekId)
+            {
+                var wishlist = await _wishlistRepository.GetByCyberekIdAsync(cyberekId);
+                if (wishlist?.SentAtUtc == null)
+                {
+                    await _auditService.LogWarningAsync(
+                        "Wishlist image access denied: letter not sent yet.",
+                        userId: user.Id,
+                        userName: userName,
+                        additionalData: new { RequestedCyberekId = cyberekId, FileName = fileName });
+                    throw new ForbiddenAccessException(WishlistConstants.IMAGE_ACCESS_DENIED);
+                }
             }
 
             // The file name is part of a blob path — accept only the exact format the

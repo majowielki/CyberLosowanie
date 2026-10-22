@@ -3,7 +3,7 @@ import tokenClaims from "./tokenClaims";
 import cyberekModel, { cyberekImageKind } from "./cyberekModel";
 import apiResponse, { apiResponseBody } from "./apiResponse";
 import loginResponseModel from "./loginResponseModel";
-import wishlistModel, { uploadImageResponseModel } from "./wishlistModel";
+import wishlistModel, { giftedWishlistStatusModel, uploadImageResponseModel } from "./wishlistModel";
 export type {
   userModel,
   tokenClaims,
@@ -13,5 +13,6 @@ export type {
   apiResponseBody,
   loginResponseModel,
   wishlistModel,
+  giftedWishlistStatusModel,
   uploadImageResponseModel
 };

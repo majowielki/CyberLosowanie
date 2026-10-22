@@ -61,6 +61,8 @@ export interface WishlistCanvasProps {
    * nothing else) at document resolution — the input of the area fill.
    */
   drawingSnapshotRef?: MutableRefObject<(() => RasterImage | null) | null>;
+  /** Filled with a handle for capturing the rendered page (offscreen exporter only). */
+  exportHandleRef?: MutableRefObject<CanvasExportHandle | null>;
   /** Brush-size preview cursor for pen/eraser (radius in document units). */
   brushCursor?: { radius: number; color: string } | null;
   editable?: boolean;
@@ -76,6 +78,12 @@ export interface WishlistCanvasProps {
   onPointerDown?: (position: Point, isBackground: boolean) => void;
   onPointerMove?: (position: Point) => void;
   onPointerUp?: () => void;
+}
+
+export interface CanvasExportHandle {
+  /** True once every image and sticker shows its artwork, not the loading placeholder. */
+  isReady: () => boolean;
+  toDataURL: (config: { pixelRatio: number; mimeType: string; quality?: number }) => string;
 }
 
 const clamp = (value: number, min: number, max: number): number =>
@@ -118,6 +126,7 @@ function WishlistCanvas({
   previewShape = null,
   onFillItem,
   drawingSnapshotRef,
+  exportHandleRef,
   brushCursor = null,
   editable = false,
   itemsInteractive = false,
@@ -263,6 +272,30 @@ function WishlistCanvas({
       drawingSnapshotRef.current = null;
     };
   }, [drawingSnapshotRef]);
+
+  useEffect(() => {
+    if (!exportHandleRef) {
+      return;
+    }
+    exportHandleRef.current = {
+      // Images and stickers render a placeholder Rect until their bitmap has
+      // loaded; a sticker id unknown to this build never loads and is skipped.
+      isReady: () =>
+        items.every((item) => {
+          if (item.type !== 'image' && item.type !== 'sticker') {
+            return true;
+          }
+          if (item.type === 'sticker' && !STICKERS[item.stickerId]) {
+            return true;
+          }
+          return itemNodesRef.current.get(item.id)?.getClassName() === 'Image';
+        }),
+      toDataURL: (config) => stageRef.current?.toDataURL(config) ?? '',
+    };
+    return () => {
+      exportHandleRef.current = null;
+    };
+  }, [exportHandleRef, items]);
 
   const getDocumentPosition = (event: KonvaEventObject<MouseEvent | TouchEvent>): Point | null => {
     const stage = event.target.getStage();

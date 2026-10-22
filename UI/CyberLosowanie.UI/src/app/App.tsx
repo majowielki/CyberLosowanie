@@ -5,6 +5,7 @@ import Error from "./Error";
 import ProtectedRoute from "./ProtectedRoute";
 import Login from "@/features/auth/Login";
 import Register from "@/features/auth/Register";
+import ConfirmEmail from "@/features/auth/ConfirmEmail";
 import Logout from "@/features/auth/Logout";
 import SelectYourCyberek from "@/features/cyberki/SelectYourCyberek";
 import ChooseToBeGiftedCyberek from "@/features/cyberki/ChooseToBeGiftedCyberek";
@@ -102,6 +103,13 @@ const router = createBrowserRouter([
         <Register />
       </ProtectedRoute>
     ),
+    errorElement: <Error />,
+  },
+  {
+    // Link from the confirmation email. Public and not redirected for a signed-in
+    // visitor — confirming works the same either way.
+    path: "/confirm-email",
+    element: <ConfirmEmail />,
     errorElement: <Error />,
   },
 ]);

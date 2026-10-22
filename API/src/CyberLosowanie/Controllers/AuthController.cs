@@ -1,7 +1,9 @@
-﻿using CyberLosowanie.Interfaces.Services;
+﻿using CyberLosowanie.Constants;
+using CyberLosowanie.Interfaces.Services;
 using CyberLosowanie.Models;
 using CyberLosowanie.Models.Dto;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CyberLosowanie.Controllers
 {
@@ -38,6 +40,7 @@ namespace CyberLosowanie.Controllers
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting(EmailConstants.EMAIL_RATE_LIMIT_POLICY)]
         [ProducesResponseType(typeof(ApiResponse<object>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
@@ -53,6 +56,39 @@ namespace CyberLosowanie.Controllers
                 additionalData: new { Action = "Register", Success = true });
             
             return Ok(ApiResponse<object>.Success(null, "Registration successful"));
+        }
+
+        [HttpPost("confirm-email")]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequestDTO model)
+        {
+            await _authService.ConfirmEmailAsync(model);
+
+            await _auditService.LogInformationAsync(
+                "Email confirmed",
+                HttpContext,
+                userId: model.UserId,
+                additionalData: new { Action = "ConfirmEmail", Success = true });
+
+            return Ok(ApiResponse<object>.Success(null, "Email confirmed"));
+        }
+
+        /// <summary>
+        /// Always 200 — the response is the same whether or not the account exists or
+        /// is already confirmed, so the endpoint cannot be used to probe for accounts.
+        /// </summary>
+        [HttpPost("resend-confirmation")]
+        [EnableRateLimiting(EmailConstants.EMAIL_RATE_LIMIT_POLICY)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 429)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> ResendConfirmation([FromBody] ResendConfirmationRequestDTO model)
+        {
+            await _authService.ResendConfirmationAsync(model);
+            return Ok(ApiResponse<object>.Success(null, "If the account needs confirmation, a new link has been sent"));
         }
     }
 }

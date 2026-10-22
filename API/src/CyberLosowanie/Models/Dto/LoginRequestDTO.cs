@@ -4,6 +4,7 @@ namespace CyberLosowanie.Models.Dto
 {
     public class LoginRequestDTO
     {
+        /// <summary>Username or email address — both identify the account.</summary>
         [Required(ErrorMessage = "Username is required")]
         [StringLength(256, MinimumLength = 1, ErrorMessage = "Username must be between 1 and 256 characters")]
         public string UserName { get; set; } = string.Empty;

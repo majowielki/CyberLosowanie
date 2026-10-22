@@ -1,4 +1,5 @@
 using Azure.Identity;
+using CyberLosowanie.Constants;
 using CyberLosowanie.Data;
 using CyberLosowanie.Interfaces.Repositories;
 using CyberLosowanie.Interfaces.Services;
@@ -6,12 +7,14 @@ using CyberLosowanie.Middleware;
 using CyberLosowanie.Models;
 using CyberLosowanie.Repositories;
 using CyberLosowanie.Services;
+using CyberLosowanie.Services.Email;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,8 +44,67 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGiftingService, GiftingService>();
 builder.Services.AddScoped<IWishlistService, WishlistService>();
+builder.Services.AddScoped<ISantaNotificationService, SantaNotificationService>();
 builder.Services.AddScoped<IWishlistImageStorage, WishlistImageStorage>();
 builder.Services.AddScoped<ICyberekImageStorage, CyberekImageStorage>();
+
+// Email: SMTP when "Email:Smtp:Host" is set (any provider). Development without
+// SMTP logs the messages instead; anywhere else a missing SMTP config fails fast —
+// registration cannot work without the confirmation email. EF tooling (migration
+// scripts at deploy time) builds this host too and needs neither, hence IsDesignTime.
+var emailSection = builder.Configuration.GetSection(EmailOptions.SectionName);
+builder.Services.Configure<EmailOptions>(emailSection);
+var emailOptions = emailSection.Get<EmailOptions>() ?? new EmailOptions();
+if (emailOptions.IsSmtpConfigured)
+{
+    if (string.IsNullOrWhiteSpace(emailOptions.FromAddress))
+    {
+        throw new InvalidOperationException("'Email:FromAddress' must be set when SMTP is configured.");
+    }
+    builder.Services.AddSingleton<IEmailService, SmtpEmailService>();
+}
+else if (builder.Environment.IsDevelopment() || EF.IsDesignTime)
+{
+    builder.Services.AddSingleton<IEmailService, LoggingEmailService>();
+}
+else
+{
+    throw new InvalidOperationException(
+        "Email is not configured. Set 'Email:Smtp:Host' (plus port, credentials and 'Email:FromAddress').");
+}
+
+var publicBaseUrl = builder.Configuration.GetValue<string>(AppLinks.ConfigurationKey);
+if (string.IsNullOrWhiteSpace(publicBaseUrl))
+{
+    if (!EF.IsDesignTime)
+    {
+        throw new InvalidOperationException(
+            $"'{AppLinks.ConfigurationKey}' is not configured — email links need the public address of the app.");
+    }
+    publicBaseUrl = "http://localhost";
+}
+builder.Services.AddSingleton(new AppLinks(publicBaseUrl));
+
+// Anonymous endpoints that send email are rate limited per client IP, so they
+// cannot be used to flood someone's inbox. The limit leaves room for a whole
+// group registering from one network (e.g. at the party).
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    // Same ApiResponse envelope as every other error.
+    options.OnRejected = async (context, cancellationToken) =>
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            ApiResponse<object>.Error("Too many requests. Please try again later.", System.Net.HttpStatusCode.TooManyRequests),
+            cancellationToken);
+    options.AddPolicy(EmailConstants.EMAIL_RATE_LIMIT_POLICY, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(15)
+            }));
+});
 
 // Image storage — wishlist images and cyberek portraits (Azure Blob; Azurite
 // locally). The client is created lazily on first use, so environments that
@@ -86,8 +148,10 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Lockout.AllowedForNewUsers = true;
     
     // User settings
-    options.User.RequireUniqueEmail = false;
-    options.SignIn.RequireConfirmedEmail = false;
+    // Email is the Santa notification channel: one account per address, and it
+    // must be confirmed (AuthService.LoginAsync enforces this for the JWT login).
+    options.User.RequireUniqueEmail = true;
+    options.SignIn.RequireConfirmedEmail = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
@@ -202,6 +266,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("DefaultPolicy");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

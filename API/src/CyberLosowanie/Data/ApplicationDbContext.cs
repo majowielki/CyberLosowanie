@@ -1,6 +1,7 @@
 ﻿using CyberLosowanie.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CyberLosowanie.Data
 {
@@ -16,10 +17,32 @@ namespace CyberLosowanie.Data
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Wishlist> Wishlists { get; set; }
 
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            // Every DateTime in this model is written as UTC, but datetime2 does not
+            // store the Kind: values would come back Unspecified and serialize without
+            // the "Z", so browsers would read them as local time.
+            configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+            configurationBuilder.Properties<DateTime?>().HaveConversion<UtcDateTimeConverter>();
+        }
+
+        private sealed class UtcDateTimeConverter : ValueConverter<DateTime, DateTime>
+        {
+            public UtcDateTimeConverter()
+                : base(value => value, value => DateTime.SpecifyKind(value, DateTimeKind.Utc))
+            {
+            }
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-            
+
+            modelBuilder.Entity<ApplicationUser>(entity =>
+            {
+                entity.Property(e => e.PreferredLanguage).HasMaxLength(5);
+            });
+
             // Configure AuditLog entity
             modelBuilder.Entity<AuditLog>(entity =>
             {

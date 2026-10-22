@@ -17,12 +17,22 @@ namespace CyberLosowanie.Interfaces.Services
         Task<WishlistResponse> SaveMyWishlistAsync(string userName, string canvasJson);
 
         /// <summary>
+        /// Sends the saved letter to the caller's Santa (first call), or notifies them
+        /// about changes (later calls: only after a save since the last notification
+        /// and outside the cooldown — otherwise <see cref="Exceptions.WishlistConflictException"/>).
+        /// </summary>
+        Task<WishlistResponse> SendMyWishlistAsync(string userName, string? note);
+
+        /// <summary>
         /// Wishlist of the person the caller drew (<c>GiftedCyberekId</c>), or null
-        /// when that person has not saved one. Throws
-        /// <see cref="Exceptions.WishlistConflictException"/> when the caller has not
-        /// completed the draw.
+        /// when that person has not sent their letter yet; opening it marks it seen.
+        /// Throws <see cref="Exceptions.WishlistConflictException"/> when the caller
+        /// has not completed the draw.
         /// </summary>
         Task<WishlistResponse?> GetGiftedWishlistAsync(string userName);
+
+        /// <summary>Whether the gifted person's letter is sent and has changes the caller has not seen.</summary>
+        Task<GiftedWishlistStatusResponse> GetGiftedWishlistStatusAsync(string userName);
 
         /// <summary>
         /// Validates (size, magic bytes) and stores an uploaded image under the
@@ -32,7 +42,8 @@ namespace CyberLosowanie.Interfaces.Services
 
         /// <summary>
         /// Streams a wishlist image. The caller must be the owner
-        /// (<c>CyberekId == cyberekId</c>) or their Santa (<c>GiftedCyberekId == cyberekId</c>);
+        /// (<c>CyberekId == cyberekId</c>) or their Santa (<c>GiftedCyberekId == cyberekId</c>,
+        /// only once the letter is sent);
         /// otherwise <see cref="Exceptions.ForbiddenAccessException"/>. Null when the image
         /// does not exist.
         /// </summary>

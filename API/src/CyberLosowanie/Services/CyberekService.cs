@@ -17,6 +17,7 @@ namespace CyberLosowanie.Services
         private readonly IMemoryCache _cache;
         private readonly ILogger<CyberekService> _logger;
         private readonly IAuditService _auditService;
+        private readonly ISantaNotificationService _santaNotificationService;
 
         private const string ALL_CYBERKI_CACHE_KEY = "all_cyberki";
         private const int CACHE_EXPIRATION_MINUTES = 30;
@@ -27,7 +28,8 @@ namespace CyberLosowanie.Services
             IGiftingService giftingService,
             IMemoryCache cache,
             ILogger<CyberekService> logger,
-            IAuditService auditService)
+            IAuditService auditService,
+            ISantaNotificationService santaNotificationService)
         {
             _cyberekRepository = cyberekRepository ?? throw new ArgumentNullException(nameof(cyberekRepository));
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
@@ -35,6 +37,7 @@ namespace CyberLosowanie.Services
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
+            _santaNotificationService = santaNotificationService ?? throw new ArgumentNullException(nameof(santaNotificationService));
         }
 
         // Domain guard: cyberek ids form a closed range defined by the seed (MIN..MAX).
@@ -393,6 +396,10 @@ namespace CyberLosowanie.Services
                 // Log successful gift assignment
                 await _auditService.LogInformationAsync(
                     $"Gift assignment completed: {userName} -> Cyberek {chosenTargetId}");
+
+                // A letter sent before this draw reaches its Santa now. Never throws
+                // (best-effort), so it cannot trip the rollback below after the commit.
+                await _santaNotificationService.NotifyAfterDrawAsync(applicationUser.Id, chosenTargetId);
 
                 return chosenTargetId;
             }

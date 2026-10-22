@@ -70,6 +70,11 @@ namespace CyberLosowanie.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("PreferredLanguage")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
@@ -320,6 +325,15 @@ namespace CyberLosowanie.Migrations
 
                     b.Property<int>("CyberekId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastNotificationAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SantaViewedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SentAtUtc")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime2");

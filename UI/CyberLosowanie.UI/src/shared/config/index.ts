@@ -29,6 +29,8 @@ export const config = {
     AUTH: {
       LOGIN: 'auth/login',
       REGISTER: 'auth/register',
+      CONFIRM_EMAIL: 'auth/confirm-email',
+      RESEND_CONFIRMATION: 'auth/resend-confirmation',
     },
     CYBER_LOSOWANIE: {
       BASE: 'CyberLosowanie',
@@ -41,6 +43,8 @@ export const config = {
     WISHLIST: {
       MY: 'wishlist/my',
       GIFTED: 'wishlist/gifted',
+      GIFTED_STATUS: 'wishlist/gifted/status',
+      MY_SEND: 'wishlist/my/send',
       MY_IMAGES: 'wishlist/my/images',
       IMAGES: 'wishlist/images',
     }

@@ -59,9 +59,10 @@ function GiftedWishlistPage() {
   if (!saved) {
     return (
       <StatusMessage
-        message={t('wishlist.gifted.notSavedYet', {
+        message={t('wishlist.gifted.notSentYet', {
           name: giftedName ?? t('wishlist.gifted.fallbackPerson'),
         })}
+        hint={t('wishlist.gifted.notSentHint')}
         action={
           <Button variant="glass" onClick={() => navigate('/final-page')}>
             <ArrowLeft aria-hidden /> {t('common.action.back')}
@@ -103,7 +104,7 @@ function GiftedWishlistPage() {
           {t('wishlist.gifted.corrupt')}
         </p>
       ) : (
-        parsed?.document && <WishlistViewer document={parsed.document} />
+        parsed?.document && <WishlistViewer document={parsed.document} allowDownload ownerName={giftedName} />
       )}
     </div>
   );

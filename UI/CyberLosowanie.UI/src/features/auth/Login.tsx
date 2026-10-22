@@ -10,6 +10,7 @@ import { Label } from '@/shared/ui/label';
 import { ArrowLeft, Loader2, LogIn } from 'lucide-react';
 import { setLoggedInUser } from "@/features/auth/userSlice";
 import { userFromToken } from "@/features/auth/tokenUtils";
+import ResendConfirmationButton from "@/features/auth/ResendConfirmationButton";
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { debugLog } from '@/shared/config';
@@ -30,6 +31,7 @@ function Login() {
     password: "",
   });
   const [loading, setLoading] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
 
   const handleUserInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const tempData = inputHelper(e, userInput);
@@ -39,6 +41,7 @@ function Login() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(""); // Clear previous errors
+    setNeedsConfirmation(false);
     setLoading(true);
     try {
       const response = await loginUser({
@@ -68,6 +71,13 @@ function Login() {
       } else if (response.error) {
         // Handle network or other errors (HTTP errors, network issues, etc.)
         let errorMessage = t('auth.login.failed');
+
+        // 403 = right password, email not confirmed yet — offer a fresh link.
+        if ('status' in response.error && response.error.status === 403) {
+          setNeedsConfirmation(true);
+          setError(t('auth.login.emailNotConfirmed'));
+          return;
+        }
 
         // Handle FetchBaseQueryError (has status and data)
         if ('status' in response.error && response.error.data) {
@@ -111,12 +121,12 @@ function Login() {
     >
       <form method="post" onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="login-userName">{t('auth.field.username')}</Label>
+          <Label htmlFor="login-userName">{t('auth.field.login')}</Label>
           <Input
             id="login-userName"
             type="text"
             autoComplete="username"
-            placeholder={t('auth.field.usernamePlaceholder')}
+            placeholder={t('auth.field.loginPlaceholder')}
             required
             name="userName"
             value={userInput.userName}
@@ -141,6 +151,7 @@ function Login() {
             {error}
           </p>
         )}
+        {needsConfirmation && <ResendConfirmationButton login={userInput.userName} />}
         <Button className="mt-2 w-full" size="lg" type="submit" disabled={loading}>
           {loading ? <Loader2 className="animate-spin" aria-hidden /> : <LogIn aria-hidden />}
           {loading ? t('common.action.loading') : t('auth.login.submit')}

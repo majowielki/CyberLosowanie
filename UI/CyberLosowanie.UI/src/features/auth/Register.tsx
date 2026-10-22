@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useNavigate} from 'react-router-dom';
 import AuthLayout from '@/features/auth/AuthLayout';
 import { Label } from '@/shared/ui/label';
-import { ArrowLeft, Loader2, UserRoundPlus } from 'lucide-react';
+import { ArrowLeft, Loader2, MailCheck, UserRoundPlus } from 'lucide-react';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import inputHelper from "@/shared/lib/inputHelper";
 import { apiResponseBody } from "@/types";
 import { useRegisterUserMutation } from "@/features/auth/authApi";
-import { toast } from '@/shared/hooks/use-toast';
+import ResendConfirmationButton from "@/features/auth/ResendConfirmationButton";
 import { debugLog } from '@/shared/config';
 import { useTranslation } from '@/shared/i18n';
 import React from "react";
@@ -19,12 +19,15 @@ function Register() {
   const [error, setError] = useState("");
   const [registerUser] = useRegisterUserMutation();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [userInput, setUserInput] = useState({
     userName: "",
+    email: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
+  // Set after a successful registration: the form gives way to "check your inbox".
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
   const handleUserInput = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -40,13 +43,14 @@ function Register() {
     try {
       const response = await registerUser({
         userName: userInput.userName,
+        email: userInput.email.trim(),
         password: userInput.password,
+        language,
       });
 
-      // Handle successful response
+      // Handle successful response — the account needs email confirmation before login.
       if (response.data && response.data.isSuccess) {
-        toast({description: t('auth.register.success')});
-        navigate("/login");
+        setRegisteredEmail(userInput.email.trim());
       } else if (response.data && response.data.isSuccess === false) {
         // Backend messages are shown untranslated until the error-code epic (doc §7).
         const errorMessage = response.data.errors?.[0] || response.data.message || t('auth.register.failed');
@@ -82,6 +86,28 @@ function Register() {
     }
   };
 
+  if (registeredEmail) {
+    return (
+      <AuthLayout
+        title={t('auth.register.checkInboxTitle')}
+        subtitle={t('auth.register.checkInbox', { email: registeredEmail })}
+        footer={
+          <Button variant="link" className="h-auto p-0" onClick={() => navigate("/login")}>
+            {t('auth.nav.login')}
+          </Button>
+        }
+      >
+        <div className="flex flex-col items-center gap-4 text-center">
+          <span className="grid h-14 w-14 place-items-center rounded-full bg-gold/15 text-gold">
+            <MailCheck className="h-7 w-7" aria-hidden />
+          </span>
+          <p className="text-sm text-muted-foreground">{t('auth.register.checkSpam')}</p>
+          <ResendConfirmationButton login={userInput.userName} />
+        </div>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout
       title={t('auth.register.title')}
@@ -106,6 +132,19 @@ function Register() {
             required
             name="userName"
             value={userInput.userName}
+            onChange={handleUserInput}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="register-email">{t('auth.field.email')}</Label>
+          <Input
+            id="register-email"
+            type="email"
+            autoComplete="email"
+            placeholder={t('auth.field.emailPlaceholder')}
+            required
+            name="email"
+            value={userInput.email}
             onChange={handleUserInput}
           />
         </div>

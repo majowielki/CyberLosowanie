@@ -33,6 +33,16 @@ namespace CyberLosowanie.Repositories
             return await _userManager.FindByNameAsync(username);
         }
 
+        public async Task<ApplicationUser?> GetByEmailAsync(string email)
+        {
+            return await _userManager.FindByEmailAsync(email);
+        }
+
+        public async Task<ApplicationUser?> GetSantaOfCyberekAsync(int cyberekId)
+        {
+            return await _context.ApplicationUsers.FirstOrDefaultAsync(u => u.GiftedCyberekId == cyberekId);
+        }
+
         public Task UpdateAsync(ApplicationUser user)
         {
             // EF Core's Update is synchronous; there is no I/O until SaveChangesAsync (F5).

@@ -16,6 +16,7 @@ import {
 import WishlistEditor from './canvas/WishlistEditor';
 import WishlistViewer from './canvas/WishlistViewer';
 import { readWishlistDraft } from './canvas/wishlistDraft';
+import SendLetterPanel from './SendLetterPanel';
 
 const isConflictError = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'status' in error &&
@@ -132,7 +133,8 @@ function MyWishlistPage() {
           {t('wishlist.my.corruptSaved')}
         </p>
       )}
-      <WishlistViewer document={document} />
+      <SendLetterPanel wishlist={saved} />
+      <WishlistViewer document={document} allowDownload ownerName={myName} />
     </div>
   );
 }

@@ -27,6 +27,7 @@ namespace CyberLosowanie.Test
         private readonly Mock<IApplicationUserRepository> _userRepo = new();
         private readonly Mock<IWishlistImageStorage> _storage = new();
         private readonly Mock<IAuditService> _audit = new();
+        private readonly Mock<ISantaNotificationService> _santa = new();
 
         public WishlistServiceTests()
         {
@@ -45,7 +46,8 @@ namespace CyberLosowanie.Test
             _userRepo.Object,
             _storage.Object,
             NullLogger<WishlistService>.Instance,
-            _audit.Object);
+            _audit.Object,
+            _santa.Object);
 
         private void SetupUser(int cyberekId, int giftedCyberekId) =>
             _userRepo.Setup(r => r.GetByUsernameAsync(UserName))
@@ -146,11 +148,12 @@ namespace CyberLosowanie.Test
             var logger = NullLogger<WishlistService>.Instance;
             var audit = _audit.Object;
 
-            Assert.Throws<ArgumentNullException>(() => new WishlistService(null!, users, storage, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new WishlistService(repo, null!, storage, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new WishlistService(repo, users, null!, logger, audit));
-            Assert.Throws<ArgumentNullException>(() => new WishlistService(repo, users, storage, null!, audit));
-            Assert.Throws<ArgumentNullException>(() => new WishlistService(repo, users, storage, logger, null!));
+            Assert.Throws<ArgumentNullException>(() => new WishlistService(null!, users, storage, logger, audit, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new WishlistService(repo, null!, storage, logger, audit, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new WishlistService(repo, users, null!, logger, audit, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new WishlistService(repo, users, storage, null!, audit, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new WishlistService(repo, users, storage, logger, null!, _santa.Object));
+            Assert.Throws<ArgumentNullException>(() => new WishlistService(repo, users, storage, logger, audit, null!));
         }
 
         #endregion
@@ -868,12 +871,178 @@ namespace CyberLosowanie.Test
         public async Task GetGiftedWishlistAsync_ReturnsTargetsWishlist_NotOwn()
         {
             _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(GiftedCyberekId))
-                .ReturnsAsync(new Wishlist { CyberekId = GiftedCyberekId, CanvasJson = "target-doc" });
+                .ReturnsAsync(new Wishlist { CyberekId = GiftedCyberekId, CanvasJson = "target-doc", SentAtUtc = DateTime.UtcNow });
 
             var result = await CreateService().GetGiftedWishlistAsync(UserName);
 
             result!.CanvasJson.Should().Be("target-doc");
             _wishlistRepo.Verify(r => r.GetByCyberekIdAsync(OwnCyberekId), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetGiftedWishlistAsync_DraftNotSent_ReturnsNull()
+        {
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(GiftedCyberekId))
+                .ReturnsAsync(new Wishlist { CyberekId = GiftedCyberekId, CanvasJson = "draft" });
+
+            var result = await CreateService().GetGiftedWishlistAsync(UserName);
+
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public async Task GetGiftedWishlistAsync_Sent_MarksSeenAndHidesOwnerLetterFields()
+        {
+            var wishlist = new Wishlist
+            {
+                CyberekId = GiftedCyberekId,
+                CanvasJson = "doc",
+                SentAtUtc = DateTime.UtcNow.AddDays(-1),
+                LastNotificationAtUtc = DateTime.UtcNow.AddDays(-1)
+            };
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(GiftedCyberekId)).ReturnsAsync(wishlist);
+
+            var result = await CreateService().GetGiftedWishlistAsync(UserName);
+
+            wishlist.SantaViewedAtUtc.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+            _wishlistRepo.Verify(r => r.SaveChangesAsync(), Times.Once);
+            result!.SentAtUtc.Should().BeNull();
+            result.LastNotificationAtUtc.Should().BeNull();
+        }
+
+        #endregion
+
+        #region GetGiftedWishlistStatusAsync
+
+        [Fact]
+        public async Task GetGiftedWishlistStatusAsync_DrawNotCompleted_ReturnsNotSent()
+        {
+            SetupUser(cyberekId: OwnCyberekId, giftedCyberekId: 0);
+
+            var result = await CreateService().GetGiftedWishlistStatusAsync(UserName);
+
+            result.IsSent.Should().BeFalse();
+            result.HasUnseenChanges.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task GetGiftedWishlistStatusAsync_DraftNotSent_ReturnsNotSent()
+        {
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(GiftedCyberekId))
+                .ReturnsAsync(new Wishlist { CyberekId = GiftedCyberekId, UpdatedAtUtc = DateTime.UtcNow });
+
+            var result = await CreateService().GetGiftedWishlistStatusAsync(UserName);
+
+            result.IsSent.Should().BeFalse();
+        }
+
+        [Theory]
+        [InlineData(null, true)]   // never opened
+        [InlineData(-2, true)]     // opened before the last save
+        [InlineData(1, false)]     // opened after the last save
+        public async Task GetGiftedWishlistStatusAsync_Sent_ReportsUnseenChanges(int? viewedHoursAfterSave, bool expectedUnseen)
+        {
+            var updatedAt = DateTime.UtcNow.AddHours(-3);
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(GiftedCyberekId)).ReturnsAsync(new Wishlist
+            {
+                CyberekId = GiftedCyberekId,
+                UpdatedAtUtc = updatedAt,
+                SentAtUtc = updatedAt.AddHours(-1),
+                SantaViewedAtUtc = viewedHoursAfterSave is { } h ? updatedAt.AddHours(h) : null
+            });
+
+            var result = await CreateService().GetGiftedWishlistStatusAsync(UserName);
+
+            result.IsSent.Should().BeTrue();
+            result.HasUnseenChanges.Should().Be(expectedUnseen);
+        }
+
+        #endregion
+
+        #region SendMyWishlistAsync
+
+        [Fact]
+        public async Task SendMyWishlistAsync_NotSavedYet_ThrowsWishlistConflict()
+        {
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(OwnCyberekId)).ReturnsAsync((Wishlist?)null);
+
+            var ex = await Assert.ThrowsAsync<WishlistConflictException>(
+                () => CreateService().SendMyWishlistAsync(UserName, null));
+
+            ex.Message.Should().Be(WishlistConstants.WISHLIST_NOT_SAVED);
+        }
+
+        [Fact]
+        public async Task SendMyWishlistAsync_FirstSend_MarksSentAndNotifiesSanta()
+        {
+            var wishlist = new Wishlist { CyberekId = OwnCyberekId, CanvasJson = "doc", UpdatedAtUtc = DateTime.UtcNow };
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(OwnCyberekId)).ReturnsAsync(wishlist);
+
+            var result = await CreateService().SendMyWishlistAsync(UserName, "hello");
+
+            wishlist.SentAtUtc.Should().NotBeNull();
+            wishlist.LastNotificationAtUtc.Should().Be(wishlist.SentAtUtc);
+            result.SentAtUtc.Should().Be(wishlist.SentAtUtc);
+            result.NextNotificationAtUtc.Should().BeAfter(DateTime.UtcNow);
+            _wishlistRepo.Verify(r => r.SaveChangesAsync(), Times.Once);
+            _santa.Verify(s => s.NotifyLetterSentAsync(OwnCyberekId, false, "hello"), Times.Once);
+        }
+
+        [Fact]
+        public async Task SendMyWishlistAsync_ResendWithoutChanges_ThrowsWishlistConflict()
+        {
+            var sentAt = DateTime.UtcNow.AddDays(-1);
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(OwnCyberekId)).ReturnsAsync(new Wishlist
+            {
+                CyberekId = OwnCyberekId,
+                UpdatedAtUtc = sentAt.AddMinutes(-5),
+                SentAtUtc = sentAt,
+                LastNotificationAtUtc = sentAt
+            });
+
+            var ex = await Assert.ThrowsAsync<WishlistConflictException>(
+                () => CreateService().SendMyWishlistAsync(UserName, null));
+
+            ex.Message.Should().Be(WishlistConstants.NO_CHANGES_SINCE_NOTIFICATION);
+            _santa.Verify(s => s.NotifyLetterSentAsync(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<string?>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task SendMyWishlistAsync_ResendWithinCooldown_ThrowsWishlistConflict()
+        {
+            var sentAt = DateTime.UtcNow.AddMinutes(-30);
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(OwnCyberekId)).ReturnsAsync(new Wishlist
+            {
+                CyberekId = OwnCyberekId,
+                UpdatedAtUtc = DateTime.UtcNow,
+                SentAtUtc = sentAt,
+                LastNotificationAtUtc = sentAt
+            });
+
+            var ex = await Assert.ThrowsAsync<WishlistConflictException>(
+                () => CreateService().SendMyWishlistAsync(UserName, null));
+
+            ex.Message.Should().Be(WishlistConstants.NOTIFICATION_COOLDOWN_ACTIVE);
+        }
+
+        [Fact]
+        public async Task SendMyWishlistAsync_ResendAfterChangesAndCooldown_NotifiesAsUpdateAndKeepsFirstSentAt()
+        {
+            var sentAt = DateTime.UtcNow.AddDays(-1);
+            var wishlist = new Wishlist
+            {
+                CyberekId = OwnCyberekId,
+                UpdatedAtUtc = DateTime.UtcNow.AddMinutes(-1),
+                SentAtUtc = sentAt,
+                LastNotificationAtUtc = sentAt
+            };
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(OwnCyberekId)).ReturnsAsync(wishlist);
+
+            await CreateService().SendMyWishlistAsync(UserName, null);
+
+            wishlist.SentAtUtc.Should().Be(sentAt);
+            wishlist.LastNotificationAtUtc.Should().BeAfter(sentAt);
+            _santa.Verify(s => s.NotifyLetterSentAsync(OwnCyberekId, true, null), Times.Once);
         }
 
         #endregion
@@ -965,15 +1134,29 @@ namespace CyberLosowanie.Test
         }
 
         [Fact]
-        public async Task GetImageAsync_Santa_CanReadGiftedPersonsImage()
+        public async Task GetImageAsync_Santa_CanReadGiftedPersonsImageOnceSent()
         {
             var fileName = $"{Guid.NewGuid():N}.jpg";
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(GiftedCyberekId))
+                .ReturnsAsync(new Wishlist { CyberekId = GiftedCyberekId, SentAtUtc = DateTime.UtcNow });
             _storage.Setup(s => s.DownloadAsync($"{GiftedCyberekId}/{fileName}"))
                 .ReturnsAsync((new MemoryStream(), "image/jpeg"));
 
             var result = await CreateService().GetImageAsync(UserName, GiftedCyberekId, fileName);
 
             result.Should().NotBeNull();
+        }
+
+        [Fact]
+        public async Task GetImageAsync_Santa_DraftNotSent_ThrowsForbiddenAccess()
+        {
+            _wishlistRepo.Setup(r => r.GetByCyberekIdAsync(GiftedCyberekId))
+                .ReturnsAsync(new Wishlist { CyberekId = GiftedCyberekId });
+
+            await Assert.ThrowsAsync<ForbiddenAccessException>(
+                () => CreateService().GetImageAsync(UserName, GiftedCyberekId, $"{Guid.NewGuid():N}.jpg"));
+
+            _storage.Verify(s => s.DownloadAsync(It.IsAny<string>()), Times.Never);
         }
 
         [Fact]

@@ -88,6 +88,50 @@ namespace CyberLosowanie.Controllers
             return Ok(ApiResponse<WishlistResponse?>.Success(wishlist));
         }
 
+        /// <summary>
+        /// Letter state of the person I drew, for the navigation badge. Never 409:
+        /// before the draw it simply reports "not sent".
+        /// </summary>
+        [HttpGet("gifted/status")]
+        [ProducesResponseType(typeof(ApiResponse<GiftedWishlistStatusResponse>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> GetGiftedWishlistStatus()
+        {
+            var userName = GetAuthenticatedUserName();
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                return Unauthorized(ApiResponse<object>.Error(
+                    "Authenticated token carries no user identity.", System.Net.HttpStatusCode.Unauthorized));
+            }
+
+            var status = await _wishlistService.GetGiftedWishlistStatusAsync(userName);
+            return Ok(ApiResponse<GiftedWishlistStatusResponse>.Success(status));
+        }
+
+        /// <summary>
+        /// Send my saved letter to Santa, or notify them about changes since the last
+        /// notification. The response does not reveal whether anyone has drawn me yet.
+        /// </summary>
+        [HttpPost("my/send")]
+        [ProducesResponseType(typeof(ApiResponse<WishlistResponse>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 401)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - not saved / no changes / cooldown
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> SendMyWishlist([FromBody] SendWishlistRequestDTO request)
+        {
+            var userName = GetAuthenticatedUserName();
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                return Unauthorized(ApiResponse<object>.Error(
+                    "Authenticated token carries no user identity.", System.Net.HttpStatusCode.Unauthorized));
+            }
+
+            var sent = await _wishlistService.SendMyWishlistAsync(userName, request.Note);
+            return Ok(ApiResponse<WishlistResponse>.Success(sent, "Wishlist sent to Santa"));
+        }
+
         /// <summary>Upload of a wishlist image (JPEG/PNG/WebP, max 5 MB) to the caller's blob prefix.</summary>
         [HttpPost("my/images")]
         // Multipart envelope overhead on top of the 5 MB image limit enforced in the service.
@@ -119,7 +163,7 @@ namespace CyberLosowanie.Controllers
         /// <summary>
         /// Authorized proxy for images from the private container — the only endpoint
         /// returning a binary stream instead of the ApiResponse envelope. Access rule
-        /// matches the wishlist itself: owner or their Santa.
+        /// matches the wishlist itself: owner, or their Santa once the letter is sent.
         /// </summary>
         [HttpGet("images/{cyberekId:int}/{fileName}")]
         [ProducesResponseType(200)]

@@ -5,13 +5,22 @@ import { useStageViewport } from './useStageViewport';
 import WishlistCanvas from './WishlistCanvas';
 import ZoomControls from './ZoomControls';
 import PageCarousel from './PageCarousel';
+import WishlistDownloadButton from './WishlistDownloadButton';
+
+interface WishlistViewerProps {
+  document: CanvasDocument;
+  /** Show the PDF/PNG download menu. */
+  allowDownload?: boolean;
+  /** Wishlist owner's name, used in the downloaded file name. */
+  ownerName?: string;
+}
 
 /**
  * Read-only wishlist renderer (my-wishlist preview and the gifted person's
  * page): the same WishlistCanvas as the editor, without edit handlers, with
  * zoom/pan and page navigation (carousel) active.
  */
-function WishlistViewer({ document }: { document: CanvasDocument }) {
+function WishlistViewer({ document, allowDownload = false, ownerName }: WishlistViewerProps) {
   const viewport = useStageViewport({ panEnabled: true });
   const [pageIndex, setPageIndex] = useState(0);
 
@@ -30,7 +39,12 @@ function WishlistViewer({ document }: { document: CanvasDocument }) {
             onGoTo={setPageIndex}
           />
         </div>
-        <ZoomControls viewport={viewport} />
+        <div className="flex items-center gap-2">
+          {allowDownload && (
+            <WishlistDownloadButton document={document} currentPageIndex={safeIndex} ownerName={ownerName} />
+          )}
+          <ZoomControls viewport={viewport} />
+        </div>
       </div>
       <div
         ref={viewport.containerRef}

@@ -3,6 +3,8 @@ import { MessageCatalog } from './catalog';
 // Shared texts: navigation, generic actions, generic errors, a11y labels.
 const pl = {
   'common.nav.wishlist': 'Lista życzeń',
+  'common.nav.giftedLetter': 'List podopiecznego',
+  'common.nav.giftedLetterNew': 'List podopiecznego — nowe zmiany',
   'common.footer.greeting': 'Wesołych Świąt!',
   'common.action.back': 'Wróć',
   'common.action.goHome': 'Wróć na stronę główną',
@@ -29,6 +31,8 @@ export const common: MessageCatalog<CommonKey> = {
   pl,
   en: {
     'common.nav.wishlist': 'Wishlist',
+    'common.nav.giftedLetter': "Giftee's letter",
+    'common.nav.giftedLetterNew': "Giftee's letter — new changes",
     'common.footer.greeting': 'Merry Christmas!',
     'common.action.back': 'Back',
     'common.action.goHome': 'Back to home page',
