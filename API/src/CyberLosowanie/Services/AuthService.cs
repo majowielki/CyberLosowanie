@@ -158,6 +158,77 @@ namespace CyberLosowanie.Services
             await TrySendConfirmationAsync(user);
         }
 
+        public async Task RequestPasswordResetAsync(ForgotPasswordRequestDTO request)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            var user = await FindByLoginAsync(request.Login);
+            if (user == null || string.IsNullOrEmpty(user.Email))
+                return;
+
+            try
+            {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var link = _appLinks.Build(EmailConstants.RESET_PASSWORD_PATH, new Dictionary<string, string?>
+                {
+                    ["userId"] = user.Id,
+                    ["token"] = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token))
+                });
+
+                await _emailService.SendAsync(EmailTemplates.PasswordReset(
+                    user.Email, user.PreferredLanguage, user.UserName ?? string.Empty, link,
+                    EmailConstants.PASSWORD_RESET_TOKEN_LIFESPAN));
+            }
+            catch (Exception ex)
+            {
+                // Same answer either way: a failure must not reveal that the account exists.
+                _logger.LogError(ex, "Could not send the password reset email to user {UserId}", user.Id);
+            }
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordRequestDTO request)
+        {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            var user = await _userRepository.GetByIdAsync(request.UserId);
+            if (user == null)
+                throw new BusinessValidationException(EmailConstants.INVALID_RESET_LINK);
+
+            string token;
+            try
+            {
+                token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Token));
+            }
+            catch (FormatException)
+            {
+                throw new BusinessValidationException(EmailConstants.INVALID_RESET_LINK);
+            }
+
+            // Resetting changes the security stamp, which invalidates this token (single use).
+            var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+            if (!result.Succeeded)
+            {
+                var invalidToken = new IdentityErrorDescriber().InvalidToken().Code;
+                if (result.Errors.Any(e => e.Code == invalidToken))
+                    throw new BusinessValidationException(EmailConstants.INVALID_RESET_LINK);
+                // Password policy failures: the user can fix the password and retry with the same link.
+                throw new BusinessValidationException(result.Errors.Select(e => e.Description).ToList());
+            }
+
+            // The link was emailed to this address, so whoever used it owns it.
+            if (!user.EmailConfirmed)
+            {
+                user.EmailConfirmed = true;
+                await _userManager.UpdateAsync(user);
+            }
+
+            // Failed sign-ins from before the reset no longer count.
+            await _userManager.ResetAccessFailedCountAsync(user);
+            await _userManager.SetLockoutEndDateAsync(user, null);
+        }
+
         /// <summary>Usernames may themselves contain '@', so a username match wins over an email match.</summary>
         private async Task<ApplicationUser?> FindByLoginAsync(string login)
         {

@@ -160,9 +160,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.User.RequireUniqueEmail = true;
     options.User.AllowedUserNameCharacters = CyberLosowanieConstants.ALLOWED_USERNAME_CHARACTERS;
     options.SignIn.RequireConfirmedEmail = true;
+    options.Tokens.PasswordResetTokenProvider = EmailConstants.PASSWORD_RESET_TOKEN_PROVIDER;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
-.AddDefaultTokenProviders();
+.AddDefaultTokenProviders()
+.AddTokenProvider<PasswordResetTokenProvider<ApplicationUser>>(EmailConstants.PASSWORD_RESET_TOKEN_PROVIDER);
 
 var key = builder.Configuration.GetValue<string>("ApiSettings:Secret");
 if (string.IsNullOrEmpty(key))

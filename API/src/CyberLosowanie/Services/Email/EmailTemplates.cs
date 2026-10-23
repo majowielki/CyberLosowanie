@@ -27,6 +27,26 @@ namespace CyberLosowanie.Services.Email
                 heading, [body], button, link, footer);
         }
 
+        public static EmailMessage PasswordReset(string to, string language, string userName, string link, TimeSpan validFor)
+        {
+            var pl = language == "pl";
+            var hours = (int)Math.Round(validFor.TotalHours);
+            var heading = pl ? $"Cześć {userName}!" : $"Hi {userName}!";
+            var body = pl
+                ? "Dostaliśmy prośbę o ustawienie nowego hasła do Twojego konta w CyberLosowaniu. Kliknij przycisk i wpisz nowe hasło."
+                : "We received a request to set a new password for your CyberLosowanie account. Click the button and enter a new password.";
+            var validity = pl
+                ? $"Link jest ważny przez {hours} godz. i działa tylko raz."
+                : $"The link is valid for {hours} hours and works only once.";
+            var button = pl ? "Ustaw nowe hasło" : "Set a new password";
+            var footer = pl
+                ? "Jeśli to nie Ty prosiłeś o zmianę hasła, zignoruj tę wiadomość — hasło się nie zmieni."
+                : "If you did not ask to change your password, ignore this email — your password stays the same.";
+
+            return Build(to, pl ? "Ustaw nowe hasło" : "Set a new password",
+                heading, [body, validity], button, link, footer);
+        }
+
         /// <summary>The Santa's giftee sent their letter (first time, or Santa drew them after it was sent).</summary>
         public static EmailMessage LetterReceived(string to, string language, string giftedFullName, string link, string? note)
         {

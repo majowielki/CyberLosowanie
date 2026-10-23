@@ -90,5 +90,40 @@ namespace CyberLosowanie.Controllers
             await _authService.ResendConfirmationAsync(model);
             return Ok(ApiResponse<object>.Success(null, "If the account needs confirmation, a new link has been sent"));
         }
+
+        /// <summary>
+        /// Always 200 — the response is the same whether or not the account exists, so
+        /// the endpoint cannot be used to probe for accounts.
+        /// </summary>
+        [HttpPost("forgot-password")]
+        [EnableRateLimiting(EmailConstants.EMAIL_RATE_LIMIT_POLICY)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 429)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDTO model)
+        {
+            await _authService.RequestPasswordResetAsync(model);
+            return Ok(ApiResponse<object>.Success(null, "If the account exists, a password reset link has been sent"));
+        }
+
+        [HttpPost("reset-password")]
+        [EnableRateLimiting(EmailConstants.EMAIL_RATE_LIMIT_POLICY)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 400)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 429)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 500)]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDTO model)
+        {
+            await _authService.ResetPasswordAsync(model);
+
+            await _auditService.LogInformationAsync(
+                "Password reset",
+                HttpContext,
+                userId: model.UserId,
+                additionalData: new { Action = "ResetPassword", Success = true });
+
+            return Ok(ApiResponse<object>.Success(null, "Password has been reset"));
+        }
     }
 }

@@ -31,6 +31,8 @@ export const config = {
       REGISTER: 'auth/register',
       CONFIRM_EMAIL: 'auth/confirm-email',
       RESEND_CONFIRMATION: 'auth/resend-confirmation',
+      FORGOT_PASSWORD: 'auth/forgot-password',
+      RESET_PASSWORD: 'auth/reset-password',
     },
     CYBER_LOSOWANIE: {
       BASE: 'CyberLosowanie',

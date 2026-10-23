@@ -411,5 +411,141 @@ namespace CyberLosowanie.Test
         }
 
         #endregion
+
+        #region Password reset
+
+        [Fact]
+        public async Task RequestPasswordResetAsync_UnknownAccount_SendsNothing()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("ghost")).ReturnsAsync((ApplicationUser?)null);
+
+            await CreateService().RequestPasswordResetAsync(new ForgotPasswordRequestDTO { Login = "ghost" });
+
+            _email.Verify(e => e.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+            _userManager.Verify(m => m.GeneratePasswordResetTokenAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task RequestPasswordResetAsync_ByEmail_SendsSingleUseLinkInTheUsersLanguage()
+        {
+            var user = new ApplicationUser { Id = "u1", UserName = "john", Email = "john@example.com", PreferredLanguage = "pl" };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john@example.com")).ReturnsAsync((ApplicationUser?)null);
+            _userRepo.Setup(r => r.GetByEmailAsync("john@example.com")).ReturnsAsync(user);
+            _userManager.Setup(m => m.GeneratePasswordResetTokenAsync(user)).ReturnsAsync("raw+token/with=chars");
+            EmailMessage? sent = null;
+            _email.Setup(e => e.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+                .Callback<EmailMessage, CancellationToken>((m, _) => sent = m)
+                .Returns(Task.CompletedTask);
+
+            await CreateService().RequestPasswordResetAsync(new ForgotPasswordRequestDTO { Login = " john@example.com " });
+
+            sent!.To.Should().Be("john@example.com");
+            sent.Subject.Should().Be("Ustaw nowe hasło");
+            sent.TextBody.Should().Contain($"https://app.test/reset-password?userId=u1&token={EncodedToken("raw+token/with=chars")}");
+            sent.TextBody.Should().Contain("2 godz.");
+        }
+
+        [Fact]
+        public async Task RequestPasswordResetAsync_WhenDeliveryFails_DoesNotThrow()
+        {
+            var user = new ApplicationUser { Id = "u1", UserName = "john", Email = "john@example.com" };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            _userManager.Setup(m => m.GeneratePasswordResetTokenAsync(user)).ReturnsAsync("tok");
+            _email.Setup(e => e.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("SMTP down"));
+
+            await CreateService().RequestPasswordResetAsync(new ForgotPasswordRequestDTO { Login = "john" });
+        }
+
+        private static ResetPasswordRequestDTO ResetRequest(string token = "tok", string password = "NewPass123") =>
+            new() { UserId = "u1", Token = EncodedToken(token), NewPassword = password };
+
+        [Fact]
+        public async Task ResetPasswordAsync_UnknownUser_ThrowsInvalidLink()
+        {
+            _userRepo.Setup(r => r.GetByIdAsync("u1")).ReturnsAsync((ApplicationUser?)null);
+
+            var act = () => CreateService().ResetPasswordAsync(ResetRequest());
+
+            (await act.Should().ThrowAsync<BusinessValidationException>()).WithMessage(EmailConstants.INVALID_RESET_LINK);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_MalformedToken_ThrowsInvalidLink()
+        {
+            _userRepo.Setup(r => r.GetByIdAsync("u1")).ReturnsAsync(new ApplicationUser { Id = "u1" });
+
+            var act = () => CreateService().ResetPasswordAsync(new ResetPasswordRequestDTO { UserId = "u1", Token = "%%%", NewPassword = "NewPass123" });
+
+            (await act.Should().ThrowAsync<BusinessValidationException>()).WithMessage(EmailConstants.INVALID_RESET_LINK);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_ExpiredOrUsedToken_ThrowsInvalidLink()
+        {
+            var user = new ApplicationUser { Id = "u1" };
+            _userRepo.Setup(r => r.GetByIdAsync("u1")).ReturnsAsync(user);
+            _userManager.Setup(m => m.ResetPasswordAsync(user, "tok", "NewPass123"))
+                .ReturnsAsync(IdentityResult.Failed(new IdentityErrorDescriber().InvalidToken()));
+
+            var act = () => CreateService().ResetPasswordAsync(ResetRequest());
+
+            (await act.Should().ThrowAsync<BusinessValidationException>()).WithMessage(EmailConstants.INVALID_RESET_LINK);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_WeakPassword_ReportsThePasswordRules()
+        {
+            var user = new ApplicationUser { Id = "u1" };
+            _userRepo.Setup(r => r.GetByIdAsync("u1")).ReturnsAsync(user);
+            _userManager.Setup(m => m.ResetPasswordAsync(user, "tok", "123"))
+                .ReturnsAsync(IdentityResult.Failed(new IdentityErrorDescriber().PasswordTooShort(6)));
+
+            var act = () => CreateService().ResetPasswordAsync(ResetRequest(password: "123"));
+
+            var error = await act.Should().ThrowAsync<BusinessValidationException>();
+            error.Which.ValidationErrors.Should().ContainSingle(e => e.Contains("at least 6"));
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_ValidLink_SetsPasswordConfirmsEmailAndClearsLockout()
+        {
+            var user = new ApplicationUser { Id = "u1", EmailConfirmed = false };
+            _userRepo.Setup(r => r.GetByIdAsync("u1")).ReturnsAsync(user);
+            _userManager.Setup(m => m.ResetPasswordAsync(user, "raw+token/with=chars", "NewPass123"))
+                .ReturnsAsync(IdentityResult.Success);
+            _userManager.Setup(m => m.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+            await CreateService().ResetPasswordAsync(ResetRequest("raw+token/with=chars"));
+
+            user.EmailConfirmed.Should().BeTrue();
+            _userManager.Verify(m => m.UpdateAsync(user), Times.Once);
+            _userManager.Verify(m => m.ResetAccessFailedCountAsync(user), Times.Once);
+            _userManager.Verify(m => m.SetLockoutEndDateAsync(user, null), Times.Once);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_AlreadyConfirmed_DoesNotRewriteTheUser()
+        {
+            var user = new ApplicationUser { Id = "u1", EmailConfirmed = true };
+            _userRepo.Setup(r => r.GetByIdAsync("u1")).ReturnsAsync(user);
+            _userManager.Setup(m => m.ResetPasswordAsync(user, "tok", "NewPass123")).ReturnsAsync(IdentityResult.Success);
+
+            await CreateService().ResetPasswordAsync(ResetRequest());
+
+            _userManager.Verify(m => m.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        }
+
+        [Fact]
+        public void PasswordResetLinks_ExpireSoonerThanConfirmationLinks()
+        {
+            var resetOptions = new PasswordResetTokenProviderOptions();
+
+            resetOptions.Name.Should().Be(EmailConstants.PASSWORD_RESET_TOKEN_PROVIDER);
+            resetOptions.TokenLifespan.Should().Be(TimeSpan.FromHours(2));
+            resetOptions.TokenLifespan.Should().BeLessThan(new DataProtectionTokenProviderOptions().TokenLifespan);
+        }
+
+        #endregion
     }
 }

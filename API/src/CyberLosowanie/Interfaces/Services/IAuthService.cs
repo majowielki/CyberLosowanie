@@ -21,5 +21,17 @@ namespace CyberLosowanie.Interfaces.Services
         /// accounts, so the endpoint does not reveal which accounts exist.
         /// </summary>
         Task ResendConfirmationAsync(ResendConfirmationRequestDTO request);
+
+        /// <summary>
+        /// Emails a single-use password reset link. Silent for unknown accounts, so the
+        /// endpoint does not reveal which accounts exist.
+        /// </summary>
+        Task RequestPasswordResetAsync(ForgotPasswordRequestDTO request);
+
+        /// <summary>
+        /// Sets a new password from the emailed link. Also confirms the email address —
+        /// opening a link sent to it proves the user owns it.
+        /// </summary>
+        Task ResetPasswordAsync(ResetPasswordRequestDTO request);
     }
 }

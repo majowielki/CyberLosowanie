@@ -4,7 +4,7 @@ import inputHelper from "@/shared/lib/inputHelper";
 import { apiResponseBody, tokenClaims } from "@/types";
 import { jwtDecode } from "jwt-decode";
 import { useDispatch } from "react-redux";
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from '@/features/auth/AuthLayout';
 import { Label } from '@/shared/ui/label';
 import { ArrowLeft, Loader2, LogIn } from 'lucide-react';
@@ -135,7 +135,16 @@ function Login() {
           />
         </div>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="login-password">{t('auth.field.password')}</Label>
+          <div className="flex items-baseline justify-between gap-2">
+            <Label htmlFor="login-password">{t('auth.field.password')}</Label>
+            {/* Carries the typed login over, so it does not have to be typed again. */}
+            <Link
+              to={userInput.userName.trim() ? `/forgot-password?login=${encodeURIComponent(userInput.userName.trim())}` : '/forgot-password'}
+              className="text-sm text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {t('auth.login.forgotPassword')}
+            </Link>
+          </div>
           <PasswordInput
             id="login-password"
             autoComplete="current-password"

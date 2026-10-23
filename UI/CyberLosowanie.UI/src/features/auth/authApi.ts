@@ -21,6 +21,12 @@ interface confirmEmailRequest {
   token: string;
 }
 
+interface resetPasswordRequest {
+  userId: string;
+  token: string;
+  newPassword: string;
+}
+
 const baseQueryWithHeaders = fetchBaseQuery({
   baseUrl: config.API_BASE_URL,
   prepareHeaders: (headers) => {
@@ -64,6 +70,22 @@ const authApi = createApi({
         body,
       }),
     }),
+    // Always 200 (the backend does not reveal whether the account exists); 429 when rate limited.
+    forgotPassword: builder.mutation<apiResponseBody<null>, { login: string }>({
+      query: (body) => ({
+        url: config.ENDPOINTS.AUTH.FORGOT_PASSWORD,
+        method: "POST",
+        body,
+      }),
+    }),
+    // userId and token come straight from the emailed link (/reset-password?userId&token).
+    resetPassword: builder.mutation<apiResponseBody<null>, resetPasswordRequest>({
+      query: (body) => ({
+        url: config.ENDPOINTS.AUTH.RESET_PASSWORD,
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -72,5 +94,7 @@ export const {
   useLoginUserMutation,
   useConfirmEmailMutation,
   useResendConfirmationMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
 } = authApi;
 export default authApi;

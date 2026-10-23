@@ -6,6 +6,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import Login from "@/features/auth/Login";
 import Register from "@/features/auth/Register";
 import ConfirmEmail from "@/features/auth/ConfirmEmail";
+import ForgotPassword from "@/features/auth/ForgotPassword";
+import ResetPassword from "@/features/auth/ResetPassword";
 import Logout from "@/features/auth/Logout";
 import SelectYourCyberek from "@/features/cyberki/SelectYourCyberek";
 import ChooseToBeGiftedCyberek from "@/features/cyberki/ChooseToBeGiftedCyberek";
@@ -110,6 +112,22 @@ const router = createBrowserRouter([
     // visitor — confirming works the same either way.
     path: "/confirm-email",
     element: <ConfirmEmail />,
+    errorElement: <Error />,
+  },
+  {
+    path: "/forgot-password",
+    element: (
+      <ProtectedRoute requireAuth={false}>
+        <ForgotPassword />
+      </ProtectedRoute>
+    ),
+    errorElement: <Error />,
+  },
+  {
+    // Link from the reset email. Public and not redirected for a signed-in
+    // visitor — someone signed in on this device may still reset the password.
+    path: "/reset-password",
+    element: <ResetPassword />,
     errorElement: <Error />,
   },
 ]);
