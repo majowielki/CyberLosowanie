@@ -118,7 +118,7 @@ namespace CyberLosowanie.Controllers
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(ApiResponse<object>), 401)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - user already has cyberek
+        [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - user already has a cyberek, or this cyberek is taken
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<IActionResult> AssignCyberekToUser([FromBody] CyberekAssignmentDTO assignmentDto)
         {

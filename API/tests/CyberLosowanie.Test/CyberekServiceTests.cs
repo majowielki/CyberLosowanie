@@ -361,6 +361,37 @@ namespace CyberLosowanie.Test
         }
 
         [Fact]
+        public async Task AssignCyberekToUserAsync_WhenCyberekBelongsToSomeoneElse_ThrowsCyberekTakenWithoutTransaction()
+        {
+            var user = new ApplicationUser { CyberekId = 0, Id = "u1" };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
+            _userRepo.Setup(r => r.GetOwnerOfCyberekAsync(5)).ReturnsAsync(new ApplicationUser { Id = "u2", CyberekId = 5 });
+            var service = CreateService();
+
+            var ex = await Assert.ThrowsAsync<CyberekTakenException>(() => service.AssignCyberekToUserAsync("john", 5));
+
+            ex.CyberekId.Should().Be(5);
+            user.CyberekId.Should().Be(0);
+            _userRepo.Verify(r => r.BeginTransactionAsync(), Times.Never);
+        }
+
+        [Fact]
+        public async Task AssignCyberekToUserAsync_WhenConcurrentPickWinsTheIndex_RollsBackAndThrowsCyberekTaken()
+        {
+            var user = new ApplicationUser { CyberekId = 0, Id = "u1" };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
+            var tx = MockTransaction();
+            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            _userRepo.Setup(r => r.SaveChangesAsync()).ThrowsAsync(SqlExceptionFactory.UniqueIndexViolation());
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<CyberekTakenException>(() => service.AssignCyberekToUserAsync("john", 5));
+            tx.Verify(t => t.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task AssignCyberekToUserAsync_WhenSaveFails_RollsBackAndThrowsDataAccessException()
         {
             var user = new ApplicationUser { CyberekId = 0, Id = "u1" };

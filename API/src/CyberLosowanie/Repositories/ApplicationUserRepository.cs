@@ -43,6 +43,11 @@ namespace CyberLosowanie.Repositories
             return await _context.ApplicationUsers.FirstOrDefaultAsync(u => u.GiftedCyberekId == cyberekId);
         }
 
+        public async Task<ApplicationUser?> GetOwnerOfCyberekAsync(int cyberekId)
+        {
+            return await _context.ApplicationUsers.FirstOrDefaultAsync(u => u.CyberekId == cyberekId);
+        }
+
         public Task UpdateAsync(ApplicationUser user)
         {
             // EF Core's Update is synchronous; there is no I/O until SaveChangesAsync (F5).

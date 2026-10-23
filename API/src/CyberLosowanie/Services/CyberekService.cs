@@ -229,6 +229,7 @@ namespace CyberLosowanie.Services
         /// <param name="userName">Username to assign cyberek to</param>
         /// <param name="cyberekId">ID of the cyberek to assign</param>
         /// <returns>True if assignment was successful, False if user already has a cyberek</returns>
+        /// <exception cref="CyberekTakenException">The cyberek belongs to another participant (409).</exception>
         public async Task<bool> AssignCyberekToUserAsync(string userName, int cyberekId)
         {
             // Validate inputs
@@ -255,6 +256,19 @@ namespace CyberLosowanie.Services
                 throw ex;
             }
 
+            // The pick list hides taken cyberki, but the request carries any id — claiming
+            // someone else's cyberek would hand over their wishlist and draw.
+            var owner = await _userRepository.GetOwnerOfCyberekAsync(cyberekId);
+            if (owner != null)
+            {
+                await _auditService.LogInformationAsync(
+                    "AssignCyberekToUserAsync rejected: cyberek already taken.",
+                    userId: applicationUser.Id,
+                    userName: userName,
+                    additionalData: new { RequestedCyberekId = cyberekId });
+                throw new CyberekTakenException(cyberekId);
+            }
+
             // Use database transaction for data consistency
             using var transaction = await _userRepository.BeginTransactionAsync();
             try
@@ -274,6 +288,15 @@ namespace CyberLosowanie.Services
                 );
 
                 return true;
+            }
+            catch (DbUpdateException dbEx) when (IsUniqueIndexConflict(dbEx))
+            {
+                // Lost a race with another pick of the same cyberek (unique index on CyberekId).
+                await transaction.RollbackAsync();
+                _logger.LogWarning(dbEx, "Unique-index conflict while assigning cyberek {CyberekId} to user {UserName}", cyberekId, userName);
+                await _auditService.LogErrorAsync(dbEx, null, applicationUser.Id, userName);
+
+                throw new CyberekTakenException(cyberekId, dbEx);
             }
             catch (Exception ex) when (ex is not DomainException)
             {
@@ -403,7 +426,7 @@ namespace CyberLosowanie.Services
 
                 return chosenTargetId;
             }
-            catch (DbUpdateException dbEx) when (IsUniqueGiftConflict(dbEx))
+            catch (DbUpdateException dbEx) when (IsUniqueIndexConflict(dbEx))
             {
                 // Last line of defense — with the draw lock in place this should not happen.
                 await transaction.RollbackAsync();
@@ -425,7 +448,7 @@ namespace CyberLosowanie.Services
             }
         }
 
-        private static bool IsUniqueGiftConflict(DbUpdateException ex)
+        private static bool IsUniqueIndexConflict(DbUpdateException ex)
         {
             // SQL Server error numbers for a unique-index/constraint violation:
             //   2601 = cannot insert duplicate key row in object with unique index

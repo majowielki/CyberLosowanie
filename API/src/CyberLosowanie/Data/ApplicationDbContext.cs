@@ -41,6 +41,13 @@ namespace CyberLosowanie.Data
             modelBuilder.Entity<ApplicationUser>(entity =>
             {
                 entity.Property(e => e.PreferredLanguage).HasMaxLength(5);
+
+                // One account per cyberek — the database backs the service check, so
+                // two concurrent picks of the same cyberek cannot both succeed.
+                // 0 means "not picked yet" and may repeat.
+                entity.HasIndex(e => e.CyberekId)
+                      .IsUnique()
+                      .HasFilter("[CyberekId] <> 0");
             });
 
             // Configure AuditLog entity

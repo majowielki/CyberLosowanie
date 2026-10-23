@@ -87,6 +87,10 @@ namespace CyberLosowanie.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CyberekId")
+                        .IsUnique()
+                        .HasFilter("[CyberekId] <> 0");
+
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 

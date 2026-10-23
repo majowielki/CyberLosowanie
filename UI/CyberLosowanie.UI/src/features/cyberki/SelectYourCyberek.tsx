@@ -36,7 +36,8 @@ function SelectYourCyberek() {
   // mis-tap on the grid from committing the (irreversible) choice.
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const handleSelect = async (cyberekId: number) => {
+  // Returns whether the pick was saved — the caller moves on only then.
+  const handleSelect = async (cyberekId: number): Promise<boolean> => {
     setLoading(true);
 
     try {
@@ -45,12 +46,20 @@ function SelectYourCyberek() {
 
       dispatch(setCyberekId(cyberekId));
       toast({ description: t('cyberki.select.success') });
+      return true;
     } catch (error) {
       debugLog("Failed to assign cyberek:", error);
+      // 409 = someone else picked this cyberek first; the mutation refreshes the
+      // list (tag invalidation), so it shows as taken and the user picks again.
+      const takenMeanwhile = (error as { status?: unknown }).status === 409;
+      if (takenMeanwhile) {
+        setSelectedId(null);
+      }
       toast({
-        description: t('cyberki.select.fail'),
+        description: t(takenMeanwhile ? 'cyberki.select.takenMeanwhile' : 'cyberki.select.fail'),
         variant: "destructive"
       });
+      return false;
     } finally {
       setLoading(false);
     }
@@ -176,7 +185,9 @@ function SelectYourCyberek() {
             if (!selected) {
               return;
             }
-            await handleSelect(selected.id);
+            if (!(await handleSelect(selected.id))) {
+              return;
+            }
             navigate(userHasGiftedCyberekId != null ? "/final-page" : "/choose-to-be-gifted-cyberek");
           }}
         >

@@ -114,6 +114,48 @@ namespace CyberLosowanie.Test
             (await verify.Users.AnyAsync(u => u.UserName == "rolledback", TestContext.Current.CancellationToken)).Should().BeFalse();
         }
 
+        [Fact]
+        public async Task ApplicationUserRepository_GetOwnerOfCyberekAsync_ReturnsPickerOrNull()
+        {
+            using var db = new SqliteTestDatabase();
+            db.Context.Users.Add(new ApplicationUser { UserName = "alice", CyberekId = 3 });
+            db.Context.Users.Add(new ApplicationUser { UserName = "bob" });
+            await db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var repo = new ApplicationUserRepository(db.Context, IdentityMocks.MockUserManager().Object);
+
+            (await repo.GetOwnerOfCyberekAsync(3))!.UserName.Should().Be("alice");
+            (await repo.GetOwnerOfCyberekAsync(4)).Should().BeNull();
+        }
+
+        [Fact]
+        public async Task ApplicationUser_SecondAccountWithSameCyberek_ViolatesUniqueIndex()
+        {
+            using var db = new SqliteTestDatabase();
+            db.Context.Users.Add(new ApplicationUser { UserName = "alice", CyberekId = 3 });
+            await db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            // One account per cyberek is enforced by the database, not only by the
+            // service check — a concurrent pick of the same cyberek cannot both commit.
+            using var second = db.NewContext();
+            second.Users.Add(new ApplicationUser { UserName = "bob", CyberekId = 3 });
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => second.SaveChangesAsync(TestContext.Current.CancellationToken));
+        }
+
+        [Fact]
+        public async Task ApplicationUser_ManyAccountsWithoutCyberek_AreAllowed()
+        {
+            using var db = new SqliteTestDatabase();
+            db.Context.Users.Add(new ApplicationUser { UserName = "alice" });
+            db.Context.Users.Add(new ApplicationUser { UserName = "bob" });
+
+            // CyberekId 0 = not picked yet; the unique index filters it out.
+            await db.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            (await db.Context.Users.CountAsync(TestContext.Current.CancellationToken)).Should().Be(2);
+        }
+
         #endregion
 
         #region WishlistRepository (upsert + unique CyberekId)
