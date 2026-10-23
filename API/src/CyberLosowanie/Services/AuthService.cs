@@ -280,7 +280,8 @@ namespace CyberLosowanie.Services
                     new Claim("fullName", user.UserName ?? string.Empty),
                     new Claim("id", user.Id ?? string.Empty),
                     new Claim("cyberekId", user.CyberekId.ToString()),
-                    new Claim("giftedCyberekId", user.GiftedCyberekId.ToString())
+                    new Claim("giftedCyberekId", user.GiftedCyberekId.ToString()),
+                    new Claim(CyberLosowanieConstants.SESSION_STAMP_CLAIM, user.SecurityStamp ?? string.Empty)
                 }),
                 Expires = DateTime.UtcNow.AddDays(CyberLosowanieConstants.DEFAULT_TOKEN_EXPIRATION_DAYS),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

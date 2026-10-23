@@ -6,6 +6,7 @@ import {
   uploadImageResponseModel,
   wishlistModel,
 } from "@/types";
+import { withSessionGuard } from "@/features/auth/sessionGuard";
 
 const ENDPOINTS = config.ENDPOINTS.WISHLIST;
 
@@ -25,7 +26,7 @@ const baseQueryWithAuth = fetchBaseQuery({
 
 const wishlistApi = createApi({
   reducerPath: "wishlistApi",
-  baseQuery: baseQueryWithAuth,
+  baseQuery: withSessionGuard(baseQueryWithAuth),
   tagTypes: ["Wishlist"],
   endpoints: (builder) => ({
     // GET /api/wishlist/my — my wishlist; data null = not saved yet (normal state).

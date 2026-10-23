@@ -63,6 +63,7 @@ const pl = {
   'auth.signIn': 'Zaloguj się',
   'auth.logout': 'Wyloguj się',
   'auth.loggingOut': 'Wylogowywanie…',
+  'auth.sessionEnded': 'Sesja wygasła — zaloguj się ponownie.',
 } as const;
 
 export type AuthKey = keyof typeof pl;
@@ -129,5 +130,6 @@ export const auth: MessageCatalog<AuthKey> = {
     'auth.signIn': 'Sign in',
     'auth.logout': 'Logout',
     'auth.loggingOut': 'Signing out…',
+    'auth.sessionEnded': 'Your session has ended — please sign in again.',
   },
 };

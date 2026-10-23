@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CircleCheck, KeyRound, Loader2, LogIn, TriangleAlert } from 'lucide-react';
 import AuthLayout from '@/features/auth/AuthLayout';
@@ -24,8 +24,17 @@ function ResetPassword() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
-  const userId = searchParams.get('userId');
-  const token = searchParams.get('token');
+  // Read once, then dropped from the address bar (below) — the values live on in
+  // state for this visit, while the browser history keeps only /reset-password.
+  const [{ userId, token }] = useState(() => ({
+    userId: searchParams.get('userId'),
+    token: searchParams.get('token'),
+  }));
+  useEffect(() => {
+    if (searchParams.has('token') || searchParams.has('userId')) {
+      navigate('/reset-password', { replace: true });
+    }
+  }, [navigate, searchParams]);
   const [resetPassword, { isLoading }] = useResetPasswordMutation();
   const [state, setState] = useState<ResetState>(userId && token ? 'form' : 'invalidLink');
   const [password, setPassword] = useState('');

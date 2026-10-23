@@ -114,7 +114,7 @@ namespace CyberLosowanie.Test
         [Fact]
         public async Task LoginAsync_OnSuccess_ReturnsTokenSignedWithUtf8KeyAndExpectedClaims()
         {
-            var user = new ApplicationUser { UserName = "john", Id = "u1", CyberekId = 3, GiftedCyberekId = 7, EmailConfirmed = true };
+            var user = new ApplicationUser { UserName = "john", Id = "u1", CyberekId = 3, GiftedCyberekId = 7, EmailConfirmed = true, SecurityStamp = "stamp-1" };
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
             _userManager.Setup(m => m.CheckPasswordAsync(user, "correct")).ReturnsAsync(true);
 
@@ -139,6 +139,7 @@ namespace CyberLosowanie.Test
             principal.FindFirst("id")!.Value.Should().Be("u1");
             principal.FindFirst("cyberekId")!.Value.Should().Be("3");
             principal.FindFirst("giftedCyberekId")!.Value.Should().Be("7");
+            principal.FindFirst(CyberLosowanieConstants.SESSION_STAMP_CLAIM)!.Value.Should().Be("stamp-1");
         }
 
         [Fact]

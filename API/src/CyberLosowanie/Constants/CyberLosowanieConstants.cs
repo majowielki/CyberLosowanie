@@ -29,6 +29,11 @@ namespace CyberLosowanie.Constants
         public const string USERNAME_ALREADY_EXISTS = "Username already exists";
         public const string GIFT_ALREADY_ASSIGNED = "Gift has already been assigned";
 
+        // JWT claim with the account's Identity security stamp at sign-in. Identity
+        // changes the stamp when the password is reset, so every token issued
+        // before that stops working (SessionStampValidator).
+        public const string SESSION_STAMP_CLAIM = "stamp";
+
         // Default values
         public const string DEFAULT_ERROR_MESSAGE = "An error occurred while processing your request";
         public const int DEFAULT_TOKEN_EXPIRATION_DAYS = 7;

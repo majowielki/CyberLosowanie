@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { config, debugLog } from "@/shared/config";
 import { apiResponseBody, cyberekModel } from "@/types";
+import { withSessionGuard } from "@/features/auth/sessionGuard";
 
 const ENDPOINTS = config.ENDPOINTS.CYBER_LOSOWANIE;
 
@@ -20,7 +21,7 @@ const baseQueryWithAuth = fetchBaseQuery({
 
 const cyberLosowanieApi = createApi({
   reducerPath: "cyberLosowanieApi",
-  baseQuery: baseQueryWithAuth,
+  baseQuery: withSessionGuard(baseQueryWithAuth),
   tagTypes: ["Cyberki"],
   endpoints: (builder) => ({
     // GET /api/CyberLosowanie - Get all cyberki

@@ -192,6 +192,18 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero,
         RequireExpirationTime = true
     };
+    // A valid signature is not enough: the session must not predate a password reset.
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var users = context.HttpContext.RequestServices.GetRequiredService<IApplicationUserRepository>();
+            if (context.Principal == null || !await SessionStampValidator.IsCurrentAsync(context.Principal, users))
+            {
+                context.Fail("The session is no longer valid. Sign in again.");
+            }
+        }
+    };
 });
 
 // Configure CORS properly

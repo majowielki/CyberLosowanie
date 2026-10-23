@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation } from 'react-router-dom';
 import { renderWithProviders } from '@/test/renderWithProviders';
 
 // Each mutation hook returns [trigger, state]; trigger(...).unwrap() is what the pages await.
@@ -101,6 +102,28 @@ describe('ResetPassword', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('already used');
     expect(screen.getByRole('button', { name: 'Send a new link' })).toBeInTheDocument();
+  });
+
+  it('drops the token from the address bar but still uses it', async () => {
+    resetPasswordMock.mockResolvedValue({ isSuccess: true });
+    const locations: string[] = [];
+    function LocationProbe() {
+      const location = useLocation();
+      locations.push(location.pathname + location.search);
+      return null;
+    }
+    renderWithProviders(
+      <>
+        <ResetPassword />
+        <LocationProbe />
+      </>,
+      { language: 'en', route }
+    );
+
+    expect(locations.at(-1)).toBe('/reset-password');
+    await submitPassword('NoweHaslo1');
+
+    expect(resetPasswordMock).toHaveBeenCalledWith({ userId: 'u1', token: 'abc', newPassword: 'NoweHaslo1' });
   });
 
   it('treats a link without its values as invalid', () => {
