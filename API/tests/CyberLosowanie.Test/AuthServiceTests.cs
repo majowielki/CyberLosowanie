@@ -338,6 +338,55 @@ namespace CyberLosowanie.Test
         #region ResendConfirmationAsync
 
         [Fact]
+        public void AllowedUsernameCharacters_IncludePolishLettersButNoSpace()
+        {
+            const string allowed = CyberLosowanieConstants.ALLOWED_USERNAME_CHARACTERS;
+
+            foreach (var letter in "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
+                allowed.Should().Contain(letter.ToString());
+            // Identity's defaults stay allowed, so every existing account keeps working.
+            foreach (var letter in new UserOptions().AllowedUserNameCharacters)
+                allowed.Should().Contain(letter.ToString());
+            allowed.Should().NotContain(" ");
+        }
+
+        [Fact]
+        public async Task RegisterAsync_DecomposedPolishLetters_AreStoredPrecomposed()
+        {
+            // "Zośka" typed as "s" + combining acute (U+0301) and with stray spaces.
+            const string decomposed = " Zośka ";
+            _userRepo.Setup(r => r.GetByUsernameAsync("Zośka")).ReturnsAsync((ApplicationUser?)null);
+            ApplicationUser? created = null;
+            _userManager.Setup(m => m.CreateAsync(It.IsAny<ApplicationUser>(), "StrongPass1"))
+                .Callback<ApplicationUser, string>((u, _) => created = u)
+                .ReturnsAsync(IdentityResult.Success);
+
+            await CreateService().RegisterAsync(new RegisterRequestDTO
+            {
+                UserName = decomposed, Email = "zoska@example.com", Password = "StrongPass1", Language = "pl"
+            });
+
+            created!.UserName.Should().Be("Zośka");
+            created.UserName!.Length.Should().Be(5);
+        }
+
+        [Fact]
+        public async Task LoginAsync_DecomposedPolishLetters_FindTheAccount()
+        {
+            var user = new ApplicationUser { UserName = "Michał Żółć".Replace(" ", ""), Id = "u1", EmailConfirmed = true };
+            _userRepo.Setup(r => r.GetByUsernameAsync("MichałŻółć")).ReturnsAsync(user);
+            _userManager.Setup(m => m.CheckPasswordAsync(user, "correct")).ReturnsAsync(true);
+
+            // Ż = Z + dot above (U+0307), ó = o + acute (U+0301), ć = c + acute.
+            var result = await CreateService().LoginAsync(new LoginRequestDTO
+            {
+                UserName = "MichałŻółć", Password = "correct"
+            });
+
+            result.UserName.Should().Be("MichałŻółć");
+        }
+
+        [Fact]
         public async Task ResendConfirmationAsync_UnknownOrConfirmedAccount_SendsNothing()
         {
             _userRepo.Setup(r => r.GetByUsernameAsync("ghost")).ReturnsAsync((ApplicationUser?)null);

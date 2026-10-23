@@ -11,6 +11,13 @@ namespace CyberLosowanie.Constants
         public const string Role_Admin = "admin";
         public const string Role_User = "user";
 
+        // Identity's default username characters plus the Polish letters, so
+        // "Michał" or "Żaneta" can register. No spaces: names differing only by
+        // a trailing space would look identical.
+        public const string ALLOWED_USERNAME_CHARACTERS =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+" +
+            "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ";
+
         // Error messages
         // Built from MIN/MAX so the numbers are never duplicated as literals (E1).
         public static readonly string INVALID_CYBEREK_ID =

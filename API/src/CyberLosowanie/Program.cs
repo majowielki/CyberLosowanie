@@ -158,6 +158,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     // Email is the Santa notification channel: one account per address, and it
     // must be confirmed (AuthService.LoginAsync enforces this for the JWT login).
     options.User.RequireUniqueEmail = true;
+    options.User.AllowedUserNameCharacters = CyberLosowanieConstants.ALLOWED_USERNAME_CHARACTERS;
     options.SignIn.RequireConfirmedEmail = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()

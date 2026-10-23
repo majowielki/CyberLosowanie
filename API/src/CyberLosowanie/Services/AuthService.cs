@@ -83,7 +83,8 @@ namespace CyberLosowanie.Services
                 || string.IsNullOrWhiteSpace(request.Email))
                 throw new BusinessValidationException("Username, email and password are required");
 
-            var existingUser = await _userRepository.GetByUsernameAsync(request.UserName);
+            var userName = NormalizeLogin(request.UserName);
+            var existingUser = await _userRepository.GetByUsernameAsync(userName);
             if (existingUser != null)
                 throw new BusinessValidationException(CyberLosowanieConstants.USERNAME_ALREADY_EXISTS);
 
@@ -94,7 +95,7 @@ namespace CyberLosowanie.Services
 
             var newUser = new ApplicationUser
             {
-                UserName = request.UserName,
+                UserName = userName,
                 Email = email,
                 PreferredLanguage = EmailConstants.NormalizeLanguage(request.Language)
             };
@@ -160,10 +161,17 @@ namespace CyberLosowanie.Services
         /// <summary>Usernames may themselves contain '@', so a username match wins over an email match.</summary>
         private async Task<ApplicationUser?> FindByLoginAsync(string login)
         {
-            var trimmed = login.Trim();
-            return await _userRepository.GetByUsernameAsync(trimmed)
-                ?? (trimmed.Contains('@') ? await _userRepository.GetByEmailAsync(trimmed) : null);
+            var normalized = NormalizeLogin(login);
+            return await _userRepository.GetByUsernameAsync(normalized)
+                ?? (normalized.Contains('@') ? await _userRepository.GetByEmailAsync(normalized) : null);
         }
+
+        /// <summary>
+        /// Trimmed, Unicode NFC. A Polish letter can arrive precomposed ("ó") or as a
+        /// base letter plus a combining accent, depending on the keyboard; NFC makes
+        /// both the same name, so an account made on one device signs in on another.
+        /// </summary>
+        private static string NormalizeLogin(string login) => login.Trim().Normalize(NormalizationForm.FormC);
 
         private async Task TrySendConfirmationAsync(ApplicationUser user)
         {
