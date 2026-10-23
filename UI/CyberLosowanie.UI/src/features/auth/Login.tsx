@@ -11,6 +11,7 @@ import { ArrowLeft, Loader2, LogIn } from 'lucide-react';
 import { setLoggedInUser } from "@/features/auth/userSlice";
 import { userFromToken } from "@/features/auth/tokenUtils";
 import ResendConfirmationButton from "@/features/auth/ResendConfirmationButton";
+import PasswordInput from "@/features/auth/PasswordInput";
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
 import { debugLog } from '@/shared/config';
@@ -135,9 +136,8 @@ function Login() {
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="login-password">{t('auth.field.password')}</Label>
-          <Input
+          <PasswordInput
             id="login-password"
-            type="password"
             autoComplete="current-password"
             placeholder={t('auth.field.passwordPlaceholder')}
             required

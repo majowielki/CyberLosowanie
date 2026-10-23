@@ -9,6 +9,7 @@ import inputHelper from "@/shared/lib/inputHelper";
 import { apiResponseBody } from "@/types";
 import { useRegisterUserMutation } from "@/features/auth/authApi";
 import ResendConfirmationButton from "@/features/auth/ResendConfirmationButton";
+import PasswordInput from "@/features/auth/PasswordInput";
 import { debugLog } from '@/shared/config';
 import { useTranslation } from '@/shared/i18n';
 import React from "react";
@@ -150,9 +151,8 @@ function Register() {
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="register-password">{t('auth.field.password')}</Label>
-          <Input
+          <PasswordInput
             id="register-password"
-            type="password"
             autoComplete="new-password"
             placeholder={t('auth.field.passwordPlaceholder')}
             required
