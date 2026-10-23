@@ -80,6 +80,12 @@ function Login() {
           return;
         }
 
+        // 429 = account locked after wrong passwords, or too many attempts from here.
+        if ('status' in response.error && response.error.status === 429) {
+          setError(t('auth.login.tooMany'));
+          return;
+        }
+
         // Handle FetchBaseQueryError (has status and data)
         if ('status' in response.error && response.error.data) {
           const errorData = response.error.data as Partial<apiResponseBody>;

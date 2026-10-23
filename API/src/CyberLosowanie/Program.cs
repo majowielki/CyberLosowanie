@@ -111,6 +111,17 @@ builder.Services.AddRateLimiter(options =>
                 PermitLimit = 20,
                 Window = TimeSpan.FromMinutes(15)
             }));
+    // Sign-in attempts per client IP — the per-account lockout cannot stop one
+    // client trying a few passwords on every account. Generous enough for the
+    // whole group signing in from one network with the odd typo.
+    options.AddPolicy(CyberLosowanieConstants.LOGIN_RATE_LIMIT_POLICY, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(15)
+            }));
 });
 
 // Image storage — wishlist images and cyberek portraits (Azure Blob; Azurite

@@ -56,9 +56,23 @@ namespace CyberLosowanie.Services
             if (user == null)
                 throw new UnauthorizedAccessException("Invalid username or password");
 
+            // UserManager.CheckPasswordAsync alone neither counts failures nor honours
+            // the lockout, so both are done here: a locked account is refused before
+            // the password is even looked at, and each wrong password counts.
+            if (await _userManager.IsLockedOutAsync(user))
+                throw new AccountLockedOutException();
+
             var isValid = await _userManager.CheckPasswordAsync(user, request.Password);
             if (!isValid)
+            {
+                await _userManager.AccessFailedAsync(user);
+                if (await _userManager.IsLockedOutAsync(user))
+                    throw new AccountLockedOutException();
                 throw new UnauthorizedAccessException("Invalid username or password");
+            }
+
+            if (await _userManager.GetAccessFailedCountAsync(user) > 0)
+                await _userManager.ResetAccessFailedCountAsync(user);
 
             // Checked only after the password, so the confirmation state of an
             // account is never revealed to someone who does not own it.

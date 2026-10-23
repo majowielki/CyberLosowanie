@@ -21,9 +21,11 @@ namespace CyberLosowanie.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting(CyberLosowanieConstants.LOGIN_RATE_LIMIT_POLICY)]
         [ProducesResponseType(typeof(ApiResponse<LoginResponseDTO>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(ApiResponse<object>), 401)]
+        [ProducesResponseType(typeof(ApiResponse<object>), 429)] // account locked, or too many attempts from this client
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
         public async Task<IActionResult> Login([FromBody] LoginRequestDTO model)
         {

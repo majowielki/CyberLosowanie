@@ -151,6 +151,7 @@ namespace CyberLosowanie.Middleware
                 // gone now — the client should refresh the list and let the user pick again.
                 GiftTargetUnavailableException ex => (HttpStatusCode.Conflict, ex.Message, null as List<string>),
                 CyberekTakenException ex => (HttpStatusCode.Conflict, ex.Message, null as List<string>),
+                AccountLockedOutException ex => (HttpStatusCode.TooManyRequests, ex.Message, null as List<string>),
                 // Wishlist operations require the corresponding draw step to be done
                 // (cyberek selected / draw completed) — a state conflict, not a client bug.
                 WishlistConflictException ex => (HttpStatusCode.Conflict, ex.Message, null as List<string>),

@@ -34,6 +34,11 @@ namespace CyberLosowanie.Constants
         // before that stops working (SessionStampValidator).
         public const string SESSION_STAMP_CLAIM = "stamp";
 
+        // Password guessing: the account locks after Identity's MaxFailedAccessAttempts
+        // (Program.cs), and the login endpoint is rate limited per client IP on top.
+        public const string LOGIN_RATE_LIMIT_POLICY = "login";
+        public const string ACCOUNT_LOCKED_OUT = "Too many failed sign-in attempts. Try again in 15 minutes or reset your password.";
+
         // Default values
         public const string DEFAULT_ERROR_MESSAGE = "An error occurred while processing your request";
         public const int DEFAULT_TOKEN_EXPIRATION_DAYS = 7;

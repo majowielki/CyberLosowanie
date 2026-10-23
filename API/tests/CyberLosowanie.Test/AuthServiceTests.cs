@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
@@ -178,6 +179,89 @@ namespace CyberLosowanie.Test
 
             await Assert.ThrowsAsync<UnauthorizedAccessException>(
                 () => CreateService().LoginAsync(new LoginRequestDTO { UserName = "john", Password = "wrong" }));
+        }
+
+        [Fact]
+        public async Task LoginAsync_WithWrongPassword_CountsTheFailure()
+        {
+            var user = new ApplicationUser { UserName = "john" };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            _userManager.Setup(m => m.CheckPasswordAsync(user, "wrong")).ReturnsAsync(false);
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(
+                () => CreateService().LoginAsync(new LoginRequestDTO { UserName = "john", Password = "wrong" }));
+
+            _userManager.Verify(m => m.AccessFailedAsync(user), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginAsync_WhenLockedOut_RefusesWithoutCheckingThePassword()
+        {
+            var user = new ApplicationUser { UserName = "john", EmailConfirmed = true };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            _userManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(true);
+
+            await Assert.ThrowsAsync<AccountLockedOutException>(
+                () => CreateService().LoginAsync(new LoginRequestDTO { UserName = "john", Password = "correct" }));
+
+            _userManager.Verify(m => m.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task LoginAsync_WhenTheWrongPasswordLocksTheAccount_SaysSo()
+        {
+            var user = new ApplicationUser { UserName = "john" };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            _userManager.Setup(m => m.CheckPasswordAsync(user, "wrong")).ReturnsAsync(false);
+            _userManager.SetupSequence(m => m.IsLockedOutAsync(user)).ReturnsAsync(false).ReturnsAsync(true);
+
+            await Assert.ThrowsAsync<AccountLockedOutException>(
+                () => CreateService().LoginAsync(new LoginRequestDTO { UserName = "john", Password = "wrong" }));
+        }
+
+        [Fact]
+        public async Task LoginAsync_OnSuccessAfterFailures_ResetsTheFailureCount()
+        {
+            var user = new ApplicationUser { UserName = "john", Id = "u1", EmailConfirmed = true };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            _userManager.Setup(m => m.CheckPasswordAsync(user, "correct")).ReturnsAsync(true);
+            _userManager.Setup(m => m.GetAccessFailedCountAsync(user)).ReturnsAsync(2);
+
+            await CreateService().LoginAsync(new LoginRequestDTO { UserName = "john", Password = "correct" });
+
+            _userManager.Verify(m => m.ResetAccessFailedCountAsync(user), Times.Once);
+        }
+
+        [Fact]
+        public async Task LoginAsync_WithRealIdentity_LocksTheAccountAfterFiveWrongPasswords()
+        {
+            // Real UserManager over the SQLite schema: proves the configured lockout
+            // actually applies to this login path (CheckPasswordAsync alone ignores it).
+            using var db = new SqliteTestDatabase();
+            using var services = IdentityMocks.RealUserManagerServices(db.Context);
+            var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = new ApplicationUser { UserName = "john", Email = "john@example.com", EmailConfirmed = true };
+            (await userManager.CreateAsync(user, "Correct-1")).Succeeded.Should().BeTrue();
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            var service = new AuthService(_userRepo.Object, userManager, _roleManager.Object, _configuration,
+                _email.Object, _appLinks, NullLogger<AuthService>.Instance);
+            Task<LoginResponseDTO> Login(string password) =>
+                service.LoginAsync(new LoginRequestDTO { UserName = "john", Password = password });
+
+            for (var attempt = 1; attempt < 5; attempt++)
+            {
+                await Assert.ThrowsAsync<UnauthorizedAccessException>(() => Login("wrong"));
+            }
+            await Assert.ThrowsAsync<AccountLockedOutException>(() => Login("wrong"));
+
+            // Locked: even the right password is refused until the lock ends.
+            await Assert.ThrowsAsync<AccountLockedOutException>(() => Login("Correct-1"));
+
+            // Once the lock is lifted (time or password reset), the right password works
+            // and the failure count starts again from zero.
+            await userManager.SetLockoutEndDateAsync(user, null);
+            (await Login("Correct-1")).Token.Should().NotBeNullOrEmpty();
+            (await userManager.GetAccessFailedCountAsync(user)).Should().Be(0);
         }
 
         #endregion
