@@ -54,9 +54,8 @@ describe('ForgotPassword', () => {
 describe('ResetPassword', () => {
   const route = '/reset-password?userId=u1&token=abc';
 
-  const fillPasswords = async (first: string, second: string) => {
-    await userEvent.type(screen.getByLabelText('New password'), first);
-    await userEvent.type(screen.getByLabelText('Repeat the new password'), second);
+  const submitPassword = async (password: string) => {
+    await userEvent.type(screen.getByLabelText('New password'), password);
     await userEvent.click(screen.getByRole('button', { name: 'Set the new password' }));
   };
 
@@ -64,20 +63,18 @@ describe('ResetPassword', () => {
     resetPasswordMock.mockResolvedValue({ isSuccess: true });
     renderWithProviders(<ResetPassword />, { language: 'en', route });
 
-    await fillPasswords('NoweHaslo1', 'NoweHaslo1');
+    await submitPassword('NoweHaslo1');
 
     expect(resetPasswordMock).toHaveBeenCalledWith({ userId: 'u1', token: 'abc', newPassword: 'NoweHaslo1' });
     expect(await screen.findByRole('status')).toHaveTextContent('Password changed');
     expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
   });
 
-  it('stops on mismatched passwords without calling the server', async () => {
+  it('asks for the new password once, with the show/hide toggle', () => {
     renderWithProviders(<ResetPassword />, { language: 'en', route });
 
-    await fillPasswords('NoweHaslo1', 'NoweHaslo2');
-
-    expect(screen.getByRole('alert')).toHaveTextContent('do not match');
-    expect(resetPasswordMock).not.toHaveBeenCalled();
+    expect(screen.getAllByLabelText(/password/i, { selector: 'input' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Show password' })).toBeInTheDocument();
   });
 
   it('shows the server password rules and keeps the form', async () => {
@@ -87,7 +84,7 @@ describe('ResetPassword', () => {
     });
     renderWithProviders(<ResetPassword />, { language: 'en', route });
 
-    await fillPasswords('123', '123');
+    await submitPassword('123');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('at least 6 characters');
     expect(screen.getByLabelText('New password')).toBeInTheDocument();
@@ -100,7 +97,7 @@ describe('ResetPassword', () => {
     });
     renderWithProviders(<ResetPassword />, { language: 'en', route });
 
-    await fillPasswords('NoweHaslo1', 'NoweHaslo1');
+    await submitPassword('NoweHaslo1');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('already used');
     expect(screen.getByRole('button', { name: 'Send a new link' })).toBeInTheDocument();

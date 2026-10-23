@@ -15,9 +15,10 @@ const INVALID_LINK_MESSAGE = 'The password reset link is invalid or has expired'
 type ResetState = 'form' | 'success' | 'invalidLink';
 
 /**
- * /reset-password?userId=…&token=… — target of the link in the reset email. The
- * new password is typed twice; a password rejected by the server's rules can be
- * corrected and resent with the same link, an expired or used link cannot.
+ * /reset-password?userId=…&token=… — target of the link in the reset email. One
+ * password field with the eye toggle, like registration; a password rejected by
+ * the server's rules can be corrected and resent with the same link, an expired
+ * or used link cannot.
  */
 function ResetPassword() {
   const navigate = useNavigate();
@@ -28,7 +29,6 @@ function ResetPassword() {
   const [resetPassword, { isLoading }] = useResetPasswordMutation();
   const [state, setState] = useState<ResetState>(userId && token ? 'form' : 'invalidLink');
   const [password, setPassword] = useState('');
-  const [repeated, setRepeated] = useState('');
   const [error, setError] = useState('');
 
   const footer = (
@@ -40,10 +40,6 @@ function ResetPassword() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
-    if (password !== repeated) {
-      setError(t('auth.reset.mismatch'));
-      return;
-    }
     try {
       await resetPassword({ userId: userId!, token: token!, newPassword: password }).unwrap();
       setState('success');
@@ -103,16 +99,6 @@ function ResetPassword() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="reset-password-repeat">{t('auth.reset.repeatPassword')}</Label>
-          <PasswordInput
-            id="reset-password-repeat"
-            autoComplete="new-password"
-            required
-            value={repeated}
-            onChange={(event) => setRepeated(event.target.value)}
           />
         </div>
         {error && (
