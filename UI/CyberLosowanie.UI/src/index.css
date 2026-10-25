@@ -267,3 +267,19 @@
   from { filter: brightness(1.1); }
   to { filter: brightness(0.55); }
 }
+
+/* Playable 404 (NotFoundGame): presents fall and spin; a caught one pops. */
+.nf-fall {
+  animation: nf-fall var(--nf-duration, 5s) linear both;
+}
+.nf-caught {
+  animation: nf-caught 0.35s ease-out both;
+}
+@keyframes nf-fall {
+  from { transform: translateY(-120px) rotate(0deg); }
+  to { transform: translateY(calc(100vh + 40px)) rotate(var(--nf-spin, 60deg)); }
+}
+@keyframes nf-caught {
+  0% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 0 hsl(var(--gold))); }
+  100% { transform: scale(1.9); opacity: 0; filter: drop-shadow(0 0 18px hsl(var(--gold))); }
+}

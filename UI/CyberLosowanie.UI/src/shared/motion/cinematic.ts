@@ -20,6 +20,8 @@ export const CINEMATIC = {
   letterNotifyFlight: true,
   /** Landing: the tree's fairy lights switch on from the star down, then twinkle. */
   treeLights: true,
+  /** 404: catch the presents the elves dropped (falling stickers, tap to catch). */
+  notFoundGame: true,
 } as const;
 
 export type CinematicEffect = keyof typeof CINEMATIC;
