@@ -11,6 +11,8 @@ interface RenderWithProvidersOptions {
   /** UI language for the rendered tree (doc §10); defaults to Polish. */
   language?: Language;
   route?: string;
+  /** History state of the initial entry (what `navigate(path, { state })` would pass). */
+  routeState?: unknown;
   /** Signed-in session (merged over an empty one); signed out by default. */
   user?: Partial<userModel>;
 }
@@ -21,7 +23,7 @@ interface RenderWithProvidersOptions {
  */
 export function renderWithProviders(
   ui: ReactElement,
-  { language = 'pl', route = '/', user }: RenderWithProvidersOptions = {},
+  { language = 'pl', route = '/', routeState, user }: RenderWithProvidersOptions = {},
 ) {
   const store = configureStore({
     reducer: { userAuthStore: userAuthReducer, localeStore: localeReducer },
@@ -35,7 +37,7 @@ export function renderWithProviders(
     store,
     ...render(
       <Provider store={store}>
-        <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
+        <MemoryRouter initialEntries={[routeState === undefined ? route : { pathname: route, state: routeState }]}>{ui}</MemoryRouter>
       </Provider>,
     ),
   };

@@ -1,10 +1,15 @@
 import { useGetMyGiftedCyberekQuery } from "@/features/cyberki/cyberLosowanieApi";
 import { Button } from "@/shared/ui/button";
 import { PageHeader, StatusMessage } from "@/shared/components";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import { Gift, ScrollText } from "lucide-react";
 import { useTranslation } from "@/shared/i18n";
+import { cn } from "@/shared/lib/utils";
+import { canPlayFilm } from "@/shared/motion/cinematic";
 import CyberekPortrait from "./CyberekPortrait";
+import GiftRevealFilm from "./GiftRevealFilm";
+import { isJustDrawnState } from "./giftFilm";
 
 // Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function FinalPage() {
@@ -14,9 +19,45 @@ function FinalPage() {
   // from the JWT on the request. Backend is the single source of truth.
   const { data, isLoading, error } = useGetMyGiftedCyberekQuery();
 
+  // The gift film plays only right after a successful draw (router state from
+  // the boxes page). The state is dropped at once, so a refresh, the menu or
+  // any later visit shows the plain reveal.
+  const location = useLocation();
+  const [film, setFilm] = useState(() =>
+    isJustDrawnState(location.state) && canPlayFilm('giftFilm')
+      ? { boxRect: location.state.boxRect ?? null }
+      : null,
+  );
+  // False while the film covers the page: the portrait waits for its reveal.
+  const [revealReady, setRevealReady] = useState(film === null);
+  const headingRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isJustDrawnState(location.state)) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filmOverlay = film && (
+    <GiftRevealFilm
+      fromRect={film.boxRect}
+      onReveal={() => setRevealReady(true)}
+      onClose={() => {
+        setFilm(null);
+        headingRef.current?.focus({ preventScroll: true });
+      }}
+    />
+  );
+
   // If we are still loading results from backend, show a loading state
   if (isLoading) {
-    return <StatusMessage tone="loading" message={t('cyberki.final.loading')} />;
+    return (
+      <>
+        {filmOverlay}
+        <StatusMessage tone="loading" message={t('cyberki.final.loading')} />
+      </>
+    );
   }
 
   if (error) {
@@ -46,17 +87,21 @@ function FinalPage() {
 
   return (
     <div className="flex w-full flex-col items-center gap-10">
-      <PageHeader
-        eyebrow={t('cyberki.final.eyebrow')}
-        title={t('cyberki.final.congrats')}
-        subtitle={t('cyberki.final.santaFor', { cyberekName })}
-      />
+      {filmOverlay}
+      {/* Focus lands here when the film closes, so the result is read out next. */}
+      <div ref={headingRef} tabIndex={-1} className="outline-none">
+        <PageHeader
+          eyebrow={t('cyberki.final.eyebrow')}
+          title={t('cyberki.final.congrats')}
+          subtitle={t('cyberki.final.santaFor', { cyberekName })}
+        />
+      </div>
 
       {/* The reveal: portrait in a gold halo, name underneath. */}
-      <figure className="flex flex-col items-center gap-5 animate-fade-up">
+      <figure className={cn('flex flex-col items-center gap-5', revealReady ? 'animate-fade-up' : 'opacity-0')}>
         {/* The reveal moment: portrait comes into focus (static under reduced motion). */}
-        <div className="relative motion-safe:animate-reveal">
-          <div aria-hidden className="halo absolute inset-0 -z-10 scale-150 blur-2xl" />
+        <div className={cn('relative', revealReady && 'motion-safe:animate-reveal')}>
+          <div aria-hidden className="halo absolute inset-0 -z-10 scale-125 blur-2xl sm:scale-150" />
           {/* The caricature: exaggerated features make the drawn person obvious at a glance. */}
           <CyberekPortrait
             cyberekId={currentCyberek.id}

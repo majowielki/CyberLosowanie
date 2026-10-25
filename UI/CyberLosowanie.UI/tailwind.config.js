@@ -89,12 +89,23 @@ export default {
   			reveal: {
   				from: { opacity: '0', transform: 'scale(0.7)', filter: 'blur(16px)' },
   				to: { opacity: '1', transform: 'scale(1)', filter: 'blur(0)' }
+  			},
+  			// Boxes page: the clicked box rattles while the draw request runs. Keeps
+  			// the 1.6x crop scale of the box image (see ChooseToBeGiftedCyberek).
+  			'gift-shake': {
+  				'0%, 100%': { transform: 'scale(1.6) rotate(0deg)' },
+  				'15%': { transform: 'scale(1.64) rotate(-4deg) translateY(-2%)' },
+  				'30%': { transform: 'scale(1.6) rotate(3deg)' },
+  				'45%': { transform: 'scale(1.66) rotate(-3deg) translateY(-3%)' },
+  				'60%': { transform: 'scale(1.6) rotate(2deg)' },
+  				'75%': { transform: 'scale(1.62) rotate(-1deg) translateY(-1%)' }
   			}
   		},
   		animation: {
   			'fade-up': 'fade-up 0.6s ease-out both',
   			twinkle: 'twinkle 3.5s ease-in-out infinite',
-  			reveal: 'reveal 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both'
+  			reveal: 'reveal 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+  			'gift-shake': 'gift-shake 0.7s ease-in-out infinite'
   		}
   	}
   },

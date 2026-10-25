@@ -10,12 +10,15 @@ import {
   useGetAvailableGiftTargetsQuery,
   useAssignGiftedCyberekMutation,
 } from "@/features/cyberki/cyberLosowanieApi";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { setGiftedCyberekId } from "@/features/auth/userSlice";
 import { toast } from "@/shared/hooks/use-toast";
 import { debugLog } from "@/shared/config";
 import { useTranslation } from "@/shared/i18n";
+import { canPlayFilm, isEffectEnabled, prefetchWhenIdle } from "@/shared/motion/cinematic";
+import { primeSound } from "@/shared/motion/sound";
+import { GIFT_FILM, JustDrawnState, giftFilmSrc } from "./giftFilm";
 
 // Auth is guaranteed by ProtectedRoute in the router — no auth checks here.
 function ChooseToBeGiftedCyberek() {
@@ -33,7 +36,24 @@ function ChooseToBeGiftedCyberek() {
     isLoading: targetsLoading,
     refetch: refetchTargets,
   } = useGetAvailableGiftTargetsQuery();
-  const [loading, setLoading] = useState(false);
+  // The box being drawn right now (null = idle); it shakes while the request runs.
+  const [openingBoxId, setOpeningBoxId] = useState<number | null>(null);
+  const loading = openingBoxId !== null;
+  const boxRefs = useRef(new Map<number, HTMLElement>());
+  const shake = isEffectEnabled("giftShake");
+
+  // Warm the cache with the gift film while the user looks at the boxes, so it
+  // starts at once after a successful draw.
+  useEffect(() => {
+    if (!canPlayFilm("giftFilm")) {
+      return;
+    }
+    const urls = [giftFilmSrc(), GIFT_FILM.poster];
+    if (isEffectEnabled("giftSound")) {
+      urls.push(GIFT_FILM.sound);
+    }
+    return prefetchWhenIdle(urls);
+  }, []);
 
   const boxIds = (cyberkiData?.data ?? []).map((c) => c.id).sort((a, b) => a - b);
   const availableIds = new Set(targetsData?.data ?? []);
@@ -56,7 +76,12 @@ function ChooseToBeGiftedCyberek() {
   // in a serialized transaction. 409 = somebody just took this box (or it became
   // unsafe) — refresh the list and let the user pick again.
   const handleSelect = async (giftedCyberekId: number) => {
-    setLoading(true);
+    setOpeningBoxId(giftedCyberekId);
+    const playFilm = canPlayFilm("giftFilm");
+    // Inside the tap: unlock the sound for later (mobile browsers need a gesture).
+    if (playFilm && isEffectEnabled("giftSound")) {
+      primeSound(GIFT_FILM.sound);
+    }
 
     try {
       const response = await assignGiftedCyberek({ giftedCyberekId }).unwrap();
@@ -67,7 +92,15 @@ function ChooseToBeGiftedCyberek() {
         dispatch(setGiftedCyberekId(response.data));
       }
 
-      navigate("/final-page");
+      // Only a successful draw plays the film; the final page reads this state once.
+      const rect = boxRefs.current.get(giftedCyberekId)?.getBoundingClientRect();
+      const state: JustDrawnState | undefined = playFilm
+        ? {
+            justDrawn: true,
+            boxRect: rect ? { left: rect.left, top: rect.top, width: rect.width, height: rect.height } : null,
+          }
+        : undefined;
+      navigate("/final-page", state ? { state } : undefined);
     } catch (error) {
       debugLog("Failed to assign gifted cyberek:", error);
 
@@ -85,11 +118,12 @@ function ChooseToBeGiftedCyberek() {
         });
       }
     } finally {
-      setLoading(false);
+      setOpeningBoxId(null);
     }
   };
 
-  if (loading) {
+  // Without the shake effect the old full-page loading panel stays.
+  if (loading && !shake) {
     return <StatusMessage tone="loading" message={t('cyberki.choose.processing')} />;
   }
 
@@ -98,7 +132,12 @@ function ChooseToBeGiftedCyberek() {
   }
 
   return (
-    <div className="flex w-full flex-col items-center gap-10">
+    <div className="flex w-full flex-col items-center gap-10" aria-busy={loading || undefined}>
+      {loading && (
+        <p className="sr-only" role="status">
+          {t('cyberki.choose.opening', { boxId: openingBoxId })}
+        </p>
+      )}
       <PageHeader
         eyebrow={t('common.step.indicator', { current: 2, total: 2 })}
         title={t('cyberki.choose.title')}
@@ -107,6 +146,7 @@ function ChooseToBeGiftedCyberek() {
       <ul className="grid w-full max-w-5xl grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
         {boxIds.map((boxId) => {
           const available = availableIds.has(boxId);
+          const opening = openingBoxId === boxId;
           return (
             <li
               key={`gift-box-${boxId}`}
@@ -115,24 +155,33 @@ function ChooseToBeGiftedCyberek() {
                 available
                   ? 'hover:-translate-y-1 hover:border-gold/40'
                   : 'opacity-60 saturate-50',
+                opening && 'border-gold/60',
+                loading && !opening && 'opacity-50',
               )}
             >
               <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cream-muted">
                 {t('cyberki.choose.boxLabel', { boxId })}
               </span>
               {/* The box SVGs carry wide transparent padding — crop by scaling inside a square frame. */}
-              <span className="block aspect-square w-full overflow-hidden">
+              <span
+                ref={(element) => {
+                  if (element) boxRefs.current.set(boxId, element);
+                  else boxRefs.current.delete(boxId);
+                }}
+                className="block aspect-square w-full overflow-hidden"
+              >
                 <img
                   src={available ? CyberLosowanieClosed : CyberLosowanieOpen}
                   alt={t(available ? 'cyberki.choose.closedBoxAlt' : 'cyberki.choose.openBoxAlt', { boxId })}
                   className={cn(
                     'h-full w-full scale-[1.6] object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.45)] transition-transform duration-300',
-                    available && 'group-hover:scale-[1.7]',
+                    available && !loading && 'group-hover:scale-[1.7]',
+                    opening && 'animate-gift-shake',
                   )}
                 />
               </span>
               {available ? (
-                <Button className="w-full" onClick={() => handleSelect(boxId)}>
+                <Button className="w-full" disabled={loading} onClick={() => handleSelect(boxId)}>
                   <Gift aria-hidden />
                   {t('cyberki.choose.select')}
                 </Button>

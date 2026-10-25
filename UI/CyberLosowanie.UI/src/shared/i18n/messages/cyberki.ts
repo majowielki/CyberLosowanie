@@ -45,6 +45,12 @@ const pl = {
   'cyberki.proceed.step': 'Krok {step} z 3',
   'cyberki.proceed.done': 'Losowanie zakończone 🎁',
   'cyberki.proceed.signIn': 'Zaloguj się, aby zacząć',
+  'cyberki.film.label': 'Otwieranie prezentu',
+  'cyberki.film.status': 'Otwieramy Twoje pudełko…',
+  'cyberki.film.skip': 'Pomiń',
+  'cyberki.film.soundOn': 'Włącz dźwięk',
+  'cyberki.film.soundOff': 'Wycisz dźwięk',
+  'cyberki.choose.opening': 'Otwieramy pudełko {boxId}…',
 } as const;
 
 export type CyberkiKey = keyof typeof pl;
@@ -95,5 +101,11 @@ export const cyberki: MessageCatalog<CyberkiKey> = {
     'cyberki.proceed.step': 'Step {step} of 3',
     'cyberki.proceed.done': 'Draw complete 🎁',
     'cyberki.proceed.signIn': 'Sign in to start',
+    'cyberki.film.label': 'Opening your gift',
+    'cyberki.film.status': 'Opening your box…',
+    'cyberki.film.skip': 'Skip',
+    'cyberki.film.soundOn': 'Turn sound on',
+    'cyberki.film.soundOff': 'Mute sound',
+    'cyberki.choose.opening': 'Opening box {boxId}…',
   },
 };
