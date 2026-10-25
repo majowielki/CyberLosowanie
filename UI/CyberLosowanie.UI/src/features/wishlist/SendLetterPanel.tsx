@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { BellRing, Loader2, MailCheck, Send } from 'lucide-react';
 import {
   AlertDialog,
@@ -14,7 +14,10 @@ import { Label } from '@/shared/ui/label';
 import { toast } from '@/shared/hooks/use-toast';
 import { useTranslation } from '@/shared/i18n';
 import { wishlistModel } from '@/types';
+import { isEffectEnabled } from '@/shared/motion/cinematic';
 import { extractApiErrorMessage, useSendMyWishlistMutation } from './wishlistApi';
+import LetterFlight, { NotifyFlight } from './LetterFlight';
+import { captureLetterThumbnail } from './letterThumbnail';
 
 // Mirrors backend WishlistConstants.MAX_SANTA_NOTE_LENGTH.
 const MAX_NOTE_LENGTH = 300;
@@ -38,11 +41,31 @@ function SendLetterPanel({ wishlist }: { wishlist: wishlistModel }) {
   const canSend = !isSent || hasChanges;
   const blockedHint = canSend ? null : t('wishlist.letter.noChanges');
 
+  // After a successful send: the full letter flight (first send) or the small
+  // envelope off the button (notify). The toast follows the animation.
+  const [flight, setFlight] = useState<{ thumbnail: string | null } | null>(null);
+  const pendingToast = useRef<string | null>(null);
+  const [notifyFrom, setNotifyFrom] = useState<DOMRect | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
   const handleConfirm = async () => {
     try {
       await sendMyWishlist({ note: note.trim() || undefined }).unwrap();
-      toast({ description: isSent ? t('wishlist.letter.notified') : t('wishlist.letter.sent') });
-      setDialogOpen(false);
+      const message = isSent ? t('wishlist.letter.notified') : t('wishlist.letter.sent');
+      if (!isSent && isEffectEnabled('letterFlight')) {
+        // Read the page before anything re-renders; the dialog closes first so
+        // the overlay (and its focus) are not under Radix's modal layer.
+        const thumbnail = captureLetterThumbnail();
+        setDialogOpen(false);
+        window.requestAnimationFrame(() => setFlight({ thumbnail }));
+        pendingToast.current = message;
+      } else {
+        if (isSent && isEffectEnabled('letterNotifyFlight') && triggerRef.current) {
+          setNotifyFrom(triggerRef.current.getBoundingClientRect());
+        }
+        toast({ description: message });
+        setDialogOpen(false);
+      }
       setNote('');
     } catch (error) {
       toast({ variant: 'destructive', description: extractApiErrorMessage(error, t('wishlist.letter.sendFailed')) });
@@ -69,7 +92,23 @@ function SendLetterPanel({ wishlist }: { wishlist: wishlistModel }) {
         </div>
       </div>
 
+      {flight && (
+        <LetterFlight
+          thumbnail={flight.thumbnail}
+          onClose={() => {
+            setFlight(null);
+            if (pendingToast.current) {
+              toast({ description: pendingToast.current });
+              pendingToast.current = null;
+            }
+            triggerRef.current?.focus({ preventScroll: true });
+          }}
+        />
+      )}
+      {notifyFrom && <NotifyFlight from={notifyFrom} onDone={() => setNotifyFrom(null)} />}
+
       <Button
+        ref={triggerRef}
         variant={isSent ? 'glass' : 'default'}
         onClick={() => setDialogOpen(true)}
         disabled={!canSend || isLoading}

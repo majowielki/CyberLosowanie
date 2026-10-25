@@ -17,6 +17,7 @@ import WishlistEditor from './canvas/WishlistEditor';
 import WishlistViewer from './canvas/WishlistViewer';
 import { readWishlistDraft } from './canvas/wishlistDraft';
 import SendLetterPanel from './SendLetterPanel';
+import { LETTER_SOURCE_ATTR } from './letterThumbnail';
 
 const isConflictError = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'status' in error &&
@@ -134,7 +135,10 @@ function MyWishlistPage() {
         </p>
       )}
       <SendLetterPanel wishlist={saved} />
-      <WishlistViewer document={document} allowDownload ownerName={myName} ownerCyberekId={cyberekId} />
+      {/* Its first page becomes the letter in the "send to Santa" animation. */}
+      <div {...{ [LETTER_SOURCE_ATTR]: '' }}>
+        <WishlistViewer document={document} allowDownload ownerName={myName} ownerCyberekId={cyberekId} />
+      </div>
     </div>
   );
 }

@@ -165,3 +165,71 @@
     animation: none;
   }
 }
+
+/*
+ * Letter to Santa (LetterFlight): one 4.6 s timeline in CSS, each part with its
+ * own delay — the user's page folds, slides into the envelope, the flap closes,
+ * the wax seal stamps it and the envelope flies off to a star. Only mounted
+ * when motion is allowed (see src/shared/motion/cinematic.ts).
+ */
+.lf-envelope {
+  animation: lf-fly 1.25s cubic-bezier(0.55, 0, 0.75, 0.2) 2.45s both;
+}
+.lf-paper {
+  transform-origin: 50% 100%;
+  animation: lf-paper-in 1.3s cubic-bezier(0.3, 0.7, 0.3, 1) 0.2s both;
+}
+.lf-flap {
+  transform-origin: 50% 0;
+  animation: lf-flap-close 0.5s cubic-bezier(0.5, 0, 0.3, 1) 1.45s both;
+}
+.lf-seal {
+  animation: lf-stamp 0.45s cubic-bezier(0.3, 1.6, 0.5, 1) 1.95s both;
+}
+.lf-star {
+  animation: lf-star 1s ease-out 3.55s both;
+}
+.lf-caption {
+  animation: fade-up 0.6s ease-out 3.4s both;
+}
+@keyframes lf-paper-in {
+  0% { opacity: 0; transform: translateY(-40%) scaleY(1); }
+  12% { opacity: 1; transform: translateY(-40%) scaleY(1); }
+  45% { transform: translateY(-40%) scaleY(0.5); }
+  100% { opacity: 1; transform: translateY(0) scaleY(0.5); }
+}
+@keyframes lf-flap-close {
+  /* Open (folded up behind the paper) → closed over it; z-index swaps halfway. */
+  0% { transform: rotateX(180deg); z-index: 1; }
+  49% { z-index: 1; }
+  50% { z-index: 6; }
+  100% { transform: rotateX(0deg); z-index: 6; }
+}
+@keyframes lf-stamp {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(2.2) rotate(-20deg); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+}
+@keyframes lf-fly {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); filter: drop-shadow(0 0 0 transparent); }
+  20% { transform: translate(-4vw, 3vh) scale(0.95) rotate(4deg); }
+  100% {
+    transform: translate(var(--lf-to-x), var(--lf-to-y)) scale(0.08) rotate(-18deg);
+    filter: drop-shadow(0 0 18px hsl(var(--gold)));
+    opacity: 0.2;
+  }
+}
+@keyframes lf-star {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
+  35% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+  100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* "Tell Santa about changes": a small envelope hops off the button and flies away. */
+.lf-notify {
+  animation: lf-notify 1.1s cubic-bezier(0.5, 0, 0.7, 0.3) both;
+}
+@keyframes lf-notify {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  15% { opacity: 1; transform: translate(-50%, -80%) scale(1.1); }
+  100% { opacity: 0; transform: translate(calc(-50% + 30vw), -60vh) scale(0.4) rotate(-20deg); }
+}
