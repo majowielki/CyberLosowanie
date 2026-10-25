@@ -2,8 +2,8 @@ import { Button } from "@/shared/ui/button";
 import { PageHeader, StatusMessage } from "@/shared/components";
 import { cn } from "@/shared/lib/utils";
 import { Gift, PackageOpen } from "lucide-react";
-import CyberLosowanieClosed from "@/assets/CyberLosowanieClosed.svg";
-import CyberLosowanieOpen from "@/assets/CyberLosowanieOpen.svg";
+import boxClosed from "@/assets/gift-box-closed.webp";
+import boxOpen from "@/assets/gift-box-open.webp";
 import { useDispatch } from "react-redux";
 import {
   useGetCyberkiQuery,
@@ -162,7 +162,7 @@ function ChooseToBeGiftedCyberek() {
               <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cream-muted">
                 {t('cyberki.choose.boxLabel', { boxId })}
               </span>
-              {/* The box SVGs carry wide transparent padding — crop by scaling inside a square frame. */}
+              {/* 640 px WebP crops of the original box art (the old SVGs were 2.6 MB each). */}
               <span
                 ref={(element) => {
                   if (element) boxRefs.current.set(boxId, element);
@@ -171,11 +171,14 @@ function ChooseToBeGiftedCyberek() {
                 className="block aspect-square w-full overflow-hidden"
               >
                 <img
-                  src={available ? CyberLosowanieClosed : CyberLosowanieOpen}
+                  src={available ? boxClosed : boxOpen}
+                  width={640}
+                  height={640}
+                  decoding="async"
                   alt={t(available ? 'cyberki.choose.closedBoxAlt' : 'cyberki.choose.openBoxAlt', { boxId })}
                   className={cn(
-                    'h-full w-full scale-[1.6] object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.45)] transition-transform duration-300',
-                    available && !loading && 'group-hover:scale-[1.7]',
+                    'h-full w-full object-contain drop-shadow-[0_16px_24px_rgba(0,0,0,0.45)] transition-transform duration-300',
+                    available && !loading && 'group-hover:scale-[1.06]',
                     opening && 'animate-gift-shake',
                   )}
                 />

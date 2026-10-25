@@ -90,15 +90,14 @@ export default {
   				from: { opacity: '0', transform: 'scale(0.7)', filter: 'blur(16px)' },
   				to: { opacity: '1', transform: 'scale(1)', filter: 'blur(0)' }
   			},
-  			// Boxes page: the clicked box rattles while the draw request runs. Keeps
-  			// the 1.6x crop scale of the box image (see ChooseToBeGiftedCyberek).
+  			// Boxes page: the clicked box rattles while the draw request runs.
   			'gift-shake': {
-  				'0%, 100%': { transform: 'scale(1.6) rotate(0deg)' },
-  				'15%': { transform: 'scale(1.64) rotate(-4deg) translateY(-2%)' },
-  				'30%': { transform: 'scale(1.6) rotate(3deg)' },
-  				'45%': { transform: 'scale(1.66) rotate(-3deg) translateY(-3%)' },
-  				'60%': { transform: 'scale(1.6) rotate(2deg)' },
-  				'75%': { transform: 'scale(1.62) rotate(-1deg) translateY(-1%)' }
+  				'0%, 100%': { transform: 'scale(1) rotate(0deg)' },
+  				'15%': { transform: 'scale(1.03) rotate(-4deg) translateY(-2%)' },
+  				'30%': { transform: 'scale(1) rotate(3deg)' },
+  				'45%': { transform: 'scale(1.04) rotate(-3deg) translateY(-3%)' },
+  				'60%': { transform: 'scale(1) rotate(2deg)' },
+  				'75%': { transform: 'scale(1.01) rotate(-1deg) translateY(-1%)' }
   			}
   		},
   		animation: {
