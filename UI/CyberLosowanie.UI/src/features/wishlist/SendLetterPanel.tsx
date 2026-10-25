@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BellRing, Loader2, MailCheck, Send } from 'lucide-react';
 import {
   AlertDialog,
@@ -14,7 +14,8 @@ import { Label } from '@/shared/ui/label';
 import { toast } from '@/shared/hooks/use-toast';
 import { useTranslation } from '@/shared/i18n';
 import { wishlistModel } from '@/types';
-import { isEffectEnabled } from '@/shared/motion/cinematic';
+import { canPlayFilm, isEffectEnabled, prefetchWhenIdle } from '@/shared/motion/cinematic';
+import { letterSkyLoopSrc } from './letterSky';
 import { extractApiErrorMessage, useSendMyWishlistMutation } from './wishlistApi';
 import LetterFlight, { NotifyFlight } from './LetterFlight';
 import { captureLetterThumbnail } from './letterThumbnail';
@@ -47,6 +48,14 @@ function SendLetterPanel({ wishlist }: { wishlist: wishlistModel }) {
   const pendingToast = useRef<string | null>(null);
   const [notifyFrom, setNotifyFrom] = useState<DOMRect | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Before the first send, warm the cache with the moving sky so the flight starts smoothly.
+  useEffect(() => {
+    if (isSent || !isEffectEnabled('letterFlight') || !canPlayFilm('letterSkyLoop')) {
+      return;
+    }
+    return prefetchWhenIdle([letterSkyLoopSrc()]);
+  }, [isSent]);
 
   const handleConfirm = async () => {
     try {

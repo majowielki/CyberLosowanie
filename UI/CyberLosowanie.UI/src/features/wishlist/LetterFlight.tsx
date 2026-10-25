@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { Button } from '@/shared/ui/button';
 import { useTranslation } from '@/shared/i18n';
 import { cn } from '@/shared/lib/utils';
-import skyTall from '@/assets/cinematic/letter-sky-tall.webp';
-import skyWide from '@/assets/cinematic/letter-sky-wide.webp';
 import waxSeal from '@/assets/cinematic/wax-seal.webp';
+import { canPlayFilm } from '@/shared/motion/cinematic';
+import { LETTER_SKY, LETTER_SKY_WIDE_QUERY, letterSkyLoopSrc } from './letterSky';
 
 // The CSS timeline in index.css (.lf-*) ends at ~4.6 s.
 const DURATION_MS = 4700;
@@ -29,6 +29,8 @@ interface LetterFlightProps {
 function LetterFlight({ thumbnail, onClose }: LetterFlightProps) {
   const { t } = useTranslation();
   const [leaving, setLeaving] = useState<number | null>(null);
+  const [loopSrc] = useState(() => (canPlayFilm('letterSkyLoop') ? letterSkyLoopSrc() : null));
+  const [loopPlaying, setLoopPlaying] = useState(false);
   const skipRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -79,9 +81,29 @@ function LetterFlight({ thumbnail, onClose }: LetterFlightProps) {
       <p className="sr-only" role="status">{t('wishlist.flight.status')}</p>
 
       <picture aria-hidden>
-        <source media="(min-aspect-ratio: 1/1)" srcSet={skyWide} />
-        <img src={skyTall} alt="" className="absolute inset-0 h-full w-full object-cover opacity-90" />
+        <source media={LETTER_SKY_WIDE_QUERY} srcSet={LETTER_SKY.skyWide} />
+        <img src={LETTER_SKY.skyTall} alt="" className="absolute inset-0 h-full w-full object-cover opacity-90" />
       </picture>
+      {/* The same sky, alive (smoke, twinkling stars). Its first frame is the
+          still above, so it fades in without a jump; if it cannot play, the
+          still simply stays. */}
+      {loopSrc && (
+        <video
+          aria-hidden
+          src={loopSrc}
+          muted
+          loop
+          autoPlay
+          playsInline
+          preload="auto"
+          disablePictureInPicture
+          onPlaying={() => setLoopPlaying(true)}
+          className={cn(
+            'absolute inset-0 h-full w-full object-cover transition-opacity duration-500',
+            loopPlaying ? 'opacity-90' : 'opacity-0',
+          )}
+        />
+      )}
       {/* Falling snow over the sky, same as the app's backdrop. */}
       <div aria-hidden className="snow-layer snow-layer--mid" />
       <div aria-hidden className="snow-layer snow-layer--near" />
@@ -120,7 +142,8 @@ function LetterFlight({ thumbnail, onClose }: LetterFlightProps) {
           {/* Front pocket. */}
           <svg viewBox="0 0 300 200" className="absolute inset-0 z-[4] h-full w-full">
             <path
-              d="M2 72 L150 132 L298 72 L298 188 Q298 198 288 198 L12 198 Q2 198 2 188 Z"
+              // Side and bottom flaps up to the top corners: the letter shows only through the V.
+              d="M2 6 L150 122 L298 6 L298 188 Q298 198 288 198 L12 198 Q2 198 2 188 Z"
               fill="#f5e8cf"
               stroke={INK}
               strokeWidth="3"

@@ -16,6 +16,8 @@ export const CINEMATIC = {
   giftSound: true,
   /** Letter folds into an envelope and flies into the night sky after the first send. */
   letterFlight: true,
+  /** The night sky behind the letter flight moves (smoke, stars) instead of staying a still. */
+  letterSkyLoop: true,
   /** Small envelope flying off the button after "tell Santa about changes". */
   letterNotifyFlight: true,
   /** Landing: the tree's fairy lights switch on from the star down, then twinkle. */
