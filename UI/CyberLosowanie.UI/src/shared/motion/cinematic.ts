@@ -18,6 +18,8 @@ export const CINEMATIC = {
   letterFlight: true,
   /** Small envelope flying off the button after "tell Santa about changes". */
   letterNotifyFlight: true,
+  /** Landing: the tree's fairy lights switch on from the star down, then twinkle. */
+  treeLights: true,
 } as const;
 
 export type CinematicEffect = keyof typeof CINEMATIC;

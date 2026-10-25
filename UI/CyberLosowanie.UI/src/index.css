@@ -233,3 +233,37 @@
   15% { opacity: 1; transform: translate(-50%, -80%) scale(1.1); }
   100% { opacity: 0; transform: translate(calc(-50% + 30vw), -60vh) scale(0.4) rotate(-20deg); }
 }
+
+/*
+ * Landing tree lights (HeroTree): a warm glow over each bulb of the artwork.
+ * Switching on animates opacity + scale, twinkling only the brightness, so the
+ * two animations never fight over a property. Not rendered for reduced motion.
+ */
+.tree-light {
+  position: absolute;
+  width: 3.4%;
+  aspect-ratio: 1;
+  margin-left: -1.7%;
+  margin-top: -1.7%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, hsl(48 100% 97%) 0 14%, hsl(45 100% 78% / 0.75) 32%, hsl(42 95% 62% / 0) 70%);
+  mix-blend-mode: screen;
+  animation:
+    tree-light-on 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) var(--on, 0s) both,
+    tree-light-twinkle var(--tw, 2.6s) ease-in-out calc(var(--on, 0s) + 0.7s) infinite alternate;
+}
+.tree-light--star {
+  width: 16%;
+  margin-left: -8%;
+  margin-top: -8%;
+  background: radial-gradient(circle, hsl(50 100% 92% / 0.85) 0 10%, hsl(var(--gold) / 0.45) 30%, transparent 68%);
+}
+@keyframes tree-light-on {
+  0% { opacity: 0; scale: 0.2; }
+  60% { opacity: 1; scale: 1.35; }
+  100% { opacity: 1; scale: 1; }
+}
+@keyframes tree-light-twinkle {
+  from { filter: brightness(1.1); }
+  to { filter: brightness(0.55); }
+}
