@@ -12,10 +12,28 @@ export interface PreparedImage {
   height: number;
 }
 
-const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+/** Formats the server stores as they are. */
+const UPLOADABLE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+/**
+ * Formats offered in the picker on top of those: phone cameras often save HEIC
+ * and screenshots or downloads come as AVIF/GIF/BMP. A picker limited to the
+ * three uploadable types simply hides such photos, so they are offered and
+ * re-encoded here whenever the browser can decode them (Safari reads HEIC,
+ * Chrome does not — that case ends in the badType message).
+ */
+const CONVERTIBLE_IMAGE_TYPES = ['image/heic', 'image/heif', 'image/avif', 'image/gif', 'image/bmp'];
 
 /** Input accept attribute for the hidden file picker. */
-export const IMAGE_FILE_ACCEPT = ACCEPTED_IMAGE_TYPES.join(',');
+export const IMAGE_FILE_ACCEPT = [
+  ...UPLOADABLE_IMAGE_TYPES,
+  ...CONVERTIBLE_IMAGE_TYPES,
+  // Some systems report HEIC with an empty MIME type; the extension still matches.
+  '.heic',
+  '.heif',
+].join(',');
+
+const HEIC_EXTENSION = /\.hei[cf]$/i;
 
 /**
  * Prepares a picked file for upload: rejects non-image types up front, then
@@ -26,19 +44,23 @@ export const IMAGE_FILE_ACCEPT = ACCEPTED_IMAGE_TYPES.join(',');
  * editor needs to place the image on the canvas.
  */
 export async function prepareImageForUpload(file: File): Promise<PreparedImage> {
-  if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+  const uploadable = UPLOADABLE_IMAGE_TYPES.includes(file.type);
+  const convertible = CONVERTIBLE_IMAGE_TYPES.includes(file.type) || HEIC_EXTENSION.test(file.name);
+  if (!uploadable && !convertible) {
     throw new TranslatableError('wishlist.image.badType');
   }
 
   const bitmap = await createImageBitmap(file).catch(() => {
-    throw new TranslatableError('wishlist.image.readFailed');
+    // A format the browser cannot decode (HEIC outside Safari) is a format
+    // problem for the user, not a broken file.
+    throw new TranslatableError(uploadable ? 'wishlist.image.readFailed' : 'wishlist.image.badType');
   });
 
   try {
     const longerEdge = Math.max(bitmap.width, bitmap.height);
     const needsDownscale = longerEdge > IMAGE_DOWNSCALE_MAX_EDGE;
 
-    if (!needsDownscale && file.size <= MAX_IMAGE_UPLOAD_BYTES) {
+    if (uploadable && !needsDownscale && file.size <= MAX_IMAGE_UPLOAD_BYTES) {
       return { file, width: bitmap.width, height: bitmap.height };
     }
 

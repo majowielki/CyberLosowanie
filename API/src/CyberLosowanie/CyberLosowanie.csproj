@@ -23,8 +23,30 @@
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 
+  <!-- The React UI is served from wwwroot. It ships from a fresh production build made
+       at publish time (PublishSpa), never from whatever happens to sit in wwwroot locally.
+       `dotnet publish -p:SkipSpaBuild=true` skips it, e.g. when a pipeline builds the UI itself. -->
+  <PropertyGroup>
+    <SpaRoot>..\..\..\UI\CyberLosowanie.UI\</SpaRoot>
+  </PropertyGroup>
+
   <ItemGroup>
-    <Folder Include="wwwroot\assets\" />
+    <Content Remove="wwwroot\**" />
+    <None Remove="wwwroot\**" />
   </ItemGroup>
+
+  <Target Name="PublishSpa" AfterTargets="ComputeFilesToPublish" Condition="'$(SkipSpaBuild)' != 'true'">
+    <!-- Only on a fresh checkout: `npm ci` wipes node_modules, which a running dev server keeps locked. -->
+    <Exec WorkingDirectory="$(SpaRoot)" Command="npm ci" Condition="!Exists('$(SpaRoot)node_modules')" />
+    <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build" />
+    <ItemGroup>
+      <SpaDistFiles Include="$(SpaRoot)dist\**" />
+      <ResolvedFileToPublish Include="@(SpaDistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 
 </Project>

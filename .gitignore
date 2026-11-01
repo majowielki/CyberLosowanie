@@ -64,6 +64,11 @@ dist-ssr/
 .env
 .env.*
 !.env.example
+# Production build settings hold no secrets — the API base URL only.
+!.env.production
+
+# The UI is built into the API's wwwroot at publish time (CyberLosowanie.csproj).
+API/src/CyberLosowanie/wwwroot/
 
 # Logs
 npm-debug.log*
