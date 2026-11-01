@@ -30,7 +30,14 @@ if (!string.IsNullOrWhiteSpace(keyVaultUri))
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    // Azure SQL occasionally drops a single connection; retry transient failures instead
+    // of failing the request. Kept short so a real outage still surfaces within seconds.
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null));
 });
 
 // Register repositories

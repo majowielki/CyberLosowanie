@@ -3,7 +3,6 @@ using CyberLosowanie.Interfaces.Repositories;
 using CyberLosowanie.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CyberLosowanie.Repositories
 {
@@ -60,9 +59,26 @@ namespace CyberLosowanie.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task<IDbContextTransaction> BeginTransactionAsync()
+        // The retrying execution strategy (EnableRetryOnFailure) refuses user-initiated
+        // transactions unless the whole unit runs through it, since a retry has to replay
+        // everything from BEGIN. Entities tracked by a failed attempt are dropped first so
+        // the replay reads the database again instead of trusting in-memory changes.
+        public Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation)
         {
-            return await _context.Database.BeginTransactionAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
+            var attempt = 0;
+            return strategy.ExecuteAsync(async () =>
+            {
+                if (attempt++ > 0)
+                {
+                    _context.ChangeTracker.Clear();
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                var result = await operation();
+                await transaction.CommitAsync();
+                return result;
+            });
         }
     }
 }

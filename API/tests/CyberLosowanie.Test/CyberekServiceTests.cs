@@ -5,7 +5,6 @@ using CyberLosowanie.Interfaces.Services;
 using CyberLosowanie.Models;
 using CyberLosowanie.Services;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -37,7 +36,34 @@ namespace CyberLosowanie.Test
                 _santa.Object);
         }
 
-        private static Mock<IDbContextTransaction> MockTransaction() => new();
+        private sealed class TransactionProbe
+        {
+            public int Commits { get; set; }
+            public int RolledBack { get; set; }
+        }
+
+        // Stands in for the repository's transactional unit of work: runs the operation
+        // once and records whether it ended in a commit or a rollback.
+        private TransactionProbe RunTransactionsInline<T>()
+        {
+            var probe = new TransactionProbe();
+            _userRepo.Setup(r => r.ExecuteInTransactionAsync(It.IsAny<Func<Task<T>>>()))
+                .Returns(async (Func<Task<T>> operation) =>
+                {
+                    try
+                    {
+                        var result = await operation();
+                        probe.Commits++;
+                        return result;
+                    }
+                    catch
+                    {
+                        probe.RolledBack++;
+                        throw;
+                    }
+                });
+            return probe;
+        }
 
         private static Cyberek Cyberek(int id, int gifted = 0, List<int>? banned = null) => new()
         {
@@ -322,7 +348,7 @@ namespace CyberLosowanie.Test
             var result = await service.AssignCyberekToUserAsync("john", 5);
 
             result.Should().BeFalse();
-            _userRepo.Verify(r => r.BeginTransactionAsync(), Times.Never);
+            _userRepo.Verify(r => r.ExecuteInTransactionAsync(It.IsAny<Func<Task<bool>>>()), Times.Never);
         }
 
         [Fact]
@@ -340,8 +366,7 @@ namespace CyberLosowanie.Test
             var user = new ApplicationUser { CyberekId = 0, Id = "u1" };
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
             _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<bool>();
 
             // Prime the cache so we can assert it gets invalidated.
             _cyberekRepo.Setup(r => r.GetAllAsync()).ReturnsAsync(new List<Cyberek> { Cyberek(1) });
@@ -352,7 +377,7 @@ namespace CyberLosowanie.Test
 
             result.Should().BeTrue();
             user.CyberekId.Should().Be(5);
-            tx.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+            tx.Commits.Should().Be(1);
             _userRepo.Verify(r => r.SaveChangesAsync(), Times.Once);
 
             // Cache invalidated: the next read hits the repository again.
@@ -373,7 +398,7 @@ namespace CyberLosowanie.Test
 
             ex.CyberekId.Should().Be(5);
             user.CyberekId.Should().Be(0);
-            _userRepo.Verify(r => r.BeginTransactionAsync(), Times.Never);
+            _userRepo.Verify(r => r.ExecuteInTransactionAsync(It.IsAny<Func<Task<bool>>>()), Times.Never);
         }
 
         [Fact]
@@ -382,13 +407,12 @@ namespace CyberLosowanie.Test
             var user = new ApplicationUser { CyberekId = 0, Id = "u1" };
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
             _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<bool>();
             _userRepo.Setup(r => r.SaveChangesAsync()).ThrowsAsync(SqlExceptionFactory.UniqueIndexViolation());
             var service = CreateService();
 
             await Assert.ThrowsAsync<CyberekTakenException>(() => service.AssignCyberekToUserAsync("john", 5));
-            tx.Verify(t => t.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
+            tx.RolledBack.Should().Be(1);
         }
 
         [Fact]
@@ -397,13 +421,12 @@ namespace CyberLosowanie.Test
             var user = new ApplicationUser { CyberekId = 0, Id = "u1" };
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
             _cyberekRepo.Setup(r => r.GetByIdAsync(5)).ReturnsAsync(Cyberek(5));
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<bool>();
             _userRepo.Setup(r => r.SaveChangesAsync()).ThrowsAsync(new Exception("save failed"));
             var service = CreateService();
 
             await Assert.ThrowsAsync<DataAccessException>(() => service.AssignCyberekToUserAsync("john", 5));
-            tx.Verify(t => t.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
+            tx.RolledBack.Should().Be(1);
         }
 
         #endregion
@@ -436,8 +459,7 @@ namespace CyberLosowanie.Test
             // The giver (cyberek 1) already has a gift assigned in the transactional snapshot.
             _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1, gifted: 7), Cyberek(5) });
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<int>();
             var service = CreateService();
 
             await Assert.ThrowsAsync<InvalidGiftAssignmentException>(() => service.AssignGiftAsync("john", 5));
@@ -449,8 +471,7 @@ namespace CyberLosowanie.Test
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 1, Id = "u1" });
             _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(5) });
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<int>();
             var service = CreateService();
 
             await Assert.ThrowsAsync<BusinessValidationException>(() => service.AssignGiftAsync("john", 1));
@@ -462,8 +483,7 @@ namespace CyberLosowanie.Test
             _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { CyberekId = 1, Id = "u1" });
             _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1, banned: new List<int> { 5 }), Cyberek(5) });
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<int>();
             var service = CreateService();
 
             await Assert.ThrowsAsync<BusinessValidationException>(() => service.AssignGiftAsync("john", 5));
@@ -476,8 +496,7 @@ namespace CyberLosowanie.Test
             // Cyberek 3 already gifts 5 — the chosen box is gone (concurrent draw).
             _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(3, gifted: 5), Cyberek(5) });
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<int>();
             var service = CreateService();
 
             await Assert.ThrowsAsync<GiftTargetUnavailableException>(() => service.AssignGiftAsync("john", 5));
@@ -491,12 +510,11 @@ namespace CyberLosowanie.Test
                 .ReturnsAsync(new List<Cyberek> { Cyberek(1), Cyberek(5) });
             _gifting.Setup(g => g.IsChoiceSafe(It.IsAny<IReadOnlyList<Cyberek>>(), It.Is<Cyberek>(c => c.Id == 1), 5))
                 .Returns(false);
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<int>();
             var service = CreateService();
 
             await Assert.ThrowsAsync<GiftTargetUnavailableException>(() => service.AssignGiftAsync("john", 5));
-            tx.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+            tx.Commits.Should().Be(0);
         }
 
         [Fact]
@@ -509,8 +527,7 @@ namespace CyberLosowanie.Test
                 .ReturnsAsync(new List<Cyberek> { giver, Cyberek(5) });
             _gifting.Setup(g => g.IsChoiceSafe(It.IsAny<IReadOnlyList<Cyberek>>(), It.Is<Cyberek>(c => c.Id == 1), 5))
                 .Returns(true);
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<int>();
             var service = CreateService();
 
             var result = await service.AssignGiftAsync("john", 5);
@@ -519,7 +536,7 @@ namespace CyberLosowanie.Test
             result.Should().Be(5);
             giver.GiftedCyberekId.Should().Be(5);
             user.GiftedCyberekId.Should().Be(5);
-            tx.Verify(t => t.CommitAsync(It.IsAny<CancellationToken>()), Times.Once);
+            tx.Commits.Should().Be(1);
             // The validate+commit section must run under the serialized draw lock.
             _cyberekRepo.Verify(r => r.AcquireDrawLockAsync(), Times.Once);
             // A letter sent before the draw reaches the new Santa right away.
@@ -536,12 +553,11 @@ namespace CyberLosowanie.Test
             _gifting.Setup(g => g.IsChoiceSafe(It.IsAny<IReadOnlyList<Cyberek>>(), It.IsAny<Cyberek>(), 5))
                 .Returns(true);
             _cyberekRepo.Setup(r => r.SaveChangesAsync()).ThrowsAsync(new Exception("save failed"));
-            var tx = MockTransaction();
-            _userRepo.Setup(r => r.BeginTransactionAsync()).ReturnsAsync(tx.Object);
+            var tx = RunTransactionsInline<int>();
             var service = CreateService();
 
             await Assert.ThrowsAsync<DataAccessException>(() => service.AssignGiftAsync("john", 5));
-            tx.Verify(t => t.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
+            tx.RolledBack.Should().Be(1);
         }
 
         #endregion

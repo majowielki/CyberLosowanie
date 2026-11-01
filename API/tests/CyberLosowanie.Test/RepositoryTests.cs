@@ -86,12 +86,12 @@ namespace CyberLosowanie.Test
             using var db = new SqliteTestDatabase();
             var repo = new ApplicationUserRepository(db.Context, IdentityMocks.MockUserManager().Object);
 
-            using (var transaction = await repo.BeginTransactionAsync())
+            await repo.ExecuteInTransactionAsync(async () =>
             {
                 db.Context.Users.Add(new ApplicationUser { UserName = "committed" });
                 await repo.SaveChangesAsync();
-                await transaction.CommitAsync(TestContext.Current.CancellationToken);
-            }
+                return true;
+            });
 
             using var verify = db.NewContext();
             (await verify.Users.AnyAsync(u => u.UserName == "committed", TestContext.Current.CancellationToken)).Should().BeTrue();
@@ -103,12 +103,13 @@ namespace CyberLosowanie.Test
             using var db = new SqliteTestDatabase();
             var repo = new ApplicationUserRepository(db.Context, IdentityMocks.MockUserManager().Object);
 
-            using (var transaction = await repo.BeginTransactionAsync())
+            var act = () => repo.ExecuteInTransactionAsync<bool>(async () =>
             {
                 db.Context.Users.Add(new ApplicationUser { UserName = "rolledback" });
                 await repo.SaveChangesAsync();
-                await transaction.RollbackAsync(TestContext.Current.CancellationToken);
-            }
+                throw new InvalidOperationException("validation failed after the write");
+            });
+            await act.Should().ThrowAsync<InvalidOperationException>();
 
             using var verify = db.NewContext();
             (await verify.Users.AnyAsync(u => u.UserName == "rolledback", TestContext.Current.CancellationToken)).Should().BeFalse();

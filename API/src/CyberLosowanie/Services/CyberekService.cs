@@ -270,29 +270,19 @@ namespace CyberLosowanie.Services
             }
 
             // Use database transaction for data consistency
-            using var transaction = await _userRepository.BeginTransactionAsync();
             try
             {
-                applicationUser.CyberekId = cyberekId;
-                await _userRepository.UpdateAsync(applicationUser);
-                await _userRepository.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                // Invalidate cache after data changes
-                _cache.Remove(ALL_CYBERKI_CACHE_KEY);
-
-                // Log successful assignment
-                await _auditService.LogInformationAsync(
-                    $"User {userName} assigned to cyberek {cyberekId}",
-                    additionalData: new { UserId = applicationUser.Id, CyberekId = cyberekId }
-                );
-
-                return true;
+                await _userRepository.ExecuteInTransactionAsync(async () =>
+                {
+                    applicationUser.CyberekId = cyberekId;
+                    await _userRepository.UpdateAsync(applicationUser);
+                    await _userRepository.SaveChangesAsync();
+                    return true;
+                });
             }
             catch (DbUpdateException dbEx) when (IsUniqueIndexConflict(dbEx))
             {
                 // Lost a race with another pick of the same cyberek (unique index on CyberekId).
-                await transaction.RollbackAsync();
                 _logger.LogWarning(dbEx, "Unique-index conflict while assigning cyberek {CyberekId} to user {UserName}", cyberekId, userName);
                 await _auditService.LogErrorAsync(dbEx, null, applicationUser.Id, userName);
 
@@ -300,7 +290,6 @@ namespace CyberLosowanie.Services
             }
             catch (Exception ex) when (ex is not DomainException)
             {
-                await transaction.RollbackAsync();
                 _logger.LogError(ex, "Failed to assign cyberek {CyberekId} to user {UserName}", cyberekId, userName);
 
                 // Log failed assignment
@@ -308,6 +297,17 @@ namespace CyberLosowanie.Services
 
                 throw new DataAccessException("Failed to assign cyberek to user", ex);
             }
+
+            // Invalidate cache after data changes
+            _cache.Remove(ALL_CYBERKI_CACHE_KEY);
+
+            // Log successful assignment
+            await _auditService.LogInformationAsync(
+                $"User {userName} assigned to cyberek {cyberekId}",
+                additionalData: new { UserId = applicationUser.Id, CyberekId = cyberekId }
+            );
+
+            return true;
         }
 
         /// <summary>
@@ -337,99 +337,86 @@ namespace CyberLosowanie.Services
                 throw ex;
             }
 
-            using var transaction = await _userRepository.BeginTransactionAsync();
             try
             {
-                // One draw commit at a time: two users validating different targets against
-                // the same snapshot can each pass alone yet jointly strand a third person.
-                await _cyberekRepository.AcquireDrawLockAsync();
-
-                // Tracked read (F4): entities are change-tracked so the mutation below
-                // is saved directly, not via a detached AsNoTracking instance.
-                var cyberkiList = await _cyberekRepository.GetAllForUpdateAsync();
-
-                var giver = cyberkiList.FirstOrDefault(c => c.Id == applicationUser.CyberekId);
-                if (giver == null)
+                await _userRepository.ExecuteInTransactionAsync(async () =>
                 {
-                    var ex = new CyberekNotFoundException(applicationUser.CyberekId);
-                    await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
-                    throw ex;
-                }
+                    // One draw commit at a time: two users validating different targets against
+                    // the same snapshot can each pass alone yet jointly strand a third person.
+                    await _cyberekRepository.AcquireDrawLockAsync();
 
-                if (giver.GiftedCyberekId != 0)
-                {
-                    var ex = new InvalidGiftAssignmentException(
-                        giver.Id,
-                        giver.GiftedCyberekId,
-                        CyberLosowanieConstants.GIFT_ALREADY_ASSIGNED);
-                    await _auditService.LogWarningAsync(
-                        "AssignGiftAsync called but gift already assigned for cyberek.",
-                        userId: applicationUser.Id,
-                        userName: userName);
-                    throw ex;
-                }
+                    // Tracked read (F4): entities are change-tracked so the mutation below
+                    // is saved directly, not via a detached AsNoTracking instance.
+                    var cyberkiList = await _cyberekRepository.GetAllForUpdateAsync();
 
-                // Self/banned targets are never shown as available — an honest client
-                // cannot send them. Treat as a bad request, not a race.
-                if (chosenTargetId == giver.Id || giver.BannedCyberki?.Contains(chosenTargetId) == true)
-                {
-                    await _auditService.LogWarningAsync(
-                        "AssignGiftAsync called with a target that is never allowed for this giver (self or banned).",
-                        userId: applicationUser.Id,
-                        userName: userName,
-                        additionalData: new { GiverCyberekId = giver.Id, ChosenTargetId = chosenTargetId });
-                    throw new BusinessValidationException("The chosen target is not allowed for this user.");
-                }
+                    var giver = cyberkiList.FirstOrDefault(c => c.Id == applicationUser.CyberekId);
+                    if (giver == null)
+                    {
+                        var ex = new CyberekNotFoundException(applicationUser.CyberekId);
+                        await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
+                        throw ex;
+                    }
 
-                // Race outcomes → 409: the box was available when displayed but is not anymore.
-                if (cyberkiList.Any(c => c.GiftedCyberekId == chosenTargetId))
-                {
-                    await _auditService.LogWarningAsync(
-                        "AssignGiftAsync race: chosen target already taken.",
-                        userId: applicationUser.Id,
-                        userName: userName,
-                        additionalData: new { GiverCyberekId = giver.Id, ChosenTargetId = chosenTargetId });
-                    throw new GiftTargetUnavailableException(giver.Id, chosenTargetId,
-                        "This box has just been taken by another participant. Refresh the list and choose a different one.");
-                }
+                    if (giver.GiftedCyberekId != 0)
+                    {
+                        var ex = new InvalidGiftAssignmentException(
+                            giver.Id,
+                            giver.GiftedCyberekId,
+                            CyberLosowanieConstants.GIFT_ALREADY_ASSIGNED);
+                        await _auditService.LogWarningAsync(
+                            "AssignGiftAsync called but gift already assigned for cyberek.",
+                            userId: applicationUser.Id,
+                            userName: userName);
+                        throw ex;
+                    }
 
-                if (!_giftingService.IsChoiceSafe(cyberkiList, giver, chosenTargetId))
-                {
-                    await _auditService.LogWarningAsync(
-                        "AssignGiftAsync race: chosen target would strand another participant.",
-                        userId: applicationUser.Id,
-                        userName: userName,
-                        additionalData: new { GiverCyberekId = giver.Id, ChosenTargetId = chosenTargetId });
-                    throw new GiftTargetUnavailableException(giver.Id, chosenTargetId,
-                        "Choosing this box would leave another participant without any valid option. Refresh the list and choose a different one.");
-                }
+                    // Self/banned targets are never shown as available — an honest client
+                    // cannot send them. Treat as a bad request, not a race.
+                    if (chosenTargetId == giver.Id || giver.BannedCyberki?.Contains(chosenTargetId) == true)
+                    {
+                        await _auditService.LogWarningAsync(
+                            "AssignGiftAsync called with a target that is never allowed for this giver (self or banned).",
+                            userId: applicationUser.Id,
+                            userName: userName,
+                            additionalData: new { GiverCyberekId = giver.Id, ChosenTargetId = chosenTargetId });
+                        throw new BusinessValidationException("The chosen target is not allowed for this user.");
+                    }
 
-                giver.GiftedCyberekId = chosenTargetId;
-                applicationUser.GiftedCyberekId = chosenTargetId;
+                    // Race outcomes → 409: the box was available when displayed but is not anymore.
+                    if (cyberkiList.Any(c => c.GiftedCyberekId == chosenTargetId))
+                    {
+                        await _auditService.LogWarningAsync(
+                            "AssignGiftAsync race: chosen target already taken.",
+                            userId: applicationUser.Id,
+                            userName: userName,
+                            additionalData: new { GiverCyberekId = giver.Id, ChosenTargetId = chosenTargetId });
+                        throw new GiftTargetUnavailableException(giver.Id, chosenTargetId,
+                            "This box has just been taken by another participant. Refresh the list and choose a different one.");
+                    }
 
-                await _cyberekRepository.UpdateAsync(giver);
-                await _userRepository.UpdateAsync(applicationUser);
-                await _cyberekRepository.SaveChangesAsync();
-                await transaction.CommitAsync();
+                    if (!_giftingService.IsChoiceSafe(cyberkiList, giver, chosenTargetId))
+                    {
+                        await _auditService.LogWarningAsync(
+                            "AssignGiftAsync race: chosen target would strand another participant.",
+                            userId: applicationUser.Id,
+                            userName: userName,
+                            additionalData: new { GiverCyberekId = giver.Id, ChosenTargetId = chosenTargetId });
+                        throw new GiftTargetUnavailableException(giver.Id, chosenTargetId,
+                            "Choosing this box would leave another participant without any valid option. Refresh the list and choose a different one.");
+                    }
 
-                // Invalidate cache after successful data changes
-                _cache.Remove(ALL_CYBERKI_CACHE_KEY);
-                _logger.LogInformation("Gift assignment committed for user {UserName}", userName);
+                    giver.GiftedCyberekId = chosenTargetId;
+                    applicationUser.GiftedCyberekId = chosenTargetId;
 
-                // Log successful gift assignment
-                await _auditService.LogInformationAsync(
-                    $"Gift assignment completed: {userName} -> Cyberek {chosenTargetId}");
-
-                // A letter sent before this draw reaches its Santa now. Never throws
-                // (best-effort), so it cannot trip the rollback below after the commit.
-                await _santaNotificationService.NotifyAfterDrawAsync(applicationUser.Id, chosenTargetId);
-
-                return chosenTargetId;
+                    await _cyberekRepository.UpdateAsync(giver);
+                    await _userRepository.UpdateAsync(applicationUser);
+                    await _cyberekRepository.SaveChangesAsync();
+                    return chosenTargetId;
+                });
             }
             catch (DbUpdateException dbEx) when (IsUniqueIndexConflict(dbEx))
             {
                 // Last line of defense — with the draw lock in place this should not happen.
-                await transaction.RollbackAsync();
                 _logger.LogWarning(dbEx, "Unique-index conflict while committing gift for user {UserName}", userName);
                 await _auditService.LogErrorAsync(dbEx, null, applicationUser.Id, userName);
 
@@ -439,13 +426,27 @@ namespace CyberLosowanie.Services
             }
             catch (Exception ex) when (ex is not DomainException)
             {
-                await transaction.RollbackAsync();
                 _logger.LogError(ex, "Failed to assign gift for user {UserName}", userName);
 
                 await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
 
                 throw new DataAccessException("Failed to assign gift", ex);
             }
+
+            // Invalidate cache after successful data changes
+            _cache.Remove(ALL_CYBERKI_CACHE_KEY);
+            _logger.LogInformation("Gift assignment committed for user {UserName}", userName);
+
+            // Log successful gift assignment
+            await _auditService.LogInformationAsync(
+                $"Gift assignment completed: {userName} -> Cyberek {chosenTargetId}");
+
+            // A letter sent before this draw reaches its Santa now. Never throws
+            // (best-effort), and it runs after the commit, so a retried transaction
+            // cannot send it twice.
+            await _santaNotificationService.NotifyAfterDrawAsync(applicationUser.Id, chosenTargetId);
+
+            return chosenTargetId;
         }
 
         private static bool IsUniqueIndexConflict(DbUpdateException ex)

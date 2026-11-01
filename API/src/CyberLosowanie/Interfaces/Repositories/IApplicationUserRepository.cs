@@ -1,5 +1,4 @@
 using CyberLosowanie.Models;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CyberLosowanie.Interfaces.Repositories
 {
@@ -15,6 +14,11 @@ namespace CyberLosowanie.Interfaces.Repositories
         Task<ApplicationUser?> GetOwnerOfCyberekAsync(int cyberekId);
         Task UpdateAsync(ApplicationUser user);
         Task SaveChangesAsync();
-        Task<IDbContextTransaction> BeginTransactionAsync();
+        /// <summary>
+        /// Runs <paramref name="operation"/> in a database transaction that is committed when it
+        /// completes and rolled back when it throws. A transient connection failure replays the
+        /// whole operation, so it must re-read the state it validates rather than reuse it.
+        /// </summary>
+        Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation);
     }
 }
