@@ -17,8 +17,12 @@ sessionChange.startListening({
   matcher: isAnyOf(setLoggedInUser, resetUser),
   effect: (action, listenerApi) => {
     const previous = (listenerApi.getOriginalState() as { userAuthStore: userModel }).userAuthStore;
-    if (setLoggedInUser.match(action) && action.payload.id === previous.id) {
-      return; // same person (session restored from the token)
+    // Only when the session leaves a person behind. Signing in from a signed-out
+    // state (incl. the session restored from the token on page load) has nothing to
+    // drop — logout already did — and resetting then would cut the page's first
+    // requests mid-flight, which RTK Query does not restart.
+    if (!previous.id || (setLoggedInUser.match(action) && action.payload.id === previous.id)) {
+      return;
     }
     listenerApi.dispatch(cyberLosowanieApi.util.resetApiState());
     listenerApi.dispatch(wishlistApi.util.resetApiState());

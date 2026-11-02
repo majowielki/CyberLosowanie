@@ -41,6 +41,16 @@ describe('store — session changes', () => {
     expect(cachedDrawResult()).toBeUndefined();
   });
 
+  it('keeps them when signing in from a signed-out state (session restored on page load)', async () => {
+    store.dispatch(resetUser());
+    // The page's first requests are already under way when the token is read.
+    await cacheDrawResult('Karol');
+
+    signIn('anna');
+
+    expect(cachedDrawResult()).toBe('Karol');
+  });
+
   it('keeps them when the same session is restored', async () => {
     signIn('anna');
     await cacheDrawResult('Karol');
