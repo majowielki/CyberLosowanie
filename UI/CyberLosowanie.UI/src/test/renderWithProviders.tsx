@@ -33,12 +33,18 @@ export function renderWithProviders(
     store.dispatch(setLoggedInUser({ ...emptyUserState, ...user }));
   }
 
+  const entry = routeState === undefined ? route : { pathname: route, state: routeState };
+  const wrap = (element: ReactElement) => (
+    <Provider store={store}>
+      <MemoryRouter initialEntries={[entry]}>{element}</MemoryRouter>
+    </Provider>
+  );
+  const result = render(wrap(ui));
+
   return {
     store,
-    ...render(
-      <Provider store={store}>
-        <MemoryRouter initialEntries={[routeState === undefined ? route : { pathname: route, state: routeState }]}>{ui}</MemoryRouter>
-      </Provider>,
-    ),
+    ...result,
+    /** Re-renders inside the same providers, so component state is kept. */
+    rerender: (element: ReactElement) => result.rerender(wrap(element)),
   };
 }

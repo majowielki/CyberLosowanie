@@ -9,11 +9,13 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock };
 });
 
+const asia = { data: { data: { id: 5, name: 'Asia' } }, isFetching: false, error: undefined };
+const myGiftedQueryMock = vi.fn();
 vi.mock('./cyberLosowanieApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./cyberLosowanieApi')>();
   return {
     ...actual,
-    useGetMyGiftedCyberekQuery: () => ({ data: { data: { id: 5, name: 'Asia' } }, isLoading: false, error: undefined }),
+    useGetMyGiftedCyberekQuery: (...args: unknown[]) => myGiftedQueryMock(...args),
   };
 });
 
@@ -35,6 +37,7 @@ describe('FinalPage', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     canPlayFilmMock.mockReset();
+    myGiftedQueryMock.mockReset().mockReturnValue(asia);
     // A refused autoplay: the page must not wait for the film.
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.reject(new Error('NotAllowedError')));
   });
@@ -67,6 +70,32 @@ describe('FinalPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Pomiń' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText('Asia')).toBeInTheDocument();
+  });
+
+  it('always asks the server again and never shows an older cached result meanwhile', () => {
+    canPlayFilmMock.mockReturnValue(false);
+    // A cached answer from an earlier request is still around while the fresh one loads.
+    myGiftedQueryMock.mockReturnValue({ data: { data: { id: 9, name: 'Karol' } }, isFetching: true, error: undefined });
+    renderWithProviders(<FinalPage />, { route: '/final-page' });
+
+    expect(myGiftedQueryMock).toHaveBeenCalledWith(undefined, { refetchOnMountOrArgChange: true });
+    expect(screen.queryByText('Karol')).not.toBeInTheDocument();
+  });
+
+  it('plays the film only once when the result arrives while it is running', () => {
+    canPlayFilmMock.mockReturnValue(true);
+    // Slow server: the film starts before the result is in.
+    myGiftedQueryMock.mockReturnValue({ data: undefined, isFetching: true, error: undefined });
+    const { rerender } = renderWithProviders(<FinalPage />, { route: '/final-page', routeState: justDrawn });
+    const video = screen.getByRole('dialog').querySelector('video');
+    expect(video).not.toBeNull();
+
+    myGiftedQueryMock.mockReturnValue(asia);
+    rerender(<FinalPage />);
+
+    // Same element = the film kept running; a remount would start it over.
+    expect(screen.getByRole('dialog').querySelector('video')).toBe(video);
     expect(screen.getByText('Asia')).toBeInTheDocument();
   });
 

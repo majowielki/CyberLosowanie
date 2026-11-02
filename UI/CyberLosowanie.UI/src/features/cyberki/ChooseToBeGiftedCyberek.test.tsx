@@ -15,6 +15,7 @@ vi.mock('@/shared/hooks/use-toast', () => ({ toast: (...args: unknown[]) => toas
 const useGetCyberkiQueryMock = vi.fn();
 const useGetAvailableGiftTargetsQueryMock = vi.fn();
 const useAssignGiftedCyberekMutationMock = vi.fn();
+const fetchMyGiftedCyberekMock = vi.fn();
 vi.mock('./cyberLosowanieApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./cyberLosowanieApi')>();
   return {
@@ -22,6 +23,7 @@ vi.mock('./cyberLosowanieApi', async (importOriginal) => {
     useGetCyberkiQuery: (...args: unknown[]) => useGetCyberkiQueryMock(...args),
     useGetAvailableGiftTargetsQuery: (...args: unknown[]) => useGetAvailableGiftTargetsQueryMock(...args),
     useAssignGiftedCyberekMutation: (...args: unknown[]) => useAssignGiftedCyberekMutationMock(...args),
+    useLazyGetMyGiftedCyberekQuery: () => [fetchMyGiftedCyberekMock],
   };
 });
 
@@ -39,6 +41,8 @@ describe('ChooseToBeGiftedCyberek', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     toastMock.mockReset();
+    // By default the server holds no result for this user yet.
+    fetchMyGiftedCyberekMock.mockReset().mockReturnValue({ unwrap: () => Promise.reject({ status: 400 }) });
     useGetCyberkiQueryMock.mockReturnValue({ data: { data: cyberki }, isLoading: false });
     useAssignGiftedCyberekMutationMock.mockReturnValue([vi.fn()]);
     canPlayFilmMock.mockReset().mockReturnValue(true);
@@ -82,6 +86,40 @@ describe('ChooseToBeGiftedCyberek', () => {
     expect(navigateMock).not.toHaveBeenCalled();
     // The board stays (no full-page loading panel) and is usable again.
     expect(screen.getAllByRole('button', { name: /wybierz/i })[0]).toBeEnabled();
+  });
+
+  // The answer to the draw can be lost after the server committed it (dropped
+  // connection, a retried request), or the account drew in another tab. The
+  // page must not guess: it asks the server and shows the result it holds.
+  it('shows the server-side result when the draw request fails but a result exists', async () => {
+    withTargets();
+    const assign = vi.fn(() => ({ unwrap: () => Promise.reject({ status: 'FETCH_ERROR' }) }));
+    useAssignGiftedCyberekMutationMock.mockReturnValue([assign]);
+    fetchMyGiftedCyberekMock.mockReturnValue({ unwrap: () => Promise.resolve({ data: { id: 3, name: 'N3' } }) });
+
+    const { store } = renderWithProviders(<ChooseToBeGiftedCyberek />, { user: { id: 'u1', cyberekId: 1 } });
+    await userEvent.click(screen.getAllByRole('button', { name: /wybierz/i })[0]);
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/final-page'));
+    // The result comes from the server, not from the clicked box (box 1).
+    expect(store.getState().userAuthStore.giftedCyberekId).toBe(3);
+    expect(toastMock).not.toHaveBeenCalled();
+  });
+
+  it('stays on the board with an error when the draw fails and the server holds no result', async () => {
+    const refetch = vi.fn();
+    useGetAvailableGiftTargetsQueryMock.mockReturnValue({ data: { data: [1, 2, 3] }, isLoading: false, refetch });
+    const assign = vi.fn(() => ({ unwrap: () => Promise.reject({ status: 500 }) }));
+    useAssignGiftedCyberekMutationMock.mockReturnValue([assign]);
+
+    renderWithProviders(<ChooseToBeGiftedCyberek />);
+    await userEvent.click(screen.getAllByRole('button', { name: /wybierz/i })[0]);
+
+    await waitFor(() =>
+      expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ variant: 'destructive' })),
+    );
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(refetch).toHaveBeenCalled();
   });
 
   it('goes to the plain reveal without film state under reduced motion', async () => {

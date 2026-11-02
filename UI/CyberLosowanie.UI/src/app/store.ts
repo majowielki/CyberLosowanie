@@ -1,11 +1,29 @@
-import { configureStore, combineReducers } from "@reduxjs/toolkit";
+import { configureStore, combineReducers, createListenerMiddleware, isAnyOf } from "@reduxjs/toolkit";
 import { persistStore, persistReducer, PersistedState } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import authApi from "@/features/auth/authApi";
 import cyberLosowanieApi from "@/features/cyberki/cyberLosowanieApi";
 import wishlistApi from "@/features/wishlist/wishlistApi";
-import { userAuthReducer } from "@/features/auth/userSlice";
+import { resetUser, setLoggedInUser, userAuthReducer } from "@/features/auth/userSlice";
 import { localeReducer } from "@/shared/i18n/localeSlice";
+import { userModel } from "@/types";
+
+// API caches hold one person's answers (their boxes, their draw result, the
+// wishlists they may see). When the session changes hands — logout, an expired
+// session, or another account signing in on the same phone without a reload —
+// they are dropped, so nothing of the previous person is ever shown to the next.
+const sessionChange = createListenerMiddleware();
+sessionChange.startListening({
+  matcher: isAnyOf(setLoggedInUser, resetUser),
+  effect: (action, listenerApi) => {
+    const previous = (listenerApi.getOriginalState() as { userAuthStore: userModel }).userAuthStore;
+    if (setLoggedInUser.match(action) && action.payload.id === previous.id) {
+      return; // same person (session restored from the token)
+    }
+    listenerApi.dispatch(cyberLosowanieApi.util.resetApiState());
+    listenerApi.dispatch(wishlistApi.util.resetApiState());
+  },
+});
 
 // Persist only the user session runtime state and the UI language — everything
 // else is re-fetched from the API or derived from the JWT (H3).
@@ -48,6 +66,7 @@ const store = configureStore({
         ]
       }
     })
+      .prepend(sessionChange.middleware)
       .concat(authApi.middleware)
       .concat(cyberLosowanieApi.middleware)
       .concat(wishlistApi.middleware)

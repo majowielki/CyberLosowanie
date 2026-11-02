@@ -125,6 +125,7 @@ export const {
   useGetAvailableToPickQuery,
   useGetAvailableGiftTargetsQuery,
   useGetMyGiftedCyberekQuery,
+  useLazyGetMyGiftedCyberekQuery,
   useAssignCyberekMutation,
   useAssignGiftedCyberekMutation,
 } = cyberLosowanieApi;

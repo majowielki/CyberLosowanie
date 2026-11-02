@@ -9,6 +9,7 @@ import {
   useGetCyberkiQuery,
   useGetAvailableGiftTargetsQuery,
   useAssignGiftedCyberekMutation,
+  useLazyGetMyGiftedCyberekQuery,
 } from "@/features/cyberki/cyberLosowanieApi";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -26,16 +27,19 @@ function ChooseToBeGiftedCyberek() {
   const dispatch = useDispatch();
   const { t } = useTranslation();
   const [assignGiftedCyberek] = useAssignGiftedCyberekMutation();
+  const [fetchMyGiftedCyberek] = useLazyGetMyGiftedCyberekQuery();
 
   // Boxes = all cyberki (box k hides cyberek k); the count comes from the API, never
   // hardcoded. Available = boxes the server guarantees are safe to open for THIS user
   // (free, not banned, and nobody else ends up stranded).
   const { data: cyberkiData, isLoading: cyberkiLoading } = useGetCyberkiQuery();
+  // Always a fresh list on arrival: the boxes reflect the server's state now,
+  // not what this browser saw earlier.
   const {
     data: targetsData,
-    isLoading: targetsLoading,
+    isFetching: targetsLoading,
     refetch: refetchTargets,
-  } = useGetAvailableGiftTargetsQuery();
+  } = useGetAvailableGiftTargetsQuery(undefined, { refetchOnMountOrArgChange: true });
   // The box being drawn right now (null = idle); it shakes while the request runs.
   const [openingBoxId, setOpeningBoxId] = useState<number | null>(null);
   const loading = openingBoxId !== null;
@@ -71,6 +75,21 @@ function ChooseToBeGiftedCyberek() {
       navigate("/final-page");
     }
   }, [targetsLoading, targetsData, navigate, t]);
+
+  // Any other failure leaves the outcome open: the draw may have been committed
+  // even though the answer never arrived (dropped connection, a retried request),
+  // or this account already drew in another tab. Ask the server, never guess —
+  // if it holds a result, show that one.
+  const showDrawIfAlreadyMade = async (): Promise<boolean> => {
+    const mine = await fetchMyGiftedCyberek().unwrap().catch(() => null);
+    const drawn = mine?.data;
+    if (!drawn) {
+      return false;
+    }
+    dispatch(setGiftedCyberekId(drawn.id));
+    navigate("/final-page");
+    return true;
+  };
 
   // The user's pick IS the draw: send the chosen box id; the server re-validates it
   // in a serialized transaction. 409 = somebody just took this box (or it became
@@ -111,11 +130,12 @@ function ChooseToBeGiftedCyberek() {
           variant: "destructive",
         });
         refetchTargets();
-      } else {
+      } else if (!(await showDrawIfAlreadyMade())) {
         toast({
           description: t('cyberki.select.fail'),
           variant: "destructive",
         });
+        refetchTargets();
       }
     } finally {
       setOpeningBoxId(null);
