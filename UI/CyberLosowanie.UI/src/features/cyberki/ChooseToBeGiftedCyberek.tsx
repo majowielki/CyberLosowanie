@@ -7,7 +7,7 @@ import boxOpen from "@/assets/gift-box-open.webp";
 import { useDispatch } from "react-redux";
 import {
   useGetCyberkiQuery,
-  useGetAvailableGiftTargetsQuery,
+  useGetAvailableGiftBoxesQuery,
   useAssignGiftedCyberekMutation,
   useLazyGetMyGiftedCyberekQuery,
 } from "@/features/cyberki/cyberLosowanieApi";
@@ -29,17 +29,19 @@ function ChooseToBeGiftedCyberek() {
   const [assignGiftedCyberek] = useAssignGiftedCyberekMutation();
   const [fetchMyGiftedCyberek] = useLazyGetMyGiftedCyberekQuery();
 
-  // Boxes = all cyberki (box k hides cyberek k); the count comes from the API, never
-  // hardcoded. Available = boxes the server guarantees are safe to open for THIS user
+  // One box per cyberek; the count comes from the API, never hardcoded. Boxes are
+  // just numbers 1..N: which cyberek hides in which box is a secret order kept on
+  // the server per user, so nothing on this page (or in its requests) tells who is
+  // inside. Available = boxes the server guarantees are safe to open for THIS user
   // (free, not banned, and nobody else ends up stranded).
   const { data: cyberkiData, isLoading: cyberkiLoading } = useGetCyberkiQuery();
   // Always a fresh list on arrival: the boxes reflect the server's state now,
   // not what this browser saw earlier.
   const {
-    data: targetsData,
-    isFetching: targetsLoading,
-    refetch: refetchTargets,
-  } = useGetAvailableGiftTargetsQuery(undefined, { refetchOnMountOrArgChange: true });
+    data: boxesData,
+    isFetching: boxesLoading,
+    refetch: refetchBoxes,
+  } = useGetAvailableGiftBoxesQuery(undefined, { refetchOnMountOrArgChange: true });
   // The box being drawn right now (null = idle); it shakes while the request runs.
   const [openingBoxId, setOpeningBoxId] = useState<number | null>(null);
   const loading = openingBoxId !== null;
@@ -59,8 +61,8 @@ function ChooseToBeGiftedCyberek() {
     return prefetchWhenIdle(urls);
   }, []);
 
-  const boxIds = (cyberkiData?.data ?? []).map((c) => c.id).sort((a, b) => a - b);
-  const availableIds = new Set(targetsData?.data ?? []);
+  const boxIds = Array.from({ length: cyberkiData?.data?.length ?? 0 }, (_, index) => index + 1);
+  const availableBoxes = new Set(boxesData?.data ?? []);
 
   // Routing onto this page relies on the client's persisted giftedCyberekId flag,
   // which can go stale (another device/tab completed the draw for this account).
@@ -70,11 +72,11 @@ function ChooseToBeGiftedCyberek() {
   // assigned. Self-heal by sending them to the real result — no extra request,
   // this reuses the data the page already fetched.
   useEffect(() => {
-    if (!targetsLoading && targetsData && targetsData.data?.length === 0) {
+    if (!boxesLoading && boxesData && boxesData.data?.length === 0) {
       toast({ description: t('cyberki.choose.alreadyAssigned') });
       navigate("/final-page");
     }
-  }, [targetsLoading, targetsData, navigate, t]);
+  }, [boxesLoading, boxesData, navigate, t]);
 
   // Any other failure leaves the outcome open: the draw may have been committed
   // even though the answer never arrived (dropped connection, a retried request),
@@ -91,11 +93,12 @@ function ChooseToBeGiftedCyberek() {
     return true;
   };
 
-  // The user's pick IS the draw: send the chosen box id; the server re-validates it
+  // The user's pick IS the draw: send the chosen box number; the server opens that
+  // box of the user's order (the response is the drawn cyberek) and re-validates it
   // in a serialized transaction. 409 = somebody just took this box (or it became
   // unsafe) — refresh the list and let the user pick again.
-  const handleSelect = async (giftedCyberekId: number) => {
-    setOpeningBoxId(giftedCyberekId);
+  const handleSelect = async (boxNumber: number) => {
+    setOpeningBoxId(boxNumber);
     const playFilm = canPlayFilm("giftFilm");
     // Inside the tap: unlock the sound for later (mobile browsers need a gesture).
     if (playFilm && isEffectEnabled("giftSound")) {
@@ -103,7 +106,7 @@ function ChooseToBeGiftedCyberek() {
     }
 
     try {
-      const response = await assignGiftedCyberek({ giftedCyberekId }).unwrap();
+      const response = await assignGiftedCyberek({ boxNumber }).unwrap();
 
       debugLog("assignGiftedCyberek response", response);
 
@@ -112,7 +115,7 @@ function ChooseToBeGiftedCyberek() {
       }
 
       // Only a successful draw plays the film; the final page reads this state once.
-      const rect = boxRefs.current.get(giftedCyberekId)?.getBoundingClientRect();
+      const rect = boxRefs.current.get(boxNumber)?.getBoundingClientRect();
       const state: JustDrawnState | undefined = playFilm
         ? {
             justDrawn: true,
@@ -129,13 +132,13 @@ function ChooseToBeGiftedCyberek() {
           description: t('cyberki.choose.boxTaken'),
           variant: "destructive",
         });
-        refetchTargets();
+        refetchBoxes();
       } else if (!(await showDrawIfAlreadyMade())) {
         toast({
           description: t('cyberki.select.fail'),
           variant: "destructive",
         });
-        refetchTargets();
+        refetchBoxes();
       }
     } finally {
       setOpeningBoxId(null);
@@ -147,7 +150,7 @@ function ChooseToBeGiftedCyberek() {
     return <StatusMessage tone="loading" message={t('cyberki.choose.processing')} />;
   }
 
-  if (cyberkiLoading || targetsLoading || targetsData?.data?.length === 0) {
+  if (cyberkiLoading || boxesLoading || boxesData?.data?.length === 0) {
     return <StatusMessage tone="loading" message={t('cyberki.choose.loading')} />;
   }
 
@@ -165,7 +168,7 @@ function ChooseToBeGiftedCyberek() {
       />
       <ul className="grid w-full max-w-5xl grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
         {boxIds.map((boxId) => {
-          const available = availableIds.has(boxId);
+          const available = availableBoxes.has(boxId);
           const opening = openingBoxId === boxId;
           return (
             <li

@@ -29,6 +29,7 @@ namespace CyberLosowanie.Test
 
             public SqliteTestDatabase Db { get; } = new();
             public CyberekService Service { get; }
+            public GiftBoxLayout BoxLayout { get; } = new("integration-test-server-secret-0123456789abcdef");
             public List<string> UserNames { get; } = new();
 
             public Party()
@@ -56,8 +57,12 @@ namespace CyberLosowanie.Test
                     new MemoryCache(new MemoryCacheOptions()),
                     NullLogger<CyberekService>.Instance,
                     new AuditService(Db.Context, NullLogger<AuditService>.Instance),
-                    Mock.Of<ISantaNotificationService>());
+                    Mock.Of<ISantaNotificationService>(),
+                    BoxLayout);
             }
+
+            public string UserId(string userName) =>
+                Db.NewContext().Users.AsNoTracking().Single(u => u.UserName == userName).Id;
 
             public void Dispose()
             {
@@ -104,6 +109,99 @@ namespace CyberLosowanie.Test
             }
 
             ShouldBeCompleteLegalDraw(party.Db);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(4)]
+        [InlineData(5)]
+        [InlineData(6)]
+        [InlineData(7)]
+        public async Task FullDraw_ByBoxNumbers_AsTheApiRunsIt_EndsLegalAndOpensExactlyTheChosenBox(int seed)
+        {
+            // The client only ever sees and sends box numbers. Every box offered must hide
+            // a safe target, opening it must commit exactly the cyberek in that box of the
+            // user's own order, and the whole party must still end in a legal draw.
+            using var party = new Party();
+            var rng = new Random(seed);
+            var cyberekIds = party.Db.Context.Cyberki.AsNoTracking().Select(c => c.Id).ToList();
+
+            foreach (var userName in party.UserNames.OrderBy(_ => rng.Next()))
+            {
+                var layout = party.BoxLayout.Arrange(party.UserId(userName), cyberekIds);
+                var targets = await party.Service.GetAvailableGiftTargetsForUserAsync(userName);
+                var boxes = await party.Service.GetAvailableGiftBoxesForUserAsync(userName);
+
+                boxes.Should().NotBeEmpty($"seed {seed}: {userName} must always have a box to open");
+                boxes.Should().BeInAscendingOrder().And.OnlyHaveUniqueItems();
+                boxes.Should().OnlyContain(box => box >= 1 && box <= cyberekIds.Count);
+                // Same choices as the engine offers — just under box numbers.
+                boxes.Select(box => layout[box - 1]).Should().BeEquivalentTo(targets);
+
+                var box = boxes[rng.Next(boxes.Count)];
+                var drawn = await party.Service.AssignGiftByBoxAsync(userName, box);
+                drawn.Should().Be(layout[box - 1], $"box {box} of {userName}'s order holds cyberek {layout[box - 1]}");
+            }
+
+            ShouldBeCompleteLegalDraw(party.Db);
+        }
+
+        [Fact]
+        public async Task BoxOrder_IsPrivatePerUser_AndNeverTheIdOrderOfThePickList()
+        {
+            using var party = new Party();
+            var cyberekIds = party.Db.Context.Cyberki.AsNoTracking().OrderBy(c => c.Id).Select(c => c.Id).ToList();
+
+            var layouts = party.UserNames
+                .Select(userName => party.BoxLayout.Arrange(party.UserId(userName), cyberekIds))
+                .ToList();
+
+            layouts.Should().OnlyContain(layout => layout.OrderBy(id => id).SequenceEqual(cyberekIds));
+            layouts.Should().NotContain(layout => layout.SequenceEqual(cyberekIds));
+            layouts.Select(layout => string.Join(",", layout)).Should().OnlyHaveUniqueItems();
+
+            // Stable: asking again (e.g. after a refresh) gives every user the same boxes.
+            var userName = party.UserNames[0];
+            var before = await party.Service.GetAvailableGiftBoxesForUserAsync(userName);
+            (await party.Service.GetAvailableGiftBoxesForUserAsync(userName)).Should().Equal(before);
+        }
+
+        [Fact]
+        public async Task AssignGiftByBox_ABoxThatHidesAStrandingChoice_IsRejectedAndNothingIsSaved()
+        {
+            // Hidden boxes are not just hidden: sending one anyway must fail at commit.
+            for (var seed = 0; seed < 50; seed++)
+            {
+                using var party = new Party();
+                var rng = new Random(seed);
+                var cyberekIds = party.Db.Context.Cyberki.AsNoTracking().Select(c => c.Id).ToList();
+
+                foreach (var userName in party.UserNames.OrderBy(_ => rng.Next()))
+                {
+                    var layout = party.BoxLayout.Arrange(party.UserId(userName), cyberekIds);
+                    var boxes = await party.Service.GetAvailableGiftBoxesForUserAsync(userName);
+                    var trap = await FindStrandingChoiceAsync(party.Db, userName,
+                        boxes.Select(box => layout[box - 1]).ToList());
+                    if (trap is { } deadEnd)
+                    {
+                        var trapBox = layout.ToList().IndexOf(deadEnd) + 1;
+                        await Assert.ThrowsAsync<GiftTargetUnavailableException>(
+                            () => party.Service.AssignGiftByBoxAsync(userName, trapBox));
+
+                        using var verify = party.Db.NewContext();
+                        verify.Users.AsNoTracking().Single(u => u.UserName == userName).GiftedCyberekId.Should().Be(0);
+                        verify.Cyberki.AsNoTracking().Should().NotContain(c => c.GiftedCyberekId == deadEnd);
+                        return;
+                    }
+
+                    await party.Service.AssignGiftByBoxAsync(userName, boxes[rng.Next(boxes.Count)]);
+                }
+            }
+
+            Assert.Fail("No stranding box found — the scenario this test guards was not exercised.");
         }
 
         [Fact]

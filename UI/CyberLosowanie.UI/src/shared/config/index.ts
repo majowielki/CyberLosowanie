@@ -37,7 +37,7 @@ export const config = {
     CYBER_LOSOWANIE: {
       BASE: 'CyberLosowanie',
       AVAILABLE_TO_PICK: 'CyberLosowanie/available-to-pick',
-      MY_AVAILABLE_TARGETS: 'CyberLosowanie/my-available-targets',
+      MY_AVAILABLE_BOXES: 'CyberLosowanie/my-available-boxes',
       MY_GIFTED_CYBEREK: 'CyberLosowanie/my-gifted-cyberek',
       ASSIGN_CYBEREK: 'CyberLosowanie/assign-cyberek',
       ASSIGN_GIFT: 'CyberLosowanie/assign-gift',

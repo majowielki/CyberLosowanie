@@ -22,6 +22,7 @@ namespace CyberLosowanie.Test
         private readonly Mock<IGiftingService> _gifting = new();
         private readonly Mock<IAuditService> _audit = new();
         private readonly Mock<ISantaNotificationService> _santa = new();
+        private readonly Mock<IGiftBoxLayout> _layout = new();
         private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
         private CyberekService CreateService()
@@ -33,7 +34,8 @@ namespace CyberLosowanie.Test
                 _cache,
                 NullLogger<CyberekService>.Instance,
                 _audit.Object,
-                _santa.Object);
+                _santa.Object,
+                _layout.Object);
         }
 
         private sealed class TransactionProbe
@@ -85,13 +87,14 @@ namespace CyberLosowanie.Test
             var audit = _audit.Object;
             var logger = NullLogger<CyberekService>.Instance;
 
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(null!, users, gifting, _cache, logger, audit, _santa.Object));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, null!, gifting, _cache, logger, audit, _santa.Object));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, null!, _cache, logger, audit, _santa.Object));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, null!, logger, audit, _santa.Object));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, null!, audit, _santa.Object));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, logger, null!, _santa.Object));
-            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, logger, audit, null!));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(null!, users, gifting, _cache, logger, audit, _santa.Object, _layout.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, null!, gifting, _cache, logger, audit, _santa.Object, _layout.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, null!, _cache, logger, audit, _santa.Object, _layout.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, null!, logger, audit, _santa.Object, _layout.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, null!, audit, _santa.Object, _layout.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, logger, null!, _santa.Object, _layout.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, logger, audit, null!, _layout.Object));
+            Assert.Throws<ArgumentNullException>(() => new CyberekService(repo, users, gifting, _cache, logger, audit, _santa.Object, null!));
         }
 
         #endregion
@@ -558,6 +561,111 @@ namespace CyberLosowanie.Test
 
             await Assert.ThrowsAsync<DataAccessException>(() => service.AssignGiftAsync("john", 5));
             tx.RolledBack.Should().Be(1);
+        }
+
+        #endregion
+
+        #region Box numbers (secret box order)
+
+        // A known, deliberately non-identity order: box 1 = cyberek 3, box 2 = cyberek 1,
+        // box 3 = cyberek 2. The real order is keyed and tested in GiftBoxLayoutTests.
+        private void UseBoxOrder(string userId, params int[] cyberekIdsByBox)
+        {
+            _cyberekRepo.Setup(r => r.GetAllAsync())
+                .ReturnsAsync(cyberekIdsByBox.OrderBy(id => id).Select(id => Cyberek(id)).ToList());
+            _layout.Setup(l => l.Arrange(userId, It.IsAny<IEnumerable<int>>())).Returns(cyberekIdsByBox);
+        }
+
+        [Fact]
+        public async Task GetAvailableGiftBoxesForUserAsync_ReturnsTheBoxesHidingTheSafeTargets()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { Id = "u1", CyberekId = 1 });
+            UseBoxOrder("u1", 3, 1, 2);
+            _gifting.Setup(g => g.GetSafeTargets(It.IsAny<IReadOnlyList<Cyberek>>(), It.Is<Cyberek>(c => c.Id == 1)))
+                .Returns(new List<int> { 2, 3 });
+            var service = CreateService();
+
+            var boxes = await service.GetAvailableGiftBoxesForUserAsync("john");
+
+            // Cyberek 3 is in box 1, cyberek 2 in box 3 — box 2 holds the user's own cyberek.
+            boxes.Should().Equal(1, 3);
+        }
+
+        [Fact]
+        public async Task GetAvailableGiftBoxesForUserAsync_ArrangesByTheUserIdAndEveryCyberek()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { Id = "u1", CyberekId = 1 });
+            UseBoxOrder("u1", 3, 1, 2);
+            _gifting.Setup(g => g.GetSafeTargets(It.IsAny<IReadOnlyList<Cyberek>>(), It.IsAny<Cyberek>()))
+                .Returns(new List<int> { 2 });
+            var service = CreateService();
+
+            await service.GetAvailableGiftBoxesForUserAsync("john");
+
+            // Keyed by the stable user id (not the user name), over the full set of boxes.
+            _layout.Verify(l => l.Arrange("u1", It.Is<IEnumerable<int>>(ids => ids.OrderBy(i => i).SequenceEqual(new[] { 1, 2, 3 }))));
+        }
+
+        [Fact]
+        public async Task GetAvailableGiftBoxesForUserAsync_AfterTheDraw_ReturnsOnlyTheBoxTheUserOpened()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("john"))
+                .ReturnsAsync(new ApplicationUser { Id = "u1", CyberekId = 1, GiftedCyberekId = 2 });
+            UseBoxOrder("u1", 3, 1, 2);
+            var service = CreateService();
+
+            var boxes = await service.GetAvailableGiftBoxesForUserAsync("john");
+
+            boxes.Should().Equal(3);
+        }
+
+        [Theory]
+        [InlineData(1, 3)]
+        [InlineData(2, 1)]
+        [InlineData(3, 2)]
+        public async Task AssignGiftByBoxAsync_CommitsTheCyberekInThatBox(int box, int expectedCyberek)
+        {
+            var user = new ApplicationUser { Id = "u1", CyberekId = 9 };
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(user);
+            UseBoxOrder("u1", 3, 1, 2);
+            var giver = Cyberek(9);
+            _cyberekRepo.Setup(r => r.GetAllForUpdateAsync())
+                .ReturnsAsync(new List<Cyberek> { giver, Cyberek(1), Cyberek(2), Cyberek(3) });
+            _gifting.Setup(g => g.IsChoiceSafe(It.IsAny<IReadOnlyList<Cyberek>>(), It.IsAny<Cyberek>(), It.IsAny<int>()))
+                .Returns(true);
+            RunTransactionsInline<int>();
+            var service = CreateService();
+
+            var result = await service.AssignGiftByBoxAsync("john", box);
+
+            result.Should().Be(expectedCyberek);
+            giver.GiftedCyberekId.Should().Be(expectedCyberek);
+            user.GiftedCyberekId.Should().Be(expectedCyberek);
+            // The same commit-time check as a direct choice: the box is not trusted.
+            _gifting.Verify(g => g.IsChoiceSafe(It.IsAny<IReadOnlyList<Cyberek>>(), giver, expectedCyberek), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(-1)]
+        [InlineData(4)]
+        public async Task AssignGiftByBoxAsync_BoxOutsideTheBoard_ThrowsWithoutTouchingTheDraw(int box)
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("john")).ReturnsAsync(new ApplicationUser { Id = "u1", CyberekId = 9 });
+            UseBoxOrder("u1", 3, 1, 2);
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<BusinessValidationException>(() => service.AssignGiftByBoxAsync("john", box));
+            _userRepo.Verify(r => r.ExecuteInTransactionAsync(It.IsAny<Func<Task<int>>>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task AssignGiftByBoxAsync_UnknownUser_ThrowsUserNotFound()
+        {
+            _userRepo.Setup(r => r.GetByUsernameAsync("ghost")).ReturnsAsync((ApplicationUser)null!);
+            var service = CreateService();
+
+            await Assert.ThrowsAsync<UserNotFoundException>(() => service.AssignGiftByBoxAsync("ghost", 1));
         }
 
         #endregion

@@ -190,6 +190,9 @@ if (string.IsNullOrEmpty(key))
     throw new InvalidOperationException("JWT Secret key is not configured in appsettings.json");
 }
 
+// Secret per-user order of the draw boxes; its key is derived from the server secret.
+builder.Services.AddSingleton<IGiftBoxLayout>(new GiftBoxLayout(key));
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -314,6 +317,11 @@ app.UseAuthorization();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapFallbackToFile("index.html");
+// ...but an unknown API route is a 404, not the SPA page (e.g. an old client
+// calling an endpoint that no longer exists).
+app.MapFallback("api/{**path}", () => Results.Json(
+    ApiResponse<object>.Error("API endpoint not found.", System.Net.HttpStatusCode.NotFound),
+    statusCode: StatusCodes.Status404NotFound));
 
 app.MapControllers();
 

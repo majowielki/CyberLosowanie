@@ -59,14 +59,17 @@ namespace CyberLosowanie.Controllers
             return Ok(ApiResponse<CyberekResponse>.Success(cyberek.ToResponse()));
         }
 
-        [HttpGet("my-available-targets")]
+        // Box numbers, not cyberek ids: the client never learns who hides in which box
+        // (IGiftBoxLayout). There is deliberately no endpoint listing the safe targets
+        // as cyberek ids — it would map the boxes back to people.
+        [HttpGet("my-available-boxes")]
         [ProducesResponseType(typeof(ApiResponse<List<int>>), 200)]
         [ProducesResponseType(typeof(ApiResponse<object>), 400)]
         [ProducesResponseType(typeof(ApiResponse<object>), 401)]
         [ProducesResponseType(typeof(ApiResponse<object>), 404)]
-        [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - no targets available
+        [ProducesResponseType(typeof(ApiResponse<object>), 409)] // Conflict - no boxes available
         [ProducesResponseType(typeof(ApiResponse<object>), 500)]
-        public async Task<IActionResult> GetMyAvailableGiftTargets()
+        public async Task<IActionResult> GetMyAvailableGiftBoxes()
         {
             var userName = GetAuthenticatedUserName();
             if (string.IsNullOrWhiteSpace(userName))
@@ -78,17 +81,17 @@ namespace CyberLosowanie.Controllers
             // Only choices that keep the draw completable are returned. Unavailable boxes
             // are indistinguishable on purpose (taken / banned / would strand someone) —
             // the reason would leak draw results or ban lists.
-            var availableTargets = await _cyberekService.GetAvailableGiftTargetsForUserAsync(userName);
+            var availableBoxes = await _cyberekService.GetAvailableGiftBoxesForUserAsync(userName);
 
             // Safety net: with a feasible configuration this cannot happen (a giver who
             // has not drawn always has at least one safe choice).
-            if (!availableTargets.Any())
+            if (!availableBoxes.Any())
             {
                 return Conflict(ApiResponse<object>.Error(
-                    "No gift targets are currently available. Contact the organizer — the draw configuration may need fixing."));
+                    "No gift boxes are currently available. Contact the organizer — the draw configuration may need fixing."));
             }
 
-            return Ok(ApiResponse<List<int>>.Success(availableTargets));
+            return Ok(ApiResponse<List<int>>.Success(availableBoxes));
         }
 
         [HttpGet("my-gifted-cyberek")]
@@ -159,12 +162,13 @@ namespace CyberLosowanie.Controllers
                     "Authenticated token carries no user identity.", System.Net.HttpStatusCode.Unauthorized));
             }
 
-            // The user picks the box (product decision C2-rev): the server validates the
-            // choice — free, not self, not banned, and the rest of the draw must remain
-            // completable — inside a serialized transaction. A box lost to a concurrent
-            // draw surfaces as GiftTargetUnavailableException → 409; the client refreshes
-            // the list and the user picks again.
-            var assignedId = await _cyberekService.AssignGiftAsync(userName, choice.GiftedCyberekId);
+            // The user picks the box (product decision C2-rev): the server maps it to the
+            // cyberek inside and validates the choice — free, not self, not banned, and the
+            // rest of the draw must remain completable — inside a serialized transaction.
+            // A box lost to a concurrent draw surfaces as GiftTargetUnavailableException →
+            // 409; the client refreshes the list and the user picks again. The response
+            // carries the drawn cyberek id: from here on it is the user's own result.
+            var assignedId = await _cyberekService.AssignGiftByBoxAsync(userName, choice.BoxNumber);
             return Ok(ApiResponse<int>.Success(assignedId, "Gift assignment completed successfully"));
         }
     }

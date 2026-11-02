@@ -1,10 +1,16 @@
+using CyberLosowanie.Constants;
 using CyberLosowanie.Controllers;
 using CyberLosowanie.Interfaces.Services;
 using CyberLosowanie.Models;
+using CyberLosowanie.Models.Dto;
 using CyberLosowanie.Models.Dto.Responses;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 using Moq;
+using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
 namespace CyberLosowanie.Test
 {
@@ -293,6 +299,97 @@ namespace CyberLosowanie.Test
             var apiResponse = okResult.Value as ApiResponse<IEnumerable<CyberekResponse>>;
             apiResponse!.IsSuccess.Should().BeTrue();
             apiResponse.Data.Should().BeEmpty();
+        }
+
+        #endregion
+
+        #region Draw boxes (box numbers only)
+
+        private void SignIn(string userName) =>
+            _controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("fullName", userName) }, "test")),
+                },
+            };
+
+        [Fact]
+        public async Task GetMyAvailableGiftBoxes_ReturnsBoxNumbersFromTheBoxOrder()
+        {
+            SignIn("john");
+            _cyberekServiceMock.Setup(s => s.GetAvailableGiftBoxesForUserAsync("john")).ReturnsAsync(new List<int> { 2, 7 });
+
+            var result = await _controller.GetMyAvailableGiftBoxes();
+
+            var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+            ok.Value.Should().BeOfType<ApiResponse<List<int>>>().Which.Data.Should().Equal(2, 7);
+            // The cyberek-id view of the same choices never reaches the client.
+            _cyberekServiceMock.Verify(s => s.GetAvailableGiftTargetsForUserAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task GetMyAvailableGiftBoxes_NoBoxLeft_Returns409()
+        {
+            SignIn("john");
+            _cyberekServiceMock.Setup(s => s.GetAvailableGiftBoxesForUserAsync("john")).ReturnsAsync(new List<int>());
+
+            var result = await _controller.GetMyAvailableGiftBoxes();
+
+            result.Should().BeOfType<ConflictObjectResult>();
+        }
+
+        [Fact]
+        public async Task GetMyAvailableGiftBoxes_WithoutIdentity_Returns401()
+        {
+            SignIn("");
+
+            var result = await _controller.GetMyAvailableGiftBoxes();
+
+            result.Should().BeOfType<UnauthorizedObjectResult>();
+            _cyberekServiceMock.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public async Task AssignGift_OpensTheChosenBoxAndReturnsTheDrawnCyberek()
+        {
+            SignIn("john");
+            _cyberekServiceMock.Setup(s => s.AssignGiftByBoxAsync("john", 4)).ReturnsAsync(11);
+
+            var result = await _controller.AssignGift(new GiftChoiceDTO { BoxNumber = 4 });
+
+            var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+            ok.Value.Should().BeOfType<ApiResponse<int>>().Which.Data.Should().Be(11);
+            // The box number is never taken as a cyberek id.
+            _cyberekServiceMock.Verify(s => s.AssignGiftAsync(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(0, false)]
+        [InlineData(1, true)]
+        [InlineData(CyberLosowanieConstants.TOTAL_CYBERKI_COUNT, true)]
+        [InlineData(CyberLosowanieConstants.TOTAL_CYBERKI_COUNT + 1, false)]
+        public void GiftChoice_BoxNumberMustBeOnTheBoard(int boxNumber, bool valid)
+        {
+            var choice = new GiftChoiceDTO { BoxNumber = boxNumber };
+
+            Validator.TryValidateObject(choice, new ValidationContext(choice), null, validateAllProperties: true)
+                .Should().Be(valid);
+        }
+
+        [Fact]
+        public void DrawApi_ExposesNoCyberekIdsForTheBoxes()
+        {
+            // Guards the contract itself: the request carries only a box number, and no
+            // route lists the available targets as cyberek ids (that would map the boxes).
+            typeof(GiftChoiceDTO).GetProperties().Select(p => p.Name).Should().Equal(nameof(GiftChoiceDTO.BoxNumber));
+
+            var routes = typeof(CyberLosowanieController).GetMethods()
+                .SelectMany(m => m.GetCustomAttributes(typeof(HttpMethodAttribute), false).Cast<HttpMethodAttribute>())
+                .Select(a => a.Template)
+                .ToList();
+            routes.Should().Contain("my-available-boxes");
+            routes.Should().NotContain(r => r != null && r.Contains("target", StringComparison.OrdinalIgnoreCase));
         }
 
         #endregion

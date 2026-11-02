@@ -18,6 +18,7 @@ namespace CyberLosowanie.Services
         private readonly ILogger<CyberekService> _logger;
         private readonly IAuditService _auditService;
         private readonly ISantaNotificationService _santaNotificationService;
+        private readonly IGiftBoxLayout _giftBoxLayout;
 
         private const string ALL_CYBERKI_CACHE_KEY = "all_cyberki";
         private const int CACHE_EXPIRATION_MINUTES = 30;
@@ -29,7 +30,8 @@ namespace CyberLosowanie.Services
             IMemoryCache cache,
             ILogger<CyberekService> logger,
             IAuditService auditService,
-            ISantaNotificationService santaNotificationService)
+            ISantaNotificationService santaNotificationService,
+            IGiftBoxLayout giftBoxLayout)
         {
             _cyberekRepository = cyberekRepository ?? throw new ArgumentNullException(nameof(cyberekRepository));
             _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
@@ -38,6 +40,7 @@ namespace CyberLosowanie.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _auditService = auditService ?? throw new ArgumentNullException(nameof(auditService));
             _santaNotificationService = santaNotificationService ?? throw new ArgumentNullException(nameof(santaNotificationService));
+            _giftBoxLayout = giftBoxLayout ?? throw new ArgumentNullException(nameof(giftBoxLayout));
         }
 
         // Domain guard: cyberek ids form a closed range defined by the seed (MIN..MAX).
@@ -191,6 +194,36 @@ namespace CyberLosowanie.Services
                 await _auditService.LogErrorAsync(ex, null, applicationUser.Id, userName);
                 throw new DataAccessException("Failed to calculate available gift targets", ex);
             }
+        }
+
+        // The user's own box order (IGiftBoxLayout): element i is in box i + 1.
+        private async Task<IReadOnlyList<int>> GetBoxLayoutAsync(ApplicationUser user)
+        {
+            var cyberekIds = (await GetAllCyberkiAsync()).Select(c => c.Id);
+            return _giftBoxLayout.Arrange(user.Id, cyberekIds);
+        }
+
+        public async Task<List<int>> GetAvailableGiftBoxesForUserAsync(string userName)
+        {
+            var applicationUser = await GetRequiredUserAsync(userName, nameof(GetAvailableGiftBoxesForUserAsync));
+            var targets = (await GetAvailableGiftTargetsForUserAsync(userName)).ToHashSet();
+            var layout = await GetBoxLayoutAsync(applicationUser);
+
+            return Enumerable.Range(1, layout.Count)
+                .Where(box => targets.Contains(layout[box - 1]))
+                .ToList();
+        }
+
+        public async Task<int> AssignGiftByBoxAsync(string userName, int boxNumber)
+        {
+            var applicationUser = await GetRequiredUserAsync(userName, nameof(AssignGiftByBoxAsync));
+            var layout = await GetBoxLayoutAsync(applicationUser);
+            if (boxNumber < 1 || boxNumber > layout.Count)
+            {
+                throw new BusinessValidationException($"Box number must be between 1 and {layout.Count}.");
+            }
+
+            return await AssignGiftAsync(userName, layout[boxNumber - 1]);
         }
 
         /// <summary>

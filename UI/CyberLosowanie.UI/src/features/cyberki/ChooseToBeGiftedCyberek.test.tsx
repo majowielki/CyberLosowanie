@@ -13,7 +13,7 @@ const toastMock = vi.fn();
 vi.mock('@/shared/hooks/use-toast', () => ({ toast: (...args: unknown[]) => toastMock(...args) }));
 
 const useGetCyberkiQueryMock = vi.fn();
-const useGetAvailableGiftTargetsQueryMock = vi.fn();
+const useGetAvailableGiftBoxesQueryMock = vi.fn();
 const useAssignGiftedCyberekMutationMock = vi.fn();
 const fetchMyGiftedCyberekMock = vi.fn();
 vi.mock('./cyberLosowanieApi', async (importOriginal) => {
@@ -21,7 +21,7 @@ vi.mock('./cyberLosowanieApi', async (importOriginal) => {
   return {
     ...actual,
     useGetCyberkiQuery: (...args: unknown[]) => useGetCyberkiQueryMock(...args),
-    useGetAvailableGiftTargetsQuery: (...args: unknown[]) => useGetAvailableGiftTargetsQueryMock(...args),
+    useGetAvailableGiftBoxesQuery: (...args: unknown[]) => useGetAvailableGiftBoxesQueryMock(...args),
     useAssignGiftedCyberekMutation: (...args: unknown[]) => useAssignGiftedCyberekMutationMock(...args),
     useLazyGetMyGiftedCyberekQuery: () => [fetchMyGiftedCyberekMock],
   };
@@ -51,7 +51,7 @@ describe('ChooseToBeGiftedCyberek', () => {
   });
 
   const withTargets = () =>
-    useGetAvailableGiftTargetsQueryMock.mockReturnValue({
+    useGetAvailableGiftBoxesQueryMock.mockReturnValue({
       data: { data: [1, 2, 3] },
       isLoading: false,
       refetch: vi.fn(),
@@ -108,7 +108,7 @@ describe('ChooseToBeGiftedCyberek', () => {
 
   it('stays on the board with an error when the draw fails and the server holds no result', async () => {
     const refetch = vi.fn();
-    useGetAvailableGiftTargetsQueryMock.mockReturnValue({ data: { data: [1, 2, 3] }, isLoading: false, refetch });
+    useGetAvailableGiftBoxesQueryMock.mockReturnValue({ data: { data: [1, 2, 3] }, isLoading: false, refetch });
     const assign = vi.fn(() => ({ unwrap: () => Promise.reject({ status: 500 }) }));
     useAssignGiftedCyberekMutationMock.mockReturnValue([assign]);
 
@@ -120,6 +120,42 @@ describe('ChooseToBeGiftedCyberek', () => {
     );
     expect(navigateMock).not.toHaveBeenCalled();
     expect(refetch).toHaveBeenCalled();
+  });
+
+  // The leak this guards: box k used to hold cyberek k, in the same order as the
+  // pick list. Boxes are now plain numbers 1..N whatever the cyberek ids are, and
+  // which ones are available comes from the server's secret box order.
+  it('numbers the boxes 1..N, independent of the cyberek ids', () => {
+    useGetCyberkiQueryMock.mockReturnValue({
+      data: { data: [7, 3, 12].map((id) => ({ id, name: `N${id}`, surname: '' })) },
+      isLoading: false,
+    });
+    useGetAvailableGiftBoxesQueryMock.mockReturnValue({ data: { data: [2] }, isLoading: false, refetch: vi.fn() });
+
+    renderWithProviders(<ChooseToBeGiftedCyberek />);
+
+    const labels = screen.getAllByRole('listitem').map((item) => item.textContent);
+    expect(labels.map((label) => label?.match(/\d+/)?.[0])).toEqual(['1', '2', '3']);
+    // No cyberek id or name anywhere on the board.
+    for (const hidden of ['7', '12', 'N3', 'N7', 'N12']) {
+      expect(screen.queryByText(new RegExp(`\\b${hidden}\\b`))).not.toBeInTheDocument();
+    }
+    // Only the box the server offers can be opened.
+    expect(screen.getAllByRole('button', { name: /wybierz/i })).toHaveLength(1);
+    expect(screen.getAllByRole('listitem')[1]).toHaveTextContent(/wybierz/i);
+  });
+
+  it('sends only the box number and keeps the drawn cyberek the server returns', async () => {
+    useGetAvailableGiftBoxesQueryMock.mockReturnValue({ data: { data: [3] }, isLoading: false, refetch: vi.fn() });
+    const assign = vi.fn(() => ({ unwrap: () => Promise.resolve({ data: 11 }) }));
+    useAssignGiftedCyberekMutationMock.mockReturnValue([assign]);
+
+    const { store } = renderWithProviders(<ChooseToBeGiftedCyberek />, { user: { id: 'u1', cyberekId: 1 } });
+    await userEvent.click(screen.getByRole('button', { name: /wybierz/i }));
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalled());
+    expect(assign).toHaveBeenCalledWith({ boxNumber: 3 });
+    expect(store.getState().userAuthStore.giftedCyberekId).toBe(11);
   });
 
   it('goes to the plain reveal without film state under reduced motion', async () => {
@@ -135,7 +171,7 @@ describe('ChooseToBeGiftedCyberek', () => {
   });
 
   it('lets the user pick a box when targets are available', () => {
-    useGetAvailableGiftTargetsQueryMock.mockReturnValue({
+    useGetAvailableGiftBoxesQueryMock.mockReturnValue({
       data: { data: [1, 2, 3] },
       isLoading: false,
       refetch: vi.fn(),
@@ -154,7 +190,7 @@ describe('ChooseToBeGiftedCyberek', () => {
   // condition), so an empty list here can only mean the flag was wrong — the
   // page must self-heal to the real result instead of stranding the user.
   it('redirects to the final page instead of showing an empty board when already assigned', async () => {
-    useGetAvailableGiftTargetsQueryMock.mockReturnValue({
+    useGetAvailableGiftBoxesQueryMock.mockReturnValue({
       data: { data: [] },
       isLoading: false,
       refetch: vi.fn(),

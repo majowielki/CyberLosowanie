@@ -18,6 +18,20 @@ namespace CyberLosowanie.Interfaces.Services
         Task<List<int>> GetAvailableGiftTargetsForUserAsync(string userName);
 
         /// <summary>
+        /// The same choices as <see cref="GetAvailableGiftTargetsForUserAsync"/>, as box
+        /// numbers in the user's secret box order (<see cref="IGiftBoxLayout"/>) — what
+        /// the client sees, so the draw page never reveals which cyberek is in a box.
+        /// </summary>
+        Task<List<int>> GetAvailableGiftBoxesForUserAsync(string userName);
+
+        /// <summary>
+        /// Opens box <paramref name="boxNumber"/> of the user's box order: the cyberek in
+        /// it is committed exactly like <see cref="AssignGiftAsync"/>.
+        /// </summary>
+        /// <returns>ID of the committed gift target — the cyberek that was in the box</returns>
+        Task<int> AssignGiftByBoxAsync(string userName, int boxNumber);
+
+        /// <summary>
         /// Assigns a cyberek to a user (one-time setup operation)
         /// </summary>
         /// <param name="userName">Username to assign cyberek to</param>

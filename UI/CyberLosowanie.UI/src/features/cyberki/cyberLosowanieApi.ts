@@ -60,16 +60,17 @@ const cyberLosowanieApi = createApi({
       },
     }),
 
-    // GET /api/CyberLosowanie/my-available-targets - boxes the current user may still
-    // safely open. Identity comes from the JWT; the server returns only choices that
-    // keep the draw completable for everyone else.
-    getAvailableGiftTargets: builder.query<apiResponseBody<number[]>, void>({
+    // GET /api/CyberLosowanie/my-available-boxes - numbers of the boxes the current
+    // user may still safely open. Box numbers follow the user's own secret order on
+    // the server, so they say nothing about who is inside. Identity comes from the
+    // JWT; only choices that keep the draw completable for everyone are returned.
+    getAvailableGiftBoxes: builder.query<apiResponseBody<number[]>, void>({
       query: () => ({
-        url: ENDPOINTS.MY_AVAILABLE_TARGETS,
+        url: ENDPOINTS.MY_AVAILABLE_BOXES,
       }),
       providesTags: ["Cyberki"],
       transformResponse: (response: apiResponseBody<number[]>) => {
-        debugLog('Get available gift targets response:', response);
+        debugLog('Get available gift boxes response:', response);
         return response;
       },
     }),
@@ -101,14 +102,15 @@ const cyberLosowanieApi = createApi({
       },
     }),
 
-    // PUT /api/CyberLosowanie/assign-gift - Commit the box the user chose (C2-rev:
-    // the user picks, the server validates). Returns ApiResponse<int> echoing the
-    // accepted giftedCyberekId; 409 means the box was just taken — refresh and repick.
-    assignGiftedCyberek: builder.mutation<apiResponseBody<number>, { giftedCyberekId: number }>({
-      query: ({ giftedCyberekId }) => ({
+    // PUT /api/CyberLosowanie/assign-gift - Open the box the user chose (C2-rev: the
+    // user picks, the server validates). Sends only the box number; returns
+    // ApiResponse<int> with the drawn cyberek id (the user's own result from now on).
+    // 409 means the box was just taken — refresh and repick.
+    assignGiftedCyberek: builder.mutation<apiResponseBody<number>, { boxNumber: number }>({
+      query: ({ boxNumber }) => ({
         url: ENDPOINTS.ASSIGN_GIFT,
         method: "PUT",
-        body: { giftedCyberekId },
+        body: { boxNumber },
       }),
       invalidatesTags: ["Cyberki"],
       transformResponse: (response: apiResponseBody<number>) => {
@@ -123,7 +125,7 @@ export const {
   useGetCyberkiQuery,
   useGetCyberekByIdQuery,
   useGetAvailableToPickQuery,
-  useGetAvailableGiftTargetsQuery,
+  useGetAvailableGiftBoxesQuery,
   useGetMyGiftedCyberekQuery,
   useLazyGetMyGiftedCyberekQuery,
   useAssignCyberekMutation,
