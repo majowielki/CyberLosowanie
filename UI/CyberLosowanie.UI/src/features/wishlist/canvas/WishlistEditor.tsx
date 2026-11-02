@@ -29,12 +29,13 @@ import {
   DEFAULT_STROKE_KIND,
   DEFAULT_STROKE_WIDTH,
   DEFAULT_TEXT_FONT,
-  DEFAULT_TEXT_PLACEHOLDER,
+  DEFAULT_FONT_SIZE,
   MOBILE_DEFAULT_FONT_SIZE,
   MOBILE_MIN_TEXT_WIDTH,
   MOBILE_TEXT_MARGIN,
   SHAPE_DRAG_THRESHOLD,
   TOOL_SHORTCUTS,
+  EYEDROPPER_SHORTCUT,
   EMOJI_INSERT_FONT_SIZE,
   IMAGE_INSERT_MAX_WIDTH_RATIO,
 } from './canvasConstants';
@@ -45,6 +46,7 @@ import {
   ShapeKind,
   StrokeKind,
   TextFontId,
+  TextHighlight,
   serializeCanvasDocument,
   validateCanvasDocument,
 } from './canvasDocument';
@@ -112,6 +114,15 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
   const [color, setColor] = useState<string>(DEFAULT_PEN_COLOR);
   // Font of the next text; the phone text panel updates it with the last choice.
   const [textFont, setTextFont] = useState<TextFontId | undefined>(DEFAULT_TEXT_FONT);
+  // Size of the next text — chosen up front instead of stretching it afterwards.
+  const [textFontSize, setTextFontSize] = useState(() => (compact ? MOBILE_DEFAULT_FONT_SIZE : DEFAULT_FONT_SIZE));
+  // Outline or backdrop of the next text.
+  const [textHighlight, setTextHighlight] = useState<TextHighlight>({});
+  // Eyedropper: the next press on the page takes its colour instead of drawing.
+  const [isPickingColor, setIsPickingColor] = useState(false);
+  const colorSamplerRef = useRef<((position: Point) => string | null) | null>(null);
+  // Picking another tool drops the eyedropper.
+  useEffect(() => setIsPickingColor(false), [tool]);
   const [strokeWidth, setStrokeWidth] = useState<number>(DEFAULT_STROKE_WIDTH);
   const [strokeKind, setStrokeKind] = useState<StrokeKind>(DEFAULT_STROKE_KIND);
   const [shapeKind, setShapeKind] = useState<ShapeKind>('rect');
@@ -261,6 +272,8 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
     } else if ((event.key === 'Delete' || event.key === 'Backspace') && selectedItemId) {
       event.preventDefault();
       removeItem(selectedItemId);
+    } else if (event.key === 'Escape' && isPickingColor) {
+      setIsPickingColor(false);
     } else if (event.key === 'Escape') {
       engine.setSelectedItemId(null);
     } else if (event.code === 'Space') {
@@ -269,6 +282,8 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
       if (!event.repeat) {
         setIsSpaceHeld(true);
       }
+    } else if (!mod && !event.altKey && event.key.toUpperCase() === EYEDROPPER_SHORTCUT) {
+      setIsPickingColor(true);
     } else if (!mod && !event.altKey && event.key.length === 1) {
       const picked = (Object.keys(TOOL_SHORTCUTS) as EditorTool[]).find(
         (candidate) => TOOL_SHORTCUTS[candidate] === event.key.toUpperCase(),
@@ -312,6 +327,22 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
       setTextFont(font);
     }
   };
+  const handleTextFontSizeChange = (fontSize: number) => {
+    const clamped = Math.min(Math.max(Math.round(fontSize), DOCUMENT_LIMITS.minFontSize), DOCUMENT_LIMITS.maxFontSize);
+    if (selectedText) {
+      // Stepping through sizes is one undo step.
+      engine.updateItem(selectedText.id, { fontSize: clamped }, `fontSize:${selectedText.id}`);
+    } else {
+      setTextFontSize(clamped);
+    }
+  };
+  const handleTextHighlightChange = (highlight: TextHighlight) => {
+    if (selectedText) {
+      engine.updateItem(selectedText.id, highlight);
+    } else {
+      setTextHighlight(highlight);
+    }
+  };
   const recolorsSelection =
     tool === 'select' && (selectedItem?.type === 'text' || selectedItem?.type === 'shape');
   const paletteColor = !recolorsSelection
@@ -334,6 +365,16 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
     if (viewport.isPinching() || viewport.isHandPanning()) {
       return;
     }
+    if (isPickingColor) {
+      // Like choosing it in the palette: it becomes the current colour, or
+      // recolours the selected text or shape.
+      const picked = colorSamplerRef.current?.(position);
+      if (picked) {
+        handleColorChange(picked);
+      }
+      setIsPickingColor(false);
+      return;
+    }
     if (tool === 'pen' || tool === 'eraser') {
       engine.beginStroke(tool, color, strokeWidth, position, strokeKind);
     } else if (tool === 'text' && isBackground) {
@@ -341,7 +382,7 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
       // a typed list wraps across the page instead of in a narrow column.
       const item = compact
         ? addMobileTextItem(position)
-        : engine.addTextItem(position.x, position.y, color, { fontFamily: textFont });
+        : engine.addTextItem(position.x, position.y, color, { fontSize: textFontSize, fontFamily: textFont, ...textHighlight });
       openTextEditor(item.id);
       setTool('select');
     } else if (tool === 'shape') {
@@ -496,9 +537,10 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
   const addMobileTextItem = (position: Point) => {
     const x = Math.min(position.x, CANVAS_WIDTH - MOBILE_TEXT_MARGIN - MOBILE_MIN_TEXT_WIDTH);
     return engine.addTextItem(x, position.y, color, {
-      fontSize: MOBILE_DEFAULT_FONT_SIZE,
+      fontSize: textFontSize,
       width: CANVAS_WIDTH - MOBILE_TEXT_MARGIN - x,
       fontFamily: textFont,
+      ...textHighlight,
     });
   };
 
@@ -521,15 +563,7 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
     }
     if (style) {
       setTextFont(style.fontFamily);
-    }
-    setEditingTextId(null);
-  };
-
-  // Cancelling a text that was never typed into drops it — the default text is
-  // only a placeholder and must not end up on the wishlist.
-  const handleTextCancel = () => {
-    if (editingTextItem?.text === DEFAULT_TEXT_PLACEHOLDER) {
-      engine.removeItem(editingTextItem.id);
+      setTextFontSize(style.fontSize);
     }
     setEditingTextId(null);
   };
@@ -767,6 +801,12 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
       textFont={selectedText ? selectedText.fontFamily : textFont}
       onTextFontChange={handleTextFontChange}
       showSelectionFont={selectedText !== null}
+      textFontSize={selectedText ? selectedText.fontSize : textFontSize}
+      onTextFontSizeChange={handleTextFontSizeChange}
+      textHighlight={selectedText ?? textHighlight}
+      onTextHighlightChange={handleTextHighlightChange}
+      isPickingColor={isPickingColor}
+      onPickColorFromPage={() => setIsPickingColor(true)}
       strokeWidth={strokeWidth}
       onStrokeWidthChange={setStrokeWidth}
       strokeKind={strokeKind}
@@ -813,7 +853,7 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
           ? 'flex h-full w-full items-center justify-center'
           : 'flex-1 rounded-md shadow-lg',
         // Pen/eraser hide the native cursor — the on-canvas brush circle is the cursor.
-        isSpaceHeld ? 'cursor-grab active:cursor-grabbing' : [
+        isSpaceHeld ? 'cursor-grab active:cursor-grabbing' : isPickingColor ? 'cursor-crosshair' : [
           (tool === 'pen' || tool === 'eraser') && 'cursor-none',
           tool === 'text' && 'cursor-text',
           tool === 'shape' && 'cursor-crosshair',
@@ -827,7 +867,8 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
             strokes={engine.strokes}
             liveStroke={engine.liveStroke}
             previewShape={shapeDraft}
-            onFillItem={tool === 'fill' ? handleFillItem : undefined}
+            onFillItem={tool === 'fill' && !isPickingColor ? handleFillItem : undefined}
+            colorSamplerRef={colorSamplerRef}
             drawingSnapshotRef={drawingSnapshotRef}
             items={engine.items}
             background={engine.background}
@@ -835,7 +876,7 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
             pageId={engine.pageId}
             brushCursor={
               // No brush preview under a finger — it would only trail the stroke.
-              !compact && (tool === 'pen' || tool === 'eraser')
+              !compact && !isPickingColor && (tool === 'pen' || tool === 'eraser')
                 ? {
                     radius: strokeWidth / 2,
                     color: tool === 'eraser' ? ERASER_CURSOR_COLOR : color,
@@ -844,7 +885,8 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
             }
             stageProps={viewport.stageProps}
             editable
-            itemsInteractive={tool === 'select'}
+            // Picking a colour reads whatever is under the pointer, items included.
+            itemsInteractive={tool === 'select' && !isPickingColor}
             selectedItemId={engine.selectedItemId}
             editingItemId={editingTextId}
             onSelectItem={engine.setSelectedItemId}
@@ -856,13 +898,18 @@ function WishlistEditorBody({ initialDocument, onExit, onSaved, restoredDraft = 
           />
         </div>
       )}
+      {isPickingColor && (
+        // Fixed below the top bars: the page may be scrolled past the canvas top.
+        <p className="pointer-events-none fixed left-1/2 top-20 z-[70] -translate-x-1/2 rounded-full bg-gray-900/85 px-3 py-1 text-xs font-medium text-white shadow">
+          {t('wishlist.toolbar.eyedropperHint')}
+        </p>
+      )}
       {editingTextItem && !compact && (
         <TextEditOverlay
           item={editingTextItem}
           stageScale={viewport.stageScale}
           stagePosition={viewport.stagePosition}
           onCommit={handleTextCommit}
-          onCancel={handleTextCancel}
         />
       )}
     </div>

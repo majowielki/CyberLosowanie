@@ -26,6 +26,7 @@ import StrokeShape from './StrokeShape';
 import { STICKERS } from './stickers';
 import { useAuthorizedImage } from './useAuthorizedImage';
 import { cssFontFamily, useTextFontsReady } from './textFonts';
+import { textHighlightNodeProps } from './textHighlight';
 import { useStickerImage } from './useStickerImage';
 import { useWishlistOwnerCyberekId } from './wishlistOwner';
 import { useCyberekImage } from '@/features/cyberki/useCyberekImage';
@@ -63,6 +64,11 @@ export interface WishlistCanvasProps {
    * nothing else) at document resolution — the input of the area fill.
    */
   drawingSnapshotRef?: MutableRefObject<(() => RasterImage | null) | null>;
+  /**
+   * Filled with the eyedropper: the #rrggbb colour shown at a document point
+   * (page, drawing and items together), or null off the page.
+   */
+  colorSamplerRef?: MutableRefObject<((position: Point) => string | null) | null>;
   /** Filled with a handle for capturing the rendered page (offscreen exporter only). */
   exportHandleRef?: MutableRefObject<CanvasExportHandle | null>;
   /** Brush-size preview cursor for pen/eraser (radius in document units). */
@@ -131,6 +137,7 @@ function WishlistCanvas({
   previewShape = null,
   onFillItem,
   drawingSnapshotRef,
+  colorSamplerRef,
   exportHandleRef,
   brushCursor = null,
   editable = false,
@@ -209,11 +216,25 @@ function WishlistCanvas({
   // Pointer position (document coords) for the brush-size preview cursor.
   const [cursorPos, setCursorPos] = useState<Point | null>(null);
 
+  // Read by registerItemNode, which must stay referentially stable.
+  const selectionRef = useRef({ selectedItemId, editingItemId });
+  selectionRef.current = { selectedItemId, editingItemId };
+
   const registerItemNode = useCallback((id: string, node: Konva.Node | null) => {
-    if (node) {
-      itemNodesRef.current.set(id, node);
-    } else {
+    if (!node) {
       itemNodesRef.current.delete(id);
+      return;
+    }
+    itemNodesRef.current.set(id, node);
+    // An image or sticker swaps its loading placeholder for the real bitmap
+    // node without the items changing — a freshly added sticker is selected
+    // while still loading. Move the transformer to the new node, or it keeps
+    // transforming the destroyed placeholder and the box drifts off the item.
+    const transformer = transformerRef.current;
+    const { selectedItemId: selected, editingItemId: editing } = selectionRef.current;
+    if (transformer && id === selected && id !== editing && transformer.nodes()[0] !== node) {
+      transformer.nodes([node]);
+      transformer.getLayer()?.batchDraw();
     }
   }, []);
 
@@ -292,6 +313,47 @@ function WishlistCanvas({
       drawingSnapshotRef.current = null;
     };
   }, [drawingSnapshotRef]);
+
+  useEffect(() => {
+    if (!colorSamplerRef) {
+      return;
+    }
+    colorSamplerRef.current = (position) => {
+      const stage = stageRef.current;
+      if (!stage) {
+        return null;
+      }
+      // The selection frame is not part of the page — hide it for the read.
+      const transformer = transformerRef.current;
+      const transformerVisible = transformer?.visible() ?? false;
+      transformer?.visible(false);
+      try {
+        // toCanvas works in stage (screen) coordinates: render the one pixel
+        // under the pointer, every layer composited as on screen.
+        const screen = stage.getAbsoluteTransform().point(position);
+        const canvas = stage.toCanvas({
+          x: Math.floor(screen.x),
+          y: Math.floor(screen.y),
+          width: 1,
+          height: 1,
+          pixelRatio: 1,
+        });
+        const [red, green, blue, alpha] = canvas.getContext('2d')?.getImageData(0, 0, 1, 1).data ?? [];
+        if (!alpha) {
+          return null;
+        }
+        return `#${[red, green, blue].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+      } catch {
+        // A cross-origin image would taint the canvas; there is nothing to read then.
+        return null;
+      } finally {
+        transformer?.visible(transformerVisible);
+      }
+    };
+    return () => {
+      colorSamplerRef.current = null;
+    };
+  }, [colorSamplerRef]);
 
   useEffect(() => {
     if (!exportHandleRef) {
@@ -497,6 +559,7 @@ function WishlistCanvas({
                 fontFamily={cssFontFamily(item.fontFamily)}
                 fill={item.fill}
                 width={item.width}
+                {...textHighlightNodeProps(item)}
                 visible={item.id !== editingItemId}
                 onDblClick={() => onTextEditRequest?.(item.id)}
                 onDblTap={() => onTextEditRequest?.(item.id)}

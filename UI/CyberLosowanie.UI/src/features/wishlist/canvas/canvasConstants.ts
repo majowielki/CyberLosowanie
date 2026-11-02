@@ -86,6 +86,24 @@ export const EMOJI_INSERT_FONT_SIZE = 120;
 export const DEFAULT_TEXT_WIDTH = 420;
 export const DEFAULT_TEXT_PLACEHOLDER = 'Wpisz tekst...';
 export const MIN_TEXT_WIDTH = 40;
+// Text highlight, so a text stays readable on a busy page or one of a similar
+// colour: an outline around the letters (text item `outline`) or a rounded
+// box behind the text (`background`). Any #rrggbb is valid in the document;
+// the editor offers these presets, one at a time.
+export const TEXT_HIGHLIGHTS = [
+  { id: 'none' },
+  { id: 'outline-black', outline: '#000000' },
+  { id: 'outline-white', outline: '#ffffff' },
+  { id: 'background-white', background: '#ffffff' },
+  { id: 'background-black', background: '#000000' },
+] as const;
+// Outline stroke width as a fraction of the font size. The letters are filled
+// over the stroke, so half of it shows around them.
+export const TEXT_OUTLINE_WIDTH = 0.22;
+export const TEXT_BACKGROUND_OPACITY = 0.85;
+// Margin around the text and corner radius, as fractions of the font size.
+export const TEXT_BACKGROUND_PADDING = 0.25;
+export const TEXT_BACKGROUND_RADIUS = 0.25;
 
 // Mobile text sheet: font size presets (document units) and the layout of a
 // text added by tap — a list line spanning the rest of the page width.
@@ -96,6 +114,8 @@ export const TEXT_SIZE_PRESETS = [
   { id: 'huge', fontSize: 110 },
 ] as const;
 export const MOBILE_DEFAULT_FONT_SIZE = 48;
+// Toolbar size stepper: each step scales the font size by this factor.
+export const TEXT_SIZE_STEP = 1.15;
 export const MOBILE_TEXT_MARGIN = 48;
 export const MOBILE_MIN_TEXT_WIDTH = 320;
 
@@ -108,6 +128,8 @@ export const TOOL_SHORTCUTS = {
   shape: 'S',
   fill: 'F',
 } as const;
+// The eyedropper is a one-shot mode (it returns to the current tool), not a tool.
+export const EYEDROPPER_SHORTCUT = 'I';
 
 // Viewport (decision D4: full zoom/pan/pinch). User zoom multiplies the
 // fit-to-width base scale.

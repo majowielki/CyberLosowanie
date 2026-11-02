@@ -447,6 +447,40 @@ namespace CyberLosowanie.Test
                 () => CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(items: new[] { text })));
         }
 
+        [Fact]
+        public async Task SaveMyWishlistAsync_TextWithBackground_IsStored()
+        {
+            var added = CaptureAddedWishlist();
+            var text = new { id = "t1", type = "text", text = "Lego", x = 10.0, y = 20.0, rotation = 0.0, fontSize = 48.0, fill = "#ffffff", width = 600.0, background = "#000000" };
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(items: new[] { text }));
+
+            added()!.CanvasJson.Should().Contain("\"background\":\"#000000\"");
+        }
+
+        [Fact]
+        public async Task SaveMyWishlistAsync_TextWithOutline_IsStored()
+        {
+            var added = CaptureAddedWishlist();
+            var text = new { id = "t1", type = "text", text = "Lego", x = 10.0, y = 20.0, rotation = 0.0, fontSize = 48.0, fill = "#ffffff", width = 600.0, outline = "#000000" };
+
+            await CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(items: new[] { text }));
+
+            added()!.CanvasJson.Should().Contain("\"outline\":\"#000000\"");
+        }
+
+        [Theory]
+        [InlineData("black", null)]
+        [InlineData("#fff", null)]
+        [InlineData(null, "white")]
+        public async Task SaveMyWishlistAsync_TextWithInvalidHighlight_ThrowsBusinessValidation(string? background, string? outline)
+        {
+            var text = new { id = "t1", type = "text", text = "Lego", x = 10.0, y = 20.0, rotation = 0.0, fontSize = 48.0, fill = "#111827", width = 600.0, background, outline };
+
+            await Assert.ThrowsAsync<BusinessValidationException>(
+                () => CreateService().SaveMyWishlistAsync(UserName, BuildCanvasJson(items: new[] { text })));
+        }
+
         [Theory]
         [InlineData("rect")]
         [InlineData("star")]

@@ -13,6 +13,7 @@ import {
   ImagePlus,
   MousePointer2,
   Layers,
+  Minus,
   PaintBucket,
   Pen,
   Plus,
@@ -41,14 +42,18 @@ import {
   TOOL_SHORTCUTS,
   STROKE_KINDS,
   STROKE_WIDTHS,
+  TEXT_HIGHLIGHTS,
+  TEXT_SIZE_PRESETS,
+  TEXT_SIZE_STEP,
   TEXT_FONTS,
 } from './canvasConstants';
-import { PagePattern, ShapeKind, StrokeKind, TextFontId } from './canvasDocument';
+import { PagePattern, ShapeKind, StrokeKind, TextFontId, TextHighlight } from './canvasDocument';
 import type { ItemOrderMove } from './useCanvasEngine';
 import PagePatternPreview from './PagePatternPreview';
 import StrokeKindPreview from './StrokeKindPreview';
 import ColorPalettePanel from './ColorPalettePanel';
 import { cssFontFamily } from './textFonts';
+import { TextHighlightPreset, presetHighlight, textHighlightPreset } from './textHighlight';
 
 export type EditorTool = keyof typeof TOOL_SHORTCUTS;
 
@@ -103,6 +108,15 @@ interface CanvasToolbarProps {
   onTextFontChange: (font: TextFontId | undefined) => void;
   /** Pointer tool with a text selected: show the font picker for it. */
   showSelectionFont: boolean;
+  /** Font size of the next text (text tool) or of the selected text (pointer tool). */
+  textFontSize: number;
+  onTextFontSizeChange: (fontSize: number) => void;
+  /** Outline or backdrop of the next text, or of the selected text. */
+  textHighlight: TextHighlight;
+  onTextHighlightChange: (highlight: TextHighlight) => void;
+  /** Eyedropper armed: the next press on the page picks its colour. */
+  isPickingColor: boolean;
+  onPickColorFromPage: () => void;
 }
 
 const TOOLS: Array<{ id: EditorTool; labelKey: TranslationKey; icon: typeof Pen }> = [
@@ -160,6 +174,46 @@ const PATTERN_LABEL_KEYS: Record<PagePattern | 'none', TranslationKey> = {
   glossy: 'wishlist.toolbar.pattern.glossy',
   paper: 'wishlist.toolbar.pattern.paper',
 };
+
+const SIZE_LABEL_KEYS: Record<(typeof TEXT_SIZE_PRESETS)[number]['id'], TranslationKey> = {
+  small: 'wishlist.text.size.small',
+  medium: 'wishlist.text.size.medium',
+  large: 'wishlist.text.size.large',
+  huge: 'wishlist.text.size.huge',
+};
+// Glyph sizes of the "A" on each preset (px), smallest to largest.
+const SIZE_GLYPH_PX = [13, 17, 22, 28];
+
+const HIGHLIGHT_LABEL_KEYS: Record<TextHighlightPreset['id'], TranslationKey> = {
+  none: 'wishlist.toolbar.textHighlight.none',
+  'outline-black': 'wishlist.toolbar.textHighlight.outlineBlack',
+  'outline-white': 'wishlist.toolbar.textHighlight.outlineWhite',
+  'background-white': 'wishlist.toolbar.textHighlight.backgroundWhite',
+  'background-black': 'wishlist.toolbar.textHighlight.backgroundBlack',
+};
+
+/** A letter with the highlight, in the text colour (a dashed box for none). */
+function TextHighlightPreview({ preset, color }: { preset: TextHighlightPreset; color: string }) {
+  const { background, outline } = presetHighlight(preset);
+  return (
+    <span
+      className={cn(
+        'grid h-6 w-6 place-items-center rounded text-base font-black leading-none',
+        background ? 'border border-gray-300' : preset.id === 'none' && 'border border-dashed border-gray-400',
+        // A white outline needs something behind it to show.
+        outline === '#ffffff' && 'bg-gray-400',
+      )}
+      style={{
+        color,
+        backgroundColor: background,
+        ...(outline ? { WebkitTextStroke: `4px ${outline}`, paintOrder: 'stroke fill' } : {}),
+      }}
+      aria-hidden
+    >
+      A
+    </span>
+  );
+}
 
 // Divider between toolbar sections — a horizontal rule in the desktop column,
 // a vertical rule in the mobile strip.
@@ -259,6 +313,12 @@ function CanvasToolbar({
   textFont,
   onTextFontChange,
   showSelectionFont,
+  textFontSize,
+  onTextFontSizeChange,
+  textHighlight,
+  onTextHighlightChange,
+  isPickingColor,
+  onPickColorFromPage,
 }: CanvasToolbarProps) {
   const { t } = useTranslation();
   const withShortcut = (label: string, shortcut: string) =>
@@ -274,6 +334,7 @@ function CanvasToolbar({
     showColorOptions || showStrokeOptions || showKindOptions || showShapeOptions || showPatternOptions ||
     showFontOptions;
   const currentFontName = TEXT_FONTS.find((font) => font.id === textFont)?.family ?? t('wishlist.toolbar.font.default');
+  const currentHighlight = textHighlightPreset(textHighlight);
   const CurrentShapeIcon = SHAPE_OPTIONS.find((option) => option.id === shapeKind)?.icon ?? Square;
   const dock = variant === 'dock';
   // Desktop: toolbar is a left column, so panels open to its right; on narrow
@@ -503,6 +564,101 @@ function CanvasToolbar({
               </ToolbarFlyout>
             )}
 
+            {showFontOptions && (
+              <ToolbarFlyout
+                label={t('wishlist.toolbar.textSizeCurrent', { size: Math.round(textFontSize) })}
+                side={flyoutSide}
+                large={dock}
+                trigger={
+                  <span className="text-sm font-semibold tabular-nums leading-none text-gray-800">
+                    {Math.round(textFontSize)}
+                  </span>
+                }
+              >
+                {() => (
+                  <div className="flex w-56 flex-col gap-2" role="group" aria-label={t('wishlist.text.sizeGroup')}>
+                    {/* Fine steps; the flyout stays open so a size can be stepped to. */}
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        title={t('wishlist.toolbar.textSizeSmaller')}
+                        aria-label={t('wishlist.toolbar.textSizeSmaller')}
+                        onClick={() => onTextFontSizeChange(textFontSize / TEXT_SIZE_STEP)}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100"
+                      >
+                        <Minus className="h-5 w-5" aria-hidden />
+                      </button>
+                      <span className="text-lg font-semibold tabular-nums text-gray-800" aria-live="polite">
+                        {Math.round(textFontSize)}
+                      </span>
+                      <button
+                        type="button"
+                        title={t('wishlist.toolbar.textSizeLarger')}
+                        aria-label={t('wishlist.toolbar.textSizeLarger')}
+                        onClick={() => onTextFontSizeChange(textFontSize * TEXT_SIZE_STEP)}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100"
+                      >
+                        <Plus className="h-5 w-5" aria-hidden />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1 border-t border-gray-200 pt-2">
+                      {TEXT_SIZE_PRESETS.map((preset, index) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          aria-pressed={Math.round(textFontSize) === preset.fontSize}
+                          onClick={() => onTextFontSizeChange(preset.fontSize)}
+                          className={cn(
+                            'flex flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-[0.65rem] font-medium text-gray-600 hover:bg-gray-100',
+                            Math.round(textFontSize) === preset.fontSize && 'bg-gray-200 text-gray-900 ring-1 ring-sky-500',
+                          )}
+                        >
+                          <span className="flex h-8 items-end font-semibold leading-none text-gray-800" style={{ fontSize: SIZE_GLYPH_PX[index] }} aria-hidden>
+                            A
+                          </span>
+                          {t(SIZE_LABEL_KEYS[preset.id])}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </ToolbarFlyout>
+            )}
+
+            {showFontOptions && (
+              <ToolbarFlyout
+                label={t('wishlist.toolbar.textHighlightCurrent', {
+                  name: t(HIGHLIGHT_LABEL_KEYS[currentHighlight.id]),
+                })}
+                side={flyoutSide}
+                large={dock}
+                trigger={<TextHighlightPreview preset={currentHighlight} color={color} />}
+              >
+                {(close) => (
+                  <div className="flex flex-col gap-0.5" role="group" aria-label={t('wishlist.toolbar.textHighlightGroup')}>
+                    {TEXT_HIGHLIGHTS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        aria-pressed={currentHighlight.id === preset.id}
+                        onClick={() => {
+                          onTextHighlightChange(presetHighlight(preset));
+                          close();
+                        }}
+                        className={cn(
+                          'flex min-h-11 items-center gap-3 rounded-lg px-3 text-left text-sm font-medium text-gray-700 hover:bg-gray-100',
+                          currentHighlight.id === preset.id && 'bg-gray-200 ring-1 ring-sky-500',
+                        )}
+                      >
+                        <TextHighlightPreview preset={preset} color={color} />
+                        {t(HIGHLIGHT_LABEL_KEYS[preset.id])}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </ToolbarFlyout>
+            )}
+
             {showColorOptions && (
               <ToolbarFlyout
                 label={t('wishlist.toolbar.colorCurrent', { color })}
@@ -522,7 +678,18 @@ function CanvasToolbar({
                   </span>
                 }
               >
-                {(close) => <ColorPalettePanel color={color} onColorChange={onColorChange} onPicked={close} />}
+                {(close) => (
+                  <ColorPalettePanel
+                    color={color}
+                    onColorChange={onColorChange}
+                    onPicked={close}
+                    isPickingColor={isPickingColor}
+                    onPickFromPage={() => {
+                      close();
+                      onPickColorFromPage();
+                    }}
+                  />
+                )}
               </ToolbarFlyout>
             )}
 

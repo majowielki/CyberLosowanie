@@ -62,7 +62,14 @@ export interface CanvasTextItem {
   /** Wrap width in document units. */
   width: number;
   fontFamily?: TextFontId;
+  /** Box drawn behind the text (#rrggbb); absent = none. */
+  background?: string;
+  /** Outline around the letters (#rrggbb); absent = none. */
+  outline?: string;
 }
+
+/** The highlight part of a text (see TEXT_HIGHLIGHTS). */
+export type TextHighlight = Pick<CanvasTextItem, 'background' | 'outline'>;
 
 export interface CanvasImageItem {
   id: string;
@@ -390,6 +397,12 @@ function validateItems(
       if (item.fontFamily !== undefined && !isTextFontId(item.fontFamily)) {
         errors.push({ key: 'wishlist.validation.textFont' });
       }
+      if (item.background !== undefined && !HEX_COLOR_PATTERN.test(item.background)) {
+        errors.push({ key: 'wishlist.validation.textBackground' });
+      }
+      if (item.outline !== undefined && !HEX_COLOR_PATTERN.test(item.outline)) {
+        errors.push({ key: 'wishlist.validation.textOutline' });
+      }
       if (!Number.isFinite(item.width) || item.width <= 0) {
         errors.push({ key: 'wishlist.validation.textWidth' });
       }
@@ -549,7 +562,9 @@ function isItemShape(value: unknown): value is CanvasItem {
       typeof value.fill === 'string' &&
       typeof value.width === 'number' &&
       // An unknown font is kept so validateCanvasDocument reports it.
-      (value.fontFamily === undefined || typeof value.fontFamily === 'string')
+      (value.fontFamily === undefined || typeof value.fontFamily === 'string') &&
+      (value.background === undefined || typeof value.background === 'string') &&
+      (value.outline === undefined || typeof value.outline === 'string')
     );
   }
   if (value.type === 'image') {

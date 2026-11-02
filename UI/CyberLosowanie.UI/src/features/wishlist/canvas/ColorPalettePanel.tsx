@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Pipette } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { TranslationKey, useTranslation } from '@/shared/i18n';
-import { PEN_COLORS } from './canvasConstants';
+import { EYEDROPPER_SHORTCUT, PEN_COLORS } from './canvasConstants';
 import { HsvColor, hexToHsv, hsvToHex } from './strokeStyles';
 
 const RAINBOW = 'conic-gradient(#f43f5e, #f59e0b, #84cc16, #06b6d4, #6366f1, #d946ef, #f43f5e)';
@@ -13,6 +14,9 @@ interface ColorPalettePanelProps {
   onColorChange: (color: string) => void;
   /** A preset was picked — the flyout closes. */
   onPicked: () => void;
+  /** Eyedropper: take the colour from the page with the next press on it. */
+  onPickFromPage: () => void;
+  isPickingColor: boolean;
 }
 
 /**
@@ -21,7 +25,13 @@ interface ColorPalettePanelProps {
  * <input type="color">: Chrome on Android opens its sliders at zero whatever
  * the input's value, so the hue slider showed only black.
  */
-function ColorPalettePanel({ color, onColorChange, onPicked }: ColorPalettePanelProps) {
+function ColorPalettePanel({
+  color,
+  onColorChange,
+  onPicked,
+  onPickFromPage,
+  isPickingColor,
+}: ColorPalettePanelProps) {
   const { t } = useTranslation();
   const isCustomColor = !(PEN_COLORS as readonly string[]).includes(color);
   // The sliders own the HSV state (hex alone loses the hue of greys); they
@@ -69,6 +79,21 @@ function ColorPalettePanel({ color, onColorChange, onPicked }: ColorPalettePanel
           style={isCustomColor ? { backgroundColor: color } : { background: RAINBOW }}
         />
       </div>
+
+      <button
+        type="button"
+        title={`${t('wishlist.toolbar.eyedropper')} (${EYEDROPPER_SHORTCUT})`}
+        aria-keyshortcuts={EYEDROPPER_SHORTCUT}
+        aria-pressed={isPickingColor}
+        onClick={onPickFromPage}
+        className={cn(
+          'flex h-9 items-center gap-2 rounded-lg px-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-100',
+          isPickingColor && 'bg-gray-200 ring-1 ring-sky-500',
+        )}
+      >
+        <Pipette className="h-4 w-4" aria-hidden />
+        {t('wishlist.toolbar.eyedropper')}
+      </button>
 
       {hsv && (
         <div className="flex flex-col gap-2.5 border-t border-gray-200 pt-3">

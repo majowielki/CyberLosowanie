@@ -206,6 +206,8 @@ describe('validateCanvasDocument', () => {
     ['bad fill color', textItem({ fill: 'blue' })],
     ['non-positive width', textItem({ width: 0 })],
     ['unknown font', textItem({ fontFamily: 'comic-sans' as CanvasTextItem['fontFamily'] })],
+    ['bad background color', textItem({ background: 'black' })],
+    ['bad outline color', textItem({ outline: '#fff' })],
   ])('rejects a text item with %s', (_case, badItem) => {
     expect(validateCanvasDocument(documentWith({ pages: [page({ items: [badItem] })] }))).not.toEqual([]);
   });

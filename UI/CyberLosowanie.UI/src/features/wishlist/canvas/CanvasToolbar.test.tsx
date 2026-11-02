@@ -35,6 +35,12 @@ const renderToolbar = (tool: EditorTool, overrides: Partial<React.ComponentProps
     textFont: 'caveat' as const,
     onTextFontChange: vi.fn(),
     showSelectionFont: false,
+    textFontSize: 36,
+    onTextFontSizeChange: vi.fn(),
+    textHighlight: {},
+    onTextHighlightChange: vi.fn(),
+    isPickingColor: false,
+    onPickColorFromPage: vi.fn(),
     ...overrides,
   };
   renderWithProviders(<CanvasToolbar {...props} />, { language: 'en' });
@@ -52,6 +58,32 @@ describe('CanvasToolbar flyouts', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Font: Caveat' }));
     await userEvent.click(screen.getByRole('button', { name: 'Plain' }));
     expect(props.onTextFontChange).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('offers a black or white outline or backdrop for text, one at a time', async () => {
+    const props = renderToolbar('text', { textHighlight: { background: '#ffffff' } });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Text highlight: White background' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Black outline' }));
+    expect(props.onTextHighlightChange).toHaveBeenCalledWith({ background: undefined, outline: '#000000' });
+  });
+
+  it('picks the text size up front, by preset or step', async () => {
+    const props = renderToolbar('text');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Text size: 36' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Large' }));
+    expect(props.onTextFontSizeChange).toHaveBeenCalledWith(72);
+    await userEvent.click(screen.getByRole('button', { name: 'Larger text' }));
+    expect(props.onTextFontSizeChange).toHaveBeenLastCalledWith(36 * 1.15);
+  });
+
+  it('arms the eyedropper from the color panel', async () => {
+    const props = renderToolbar('pen');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Color: #111827' }));
+    await userEvent.click(screen.getByRole('button', { name: /Eyedropper/ }));
+    expect(props.onPickColorFromPage).toHaveBeenCalled();
   });
 
   it('hides the font picker for drawing tools', () => {

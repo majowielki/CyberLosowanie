@@ -220,7 +220,14 @@ export function useCanvasEngine(
       x: number,
       y: number,
       fill: string,
-      options?: { text?: string; fontSize?: number; width?: number; fontFamily?: TextFontId },
+      options?: {
+        text?: string;
+        fontSize?: number;
+        width?: number;
+        fontFamily?: TextFontId;
+        background?: string;
+        outline?: string;
+      },
     ): CanvasTextItem => {
       const fontSize = options?.fontSize ?? DEFAULT_FONT_SIZE;
       const item: CanvasTextItem = {
@@ -234,6 +241,8 @@ export function useCanvasEngine(
         fill,
         width: options?.width ?? DEFAULT_TEXT_WIDTH,
         ...(options?.fontFamily ? { fontFamily: options.fontFamily } : {}),
+        ...(options?.background ? { background: options.background } : {}),
+        ...(options?.outline ? { outline: options.outline } : {}),
       };
       updateCurrentPage((page) => ({ ...page, items: [...page.items, item] }));
       setSelectedItemId(item.id);
